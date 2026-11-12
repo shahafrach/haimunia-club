@@ -10,7 +10,7 @@ their phones. Losing or corrupting it is the worst possible failure.
 - Buildless vanilla JS. No framework, bundler or TypeScript. Do not add one.
 - `index.html` loads the scripts in order with `<script defer>`; they share one
   global scope. `src/shared/safe-helpers.js`, `app-config.js`, `src/usage.js`,
-  `src/constants.js`, `src/format.js`, `src/sanitize.js`, `src/db.js`, `src/connect.js`, `src/club.js`, `app.js`.
+  `src/constants.js`, `src/format.js`, `src/sanitize.js`, `src/db.js`, `src/connect.js`, `src/club.js`, `src/transfer.js`, `app.js`.
 - `sw.js`: service worker. A new file loaded by `index.html` must be added to
   `REQUIRED_ASSETS` or `OPTIONAL_ASSETS`.
 - CSP in `index.html` allows only the app's own origin, the Supabase host and Turnstile (script and frame). No

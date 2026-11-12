@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.3.0";
+const APP_VERSION = "3.4.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -3198,7 +3198,7 @@ function triggerImport() {
 // received from someone else. Every record is rebuilt field by field from a
 // whitelist; nothing from the file object is ever stored or rendered as-is.
 async function importDataFromFile(file) {
-  const bad = (msg) => { setImportMessage(msg || "הייבוא נכשל — הקובץ אינו קובץ גיבוי תקין"); render(); };
+  const bad = (msg) => { setImportMessage(msg || "הייבוא נכשל — הקובץ אינו קובץ גיבוי תקין"); render(); return false; };
 
   if (!file || file.size > MAX_BACKUP_BYTES) {
     return bad("הייבוא נכשל — הקובץ גדול מדי (מעל 25MB)");
@@ -3208,6 +3208,16 @@ async function importDataFromFile(file) {
   try {
     data = JSON.parse(await file.text());
   } catch (e) { return bad(); }
+  return importBackupData(data, {});
+}
+
+// The ONE import path. A backup file and a transfer code (src/transfer.js) both end here, so both are
+// rebuilt field by field from the same whitelist and merged the same way. Resolves true only when the
+// records were written; false when it was refused, cancelled or invalid (the caller keeps the data
+// and can offer it again). opts.prefs: the transfer's device settings, applied by applyTransferPrefs.
+async function importBackupData(data, opts) {
+  opts = opts || {};
+  const bad = (msg) => { setImportMessage(msg || "הייבוא נכשל — הקובץ אינו קובץ גיבוי תקין"); render(); return false; };
   if (!data || typeof data !== "object" || Array.isArray(data)) return bad();
   if (data.app !== BACKUP_APP_ID) return bad(`הייבוא נכשל — הקובץ אינו גיבוי של ${brandName()}`);
   if (Number(data.version) > BACKUP_VERSION) {
@@ -3292,7 +3302,7 @@ async function importDataFromFile(file) {
   const question = hasExisting
     ? `הייבוא יוסיף ${incomingLabel} לנתונים הקיימים ולא ניתן לבטל אותו.\nלפני כן יורד גיבוי של המצב הנוכחי.\n\nלהמשיך?`
     : `לייבא ${incomingLabel}?`;
-  if (!window.confirm(question)) { setImportMessage("הייבוא בוטל"); render(); return; }
+  if (!window.confirm(question)) { setImportMessage("הייבוא בוטל"); render(); return false; }
 
   if (hasExisting) {
     try { downloadBackup(await buildBackupPayload(), `box-log-rollback-${todayISO()}.json`); } catch (e) {}
@@ -3319,6 +3329,7 @@ async function importDataFromFile(file) {
   }
 
   await reloadFromDb();
+  if (opts.prefs) await applyTransferPrefs(opts.prefs, !hasExisting);
   // Imported history is past progress, not something earned right now: the
   // 2.x app re-baselined here, and without it a restored log's next save
   // popped one celebration listing every medal it had ever earned.
@@ -3335,6 +3346,32 @@ async function importDataFromFile(file) {
   if (failed) parts.push(`${failed} נכשלו בשמירה`);
   setImportMessage(parts.join(", "));
   render();
+  return ok > 0;
+}
+
+// The device settings a transfer code carries (research D/A): name, box start, bar weight, % increment, Rx
+// default, theme, text scale. Each is checked against the same allow-list its own setter uses. A name or
+// box-start date only fills an empty one. The rest are applied only on a device with no training data yet,
+// so a transfer never overrides settings someone already chose here.
+async function applyTransferPrefs(prefs, freshDevice) {
+  if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) return;
+  try {
+    if (userName === null && typeof prefs.userName === "string" && cleanStr(prefs.userName, LIMITS.nameLen)) {
+      userName = cleanStr(prefs.userName, LIMITS.nameLen);
+      await dbSetSetting(USER_NAME_KEY, userName);
+      renderUserGreeting();
+    }
+    if (!boxStartDate && typeof prefs.boxStartDate === "string") {
+      const d = cleanISODate(prefs.boxStartDate);
+      if (d && d <= todayISO()) saveBoxStartDate(d);
+    }
+    if (!freshDevice) return;
+    if (BAR_OPTIONS.includes(prefs.barWeight)) setBarWeight(prefs.barWeight);
+    if (PCT_INCREMENTS.includes(prefs.pctIncrement)) setPctIncrement(prefs.pctIncrement);
+    if (wodEffortAnswered(prefs.wodRxDefault)) setWodRx(prefs.wodRxDefault);
+    if (prefs.theme === "light" || prefs.theme === "dark" || prefs.theme === "auto") setThemePref(prefs.theme);
+    if (prefs.textScale === "normal" || prefs.textScale === "large") setTextScalePref(prefs.textScale);
+  } catch (e) { noteStorageError(e); }
 }
 
 // Single source of truth for pulling state out of IndexedDB. Everything is
@@ -5833,6 +5870,8 @@ function renderSettingsBody() {
           <button class="link-btn" data-action="export-data">ייצוא גיבוי</button>
           <span style="color:var(--border); font-size:11px;">·</span>
           <button class="link-btn" data-action="import-data">ייבוא גיבוי</button>
+          <span style="color:var(--border); font-size:11px;">·</span>
+          <button class="link-btn" data-action="open-transfer">קוד העברה מהאפליקציה הישנה</button>
         </div>
         ${importMessage ? `<div class="footer-note" role="status" aria-live="polite" style="color:var(--brass); margin-bottom:8px;">${esc(importMessage)}</div>` : ""}
         <div class="footer-note" style="margin-bottom:0;">קובץ הגיבוי הוא טקסט פשוט (JSON) וכולל את יומן האימונים המלא, התרגילים והאימונים שהוספתם, משקל גוף ומדידות — בלי השם שלכם ובלי הגדרות. הוא יורד לתיקיית ההורדות של המכשיר ונשאר שם: במכשיר משותף כל מי שמשתמש בו יכול לפתוח אותו. שמרו אותו במקום בטוח, ומחקו אותו מההורדות אם אינכם צריכים אותו שם</div>
@@ -7064,6 +7103,7 @@ registerAppDialog("celebration", { overlayId: "celebrationOverlay", isOpen: () =
 registerAppDialog("notifications", { overlayId: "notificationsOverlay", isOpen: () => document.getElementById("notificationsOverlay").classList.contains("open"), close: closeNotifications });
 registerAppDialog("onboarding", { overlayId: "onboardingOverlay", isOpen: () => document.getElementById("onboardingOverlay").classList.contains("open"), close: closeOnboarding, escapable: false });
 registerAppDialog("connect", { overlayId: "connectOverlay", isOpen: () => !!(window.haimuniaConnect && window.haimuniaConnect.isOpen()), close: () => window.haimuniaConnect.close(), escapable: true });
+registerAppDialog("transfer", { overlayId: "transferOverlay", isOpen: () => !!(window.haimuniaTransfer && window.haimuniaTransfer.isOpen()), close: () => window.haimuniaTransfer.close(), escapable: true });
 registerAppDialog("welcome", { overlayId: "welcomeOverlay", isOpen: () => document.getElementById("welcomeOverlay").classList.contains("open"), close: closeWelcomeModal, escapable: false });
 
 // Real-user report: on a phone, with an app dialog open (achievements was
@@ -7572,6 +7612,11 @@ document.addEventListener("click", (e) => {
   else if (action === "upgrade-backup-download") { markEditionSeen(); exportData(); }
   else if (action === "upgrade-backup-dismiss") { markEditionSeen(); render(); }
   else if (action === "import-data") { triggerImport(); }
+  else if (action === "open-transfer") { closeSettings(); if (window.haimuniaTransfer) window.haimuniaTransfer.open(); }
+  else if (action === "close-transfer") {
+    if (el.id === "transferOverlay" && e.target !== el) return;
+    if (window.haimuniaTransfer) window.haimuniaTransfer.close();
+  }
   else if (action === "ask-clear") { confirmClear = true; render(); }
   else if (action === "do-clear") { clearAllData(); }
   else if (action === "cancel-clear") { confirmClear = false; render(); }

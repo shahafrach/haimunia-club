@@ -3440,6 +3440,19 @@
   </div>
 </div>
 
+<!-- Transfer code (src/transfer.js): same sheet parts as the connect and support dialogs. -->
+<div class="modal-overlay" id="transferOverlay" role="dialog" aria-modal="true" aria-labelledby="transferTitle">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h2 class="modal-title" id="transferTitle">העברה מהאפליקציה הישנה</h2>
+      <button data-action="close-transfer" class="icon-btn" aria-label="סגירה" style="color:var(--steel);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-list" id="transferBody" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="onboardingOverlay" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle" style="align-items:center; padding:0 20px;">
   <div class="modal-sheet" style="border-radius:22px; border-bottom:1px solid var(--border); max-height:none;">
     <div style="padding:0 20px calc(env(safe-area-inset-bottom,0px) + 24px);">
@@ -3525,6 +3538,7 @@
 <script defer src="./src/db.js"></script>
 <script defer src="./src/connect.js"></script>
 <script defer src="./src/club.js"></script>
+<script defer src="./src/transfer.js"></script>
 <script defer src="./app.js"></script>
 </body>
 </html>

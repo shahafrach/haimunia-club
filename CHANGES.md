@@ -1,3 +1,17 @@
+# 3.4.0 — Transfer code from the old app — 2026-11-12
+
+Settings > "קוד העברה מהאפליקציה הישנה". In the installed app, the member pastes
+the one-time code made by the old app. The encrypted backup is fetched once
+(`transfer-take`), decrypted on this phone (HKDF + AES-GCM, the key exists only
+in the code) and merged through the same import as a backup file: records, body
+weight and session notes. The name and box-start date only fill empty ones; bar
+weight, % increment, Rx default, theme and text size apply only on a device
+with no training data yet. In a browser tab the dialog says to install first.
+If the import is declined or fails after the code is spent, the data stays in
+memory so the member can retry or save it as a backup file; closing the dialog
+drops it. The backup import is now one function, `importBackupData`, shared by
+the file and the code. `src/transfer.js`, `test/transfer.test.mjs`.
+
 # 3.3.0 — The club tab — 2026-11-12
 
 A connected member of the club gets a fifth tab, מועדון: the club's feed
