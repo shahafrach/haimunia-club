@@ -1,3 +1,14 @@
+# 3.3.0 — The club tab — 2026-11-12
+
+A connected member of the club gets a fifth tab, מועדון: the club's feed
+(30 posts a page), reactions (אגרוף, אש, מחיאות כפיים; a member may hold all
+three), and announcements, with the pinned one first, read-only for members.
+The owner and the coach also post, pin and delete announcements, delete any
+post, remove members (never the owner) and create a new join link, each
+destructive step behind the app's own confirm sheet. The server decides what
+each role may do; the buttons are only drawn where the action can work.
+Nothing from the private log is involved. `src/club.js`, `test/club.test.mjs`.
+
 # 3.2.0 — Connect with a username, join the club — 2026-11-12
 
 First run now asks once: connect with a username, or stay offline. Staying

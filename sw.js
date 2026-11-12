@@ -13,7 +13,7 @@
 //
 // SW_VERSION is written by scripts/sync-version.mjs from APP_VERSION in
 // app.js; the cache name carries it, so every release is a fresh cache.
-const SW_VERSION = "3.2.0";
+const SW_VERSION = "3.3.0";
 // The 2.x app's own prefix, kept: its caches are "haimunia-v2.34.0" and so
 // on, and the cleanup below removes them by this prefix.
 const CACHE_PREFIX = "haimunia-v";
@@ -36,6 +36,7 @@ const REQUIRED_ASSETS = [
   "./src/sanitize.js",
   "./src/db.js",
   "./src/connect.js",
+  "./src/club.js",
 ];
 // What the app degrades gracefully without: pages, icons, photos, fonts.
 // A miss is logged and install continues.

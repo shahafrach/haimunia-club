@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.2.0";
+const APP_VERSION = "3.3.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -172,6 +172,10 @@ function getNavItems() {
     { id: "calendar", tab: "calendar", rowId: "tabCalendarBtn", label: "לוח שנה", tint: "yellow", icon: ICONS.calendarIcon, main: true, group: "mine" },
     { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "אימונים", tint: "purple", icon: ICONS.stopwatchIcon, main: true, group: "mine" },
   ];
+  // The club tab exists only for a connected member of the club.
+  if (window.haimuniaClub && window.haimuniaClub.available()) {
+    items.push({ id: "club", tab: "club", rowId: "tabClubBtn", label: "מועדון", tint: "energy", icon: ICONS.clubIcon, main: true, group: "club" });
+  }
   return items;
 }
 // The fixed bottom tab bar (#bottomTabBar, index.html) - one tap to any of
@@ -2379,6 +2383,7 @@ function runAppConfirm() {
   else if (c.action === "delete-measure-type") deleteMeasureType(c.payload.id);
   else if (c.action === "delete-measurement-entry") deleteMeasurementEntry(c.payload.id);
   else if (c.action === "delete-custom-wod") deleteCustomWod(c.payload.id);
+  else if (c.action === "club-action") window.haimuniaClub.runConfirmed(c.payload);
   else if (c.action === "save-set") saveSet(true);
   else if (c.action === "save-wod") saveWod(true);
   else render();
@@ -4223,6 +4228,7 @@ const ICONS = {
   bell: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
   calendarIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   chartIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M12 20V4M20 20v-7"/></svg>',
+  clubIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="7" r="2.4"/><path d="M16.5 12.2c2.7.3 4.5 2.4 4.5 5.3"/></svg>',
   stopwatchIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg>',
   logIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg>',
   communityIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="9" r="2.3"/><path d="M16.3 14c2.6.2 4.5 2.1 5 5"/></svg>',
@@ -6127,6 +6133,8 @@ function render() {
       content = renderHistoryTab();
     } else if (tab === "calendar") {
       content = renderCalendarTab();
+    } else if (tab === "club") {
+      content = window.haimuniaClub ? window.haimuniaClub.renderTab() : "";
     } else if (tab === "wod") {
       content = renderWodTab();
       syncWodSaveCta(wodSubTab === "log" ? wodById(selectedWodId) : null);
@@ -7970,6 +7978,7 @@ async function init() {
   // which a duplicate credential field is live in the document.
   setSettingsInert(true);
   renderUserGreeting();
+  if (window.haimuniaClub) window.haimuniaClub.init();
   if (window.haimuniaConnect) window.haimuniaConnect.init();
   countUsage("app_open");
   render();
