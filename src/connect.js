@@ -167,15 +167,18 @@
     var sess = await c.auth.getSession();
     var user = sess && sess.data && sess.data.session ? sess.data.session.user : null;
     S.user = user && !user.is_anonymous ? user : (user || null);
-    S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.clubName = "";
+    S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.clubName = ""; S.shareDefaults = {};
     if (!user) { changed(); return; }
-    var m = await c.from("circle_members").select("club_id,role").eq("user_id", user.id);
+    // Only the club. The same account can also be in BOX-LOG couple or friends circles, which this
+    // app never shows (decisions.md, "Haimunia club").
+    var m = await c.from("circle_members").select("club_id,role,share_defaults,clubs!inner(type,name)")
+      .eq("user_id", user.id).eq("clubs.type", "club");
     if (m.error) throw m.error;
     S.inClub = (m.data || []).length > 0;
     if (S.inClub) {
       S.clubId = m.data[0].club_id; S.role = m.data[0].role;
-      var cl = await c.from("clubs").select("name").eq("id", S.clubId).maybeSingle();
-      S.clubName = (cl && cl.data && cl.data.name) || "";
+      S.clubName = (m.data[0].clubs && m.data[0].clubs.name) || "";
+      S.shareDefaults = m.data[0].share_defaults && typeof m.data[0].share_defaults === "object" ? m.data[0].share_defaults : {};
     }
     var p = await c.from("profiles").select("display_name,emoji").eq("id", user.id).maybeSingle();
     if (p.error) throw p.error;
@@ -540,8 +543,10 @@
     // What the club screen needs to know, nothing more.
     info: function () {
       return { signedIn: signedIn(), inClub: !!(signedIn() && S.inClub), userId: S.user ? S.user.id : null,
-        clubId: S.clubId, role: S.role, staff: S.role === "owner" || S.role === "coach", clubName: S.clubName };
+        clubId: S.clubId, role: S.role, staff: S.role === "owner" || S.role === "coach", clubName: S.clubName,
+        shareDefaults: Object.assign({}, S.shareDefaults || {}) };
     },
+    setShareDefaults: function (d) { S.shareDefaults = Object.assign({}, S.shareDefaults || {}, d || {}); changed(); },
     statusLabel: function () {
       if (!enabled()) return null;
       if (S.choice !== "connected" || !signedIn()) return { title: "חיבור למועדון", sub: "אפשר להתחבר עם שם משתמש ולהצטרף למועדון" };

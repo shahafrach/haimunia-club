@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.4.1";
+const APP_VERSION = "3.5.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -2056,6 +2056,59 @@ function heaviestLoggedWeightFor(id, excludeId) {
 // those are "a save is in flight", only the path that reaches the actual
 // entries.unshift() below is.
 let savingSet = false;
+// ---- The day's summary for the club feed (src/club.js decides if and what is sent) -----
+// One line per lift or WOD logged that date, with and without kilograms. Same shape as BOX-LOG's
+// communityDaySummary. Body weight is a different record type and is never read here.
+function clubStrengthLine(e) {
+  const m = movementById(e.exerciseId);
+  if (!m) return null;
+  const dur = e.type === "duration";
+  return { title: m.name,
+    text: dur ? `${formatClock(e.durationSeconds)}${e.weight ? ` @ ${e.weight} ק״ג` : ""}` : `${e.weight} ק״ג × ${e.reps} × ${e.sets}`,
+    textNoWeight: dur ? formatClock(e.durationSeconds) : `${e.reps} × ${e.sets}`, rx: null };
+}
+function clubWodLine(e) {
+  const w = wodById(e.wodId);
+  if (!w) return null;
+  const noWeight = e.scoreType === "time" ? formatClock(e.timeSeconds)
+    : e.scoreType === "amrap" ? `${e.rounds}+${e.reps}`
+    : e.scoreType === "emom" ? (e.emomReps || []).join(" · ") : "";
+  return { title: w.name, text: formatWodEntry(e), textNoWeight: noWeight, rx: e.rx !== false };
+}
+function clubDaySummary(day) {
+  if (!day) return null;
+  const lines = [];
+  for (const e of entries) if (e.date === day) { const l = clubStrengthLine(e); if (l) lines.push(l); }
+  for (const e of wodEntries) if (e.date === day) { const l = clubWodLine(e); if (l) lines.push(l); }
+  return { day, lines };
+}
+// A PR as a percent improvement (club default: PRs as percent, never kilograms). Computed here, from
+// the log on this phone: the club has no cloud copy of the private log (owner decision 3).
+function clubPrPercent(entry, detail) {
+  if (!entry) return null;
+  if (entry.type === "duration") {
+    const prev = bestDurationFor(entry.exerciseId, entry.id) || 0;
+    return prev > 0 && entry.durationSeconds > prev ? Math.round((entry.durationSeconds - prev) / prev * 1000) / 10 : null;
+  }
+  if (!detail) return null;
+  const [now, prev] = detail.repRecordPR && detail.prevRepRecord > 0 ? [detail.weight, detail.prevRepRecord]
+    : detail.est1rmPR && detail.prevEst1RM > 0 ? [detail.est, detail.prevEst1RM] : [0, 0];
+  return prev > 0 && now > prev ? Math.round((now - prev) / prev * 1000) / 10 : null;
+}
+function shareRecordToClub(entry, detail) {
+  try {
+    const pct = clubPrPercent(entry, detail);
+    const mov = movementById(entry.exerciseId);
+    if (pct && mov && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postPr(entry.id, mov.name, pct);
+  } catch (e) { /* never in the way of the log */ }
+}
+function removeRecordFromClub(entryId) {
+  try { if (entryId && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.removePr(entryId); } catch (e) { /* never in the way */ }
+}
+function shareDayToClub(day) {
+  try { if (day && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postDay(day); } catch (e) { /* never in the way of the log */ }
+}
+
 async function saveSet(sanityConfirmed) {
   if (savingSet) return;
   savingSet = true;
@@ -2224,6 +2277,8 @@ async function saveSet(sanityConfirmed) {
   }
   // A new entry is a workout logged; correcting an old one is not.
   if (!existing) countUsage("workout_logged");
+  shareDayToClub(entry && entry.date);
+  if (celebratePR && entry) shareRecordToClub(entry, prDetail);
   } finally { savingSet = false; }
 }
 // A ladder (working-set session: same exercise/day, different weight+reps
@@ -2587,6 +2642,8 @@ async function deleteEntry(id) {
   if (removed) {
     const mov = movementById(removed.exerciseId);
     offerUndo(`${mov ? mov.name : "הסט"} — ${entrySummary(removed)} נמחק`, () => restoreEntry(removed));
+    shareDayToClub(removed.date);
+    removeRecordFromClub(removed.id);
   }
   render();
 }
@@ -2598,6 +2655,8 @@ async function restoreEntry(entry) {
   entries.sort((a, b) => (b.ts || 0) - (a.ts || 0));
   try { await dbPut(entry); storageOK = true; } catch (e) { noteStorageError(e); }
   render();
+  shareDayToClub(entry.date);
+  try { if (window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.restorePr(entry.id); } catch (e) { /* never in the way */ }
 }
 
 // ---------- Bodyweight ----------
@@ -4086,6 +4145,7 @@ async function saveWod(sanityConfirmed) {
   }
   // Same rule as saveSet(): a new result counts, an edit does not.
   if (!existing) countUsage("workout_logged");
+  shareDayToClub(entry && entry.date);
   } finally { savingWod = false; }
 }
 // Live bug hunt (2026-09-11): same two-tab staleness fix as startEditEntry()
@@ -4161,6 +4221,7 @@ async function deleteWodEntry(id) {
   if (removed) {
     const w = wodById(removed.wodId);
     offerUndo(`${w ? w.name : "האימון"} — ${formatWodEntry(removed)} נמחק`, () => restoreWodEntry(removed));
+    shareDayToClub(removed.date);
   }
   render();
 }
@@ -4183,6 +4244,7 @@ async function restoreWodEntry(entry) {
   wodEntries.sort((a, b) => (b.ts || 0) - (a.ts || 0));
   try { await dbPutWodEntry(entry); storageOK = true; } catch (e) { noteStorageError(e); }
   render();
+  shareDayToClub(entry.date);
 }
 
 let wodPrFlashTimeout = null;
