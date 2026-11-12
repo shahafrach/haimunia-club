@@ -315,13 +315,13 @@ const WOD_LIBRARY = [
   { id: "glen", name: "Glen", category: "Heroes", scoreType: "time", desc: "30 clean & jerks, 1mi run, 100 burpees, 1mi run, 30 muscle-ups" },
 ];
 const PLATE_DEFS = [
-  { kg: 25, color: "#D8453C", w: 15, h: 78 },
-  { kg: 20, color: "#3E6FD9", w: 15, h: 70 },
-  { kg: 15, color: "#E0B23C", w: 13, h: 62 },
-  { kg: 10, color: "#4B9B5F", w: 11, h: 54 },
-  { kg: 5, color: "#7A828C", w: 9, h: 44 },
-  { kg: 2.5, color: "#1A1A1A", w: 7, h: 34 },
-  { kg: 1.25, color: "#1A1A1A", w: 6, h: 26 },
+  { kg: 25, color: "var(--p-d8453c)", w: 15, h: 78 },
+  { kg: 20, color: "var(--p-3e6fd9)", w: 15, h: 70 },
+  { kg: 15, color: "var(--p-e0b23c)", w: 13, h: 62 },
+  { kg: 10, color: "var(--p-4b9b5f)", w: 11, h: 54 },
+  { kg: 5, color: "var(--p-7a828c)", w: 9, h: 44 },
+  { kg: 2.5, color: "var(--p-1a1a1a)", w: 7, h: 34 },
+  { kg: 1.25, color: "var(--p-1a1a1a)", w: 6, h: 26 },
 ];
 
 // ---------- Safety helpers ----------

@@ -1,3 +1,15 @@
+# 3.6.0 — One token source for every color — 2026-11-12
+
+No visible change. Every color the app draws is now defined once, in
+`<style id="tokens">`: 142 primitives named by value, plus the semantic tokens
+for light and dark. The 139 CSS lines and 26 JS lines that named a color
+themselves now use the tokens. Dark is written once, keyed on a resolved
+`data-scheme` that theme-init.js stamps before first paint. Before this, dark
+was written twice (auto and explicit), and a contrast fix once reached only one
+copy. `test/design-tokens.test.mjs` fails on any new color outside the block,
+and checks 4.5:1 text contrast in both schemes. Screenshots of four screens,
+in four theme and system combinations, are byte-identical before and after.
+
 # 3.5.0 — The club feed is back, and workouts reach it — 2026-11-12
 
 Owner decision (2026-11-11): connected mode has a feed and reactions. This

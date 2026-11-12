@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.5.0";
+const APP_VERSION = "3.6.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -1043,10 +1043,10 @@ function renderNextAchievementNudge() {
 }
 function renderMedal(ach, earned) {
   const shape = ach.group === "pr" || ach.group === "streak" ? "shield" : "circle";
-  const glowMap = { bronze: "rgba(201,162,39,.7)", silver: "rgba(216,222,228,.8)", gold: "rgba(242,185,12,.8)" };
-  const glow = ach.group === "capstone" ? "rgba(255,180,60,.85)"
+  const glowMap = { bronze: "var(--p-c9a227-a70)", silver: "var(--p-d8dee4-a80)", gold: "var(--p-f2b90c-a80)" };
+  const glow = ach.group === "capstone" ? "var(--p-ffb43c-a85)"
     : ach.tier ? glowMap[ach.tier]
-    : (ach.group === "rx" ? "rgba(62,111,217,.6)" : "rgba(232,93,61,.6)");
+    : (ach.group === "rx" ? "var(--p-3e6fd9-a60)" : "var(--p-e85d3d-a60)");
   const tierClass = ach.group === "capstone" ? "medal-capstone" : ach.tier ? `tier-${ach.tier}` : (ach.group === "rx" ? "medal-rx" : "medal-milestone");
   const glyphId = ach.glyph === "home" ? "Home" : ach.glyph === "chevrons" ? "Chevrons" : ach.glyph === "bar" ? "Bar" : "Flame";
   const glyphUse = shape === "shield"
@@ -2556,7 +2556,7 @@ function renderToastBar() {
   // role="status" so a screen reader hears it without focus being yanked
   // out of the list being edited.
   return `<div id="appToastBar" role="status" aria-live="polite" style="display:flex; justify-content:center; padding:0 16px; pointer-events:none;">
-      <div class="flex items-center gap-10" style="pointer-events:auto; width:100%; max-width:420px; min-height:56px; background:var(--surface); border:1px solid var(--brass); border-radius:14px; padding:10px 10px 10px 14px; box-shadow:0 10px 30px rgba(0,0,0,.35);">
+      <div class="flex items-center gap-10" style="pointer-events:auto; width:100%; max-width:420px; min-height:56px; background:var(--surface); border:1px solid var(--brass); border-radius:14px; padding:10px 10px 10px 14px; box-shadow:0 10px 30px var(--p-000000-a35);">
         <span style="flex:1; min-width:0; color:var(--chalk); font-size:13px; font-weight:700;">${bidiText(pendingToast.label)}</span>
         ${pendingToast.action ? `<button class="chip-btn" data-action="toast-action">${esc(pendingToast.action.label)}</button>` : ""}
       </div>
@@ -3117,12 +3117,14 @@ function resolvedTheme() {
 }
 function syncThemeColorMeta() {
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", resolvedTheme() === "light" ? "#F2F5FA" : "#152342");
+  if (meta) meta.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--meta-theme-color").trim());
 }
 function applyThemePref() {
   const root = document.documentElement;
   if (themePref === "auto") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", themePref);
+  // The resolved scheme the token block reads (index.html <style id="tokens">).
+  root.setAttribute("data-scheme", resolvedTheme());
   syncThemeColorMeta();
 }
 function setThemePref(pref) {
@@ -4648,14 +4650,14 @@ function renderLogTab() {
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <div class="scene-page__brand">${esc(brandWordmark())}</div>
-        <h1 id="pageTitle-add" class="scene-page__title">${hasLoggedToday ? `<span aria-hidden="true" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:999px; background:var(--club-success); flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>` : ""}<span>סיכום אימון</span></h1>
+        <h1 id="pageTitle-add" class="scene-page__title">${hasLoggedToday ? `<span aria-hidden="true" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:999px; background:var(--club-success); flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--p-fff)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>` : ""}<span>סיכום אימון</span></h1>
         <p class="scene-page__subtitle">${hasLoggedToday ? "עבודה מעולה!" : "מוכנים להתחיל?"}</p>
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:rgba(216,69,60,.1); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
+    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
     ${editingEntryId ? `
-    <div style="background:rgba(232,185,138,.12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+    <div style="background:var(--p-e8b98a-a12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
       <span style="color:var(--brass); font-weight:700; font-size:13px;">עריכת סט קיים</span>
       <button data-action="cancel-edit-entry" style="color:var(--steel); font-size:12px; text-decoration:underline;">ביטול</button>
     </div>` : ""}
@@ -5353,7 +5355,7 @@ function renderVolumeReport() {
     // technically passing but with no real margin. .10 clears both with
     // headroom (4.78/4.81) and improves every other state too, checked
     // against both themes' real token values, not assumed.
-    let flagColor = "var(--steel)", flagBg = "rgba(138,143,151,.10)", flagText = daysAgoLabel(lastDate);
+    let flagColor = "var(--steel)", flagBg = "var(--p-8a8f97-a10)", flagText = daysAgoLabel(lastDate);
     // UX REVIEW, FINDING 2. `diff === null` used to take this row's
     // var(--red-text) on rgba(216,69,60,.10) - byte-for-byte the `diff > 14`
     // styling below it - so a category the member has never logged and a
@@ -5394,8 +5396,8 @@ function renderVolumeReport() {
     // rule this block settled on last time and is just being applied to one
     // more state.
     if (diff !== null) {
-      if (diff <= 7) { flagColor = "var(--green-text)"; flagBg = "rgba(75,155,95,.10)"; }
-      else if (diff > VOLUME_OVERDUE_DAYS) { flagColor = "var(--red-text)"; flagBg = "rgba(216,69,60,.10)"; }
+      if (diff <= 7) { flagColor = "var(--green-text)"; flagBg = "var(--p-4b9b5f-a10)"; }
+      else if (diff > VOLUME_OVERDUE_DAYS) { flagColor = "var(--red-text)"; flagBg = "var(--p-d8453c-a10-135)"; }
     }
     return `
       <div class="report-row">
@@ -5784,7 +5786,7 @@ function renderHistoryTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:rgba(216,69,60,.1); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
+    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
     <div class="stat-row">
       <div class="stat-card stat-hero" style="text-align:center;"><div class="stat-value mono" style="color:var(--brass); font-size:20px;">${prCountThisMonth}</div><div class="stat-label">שיאים החודש</div></div>
       <div class="stat-card" style="text-align:center;"><div class="stat-value mono" style="font-size:20px;">${sessionsThisWeek}</div><div class="stat-label">אימונים השבוע</div></div>
@@ -6551,7 +6553,7 @@ function renderWodLogSection() {
   return `
     <h2 class="sr-only">רישום תוצאת אימון</h2>
     ${editingWodEntryId ? `
-    <div style="background:rgba(232,185,138,.12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+    <div style="background:var(--p-e8b98a-a12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
       <span style="color:var(--brass); font-weight:700; font-size:13px;">עריכת אימון קיים</span>
       <button data-action="cancel-edit-wod-entry" style="color:var(--steel); font-size:12px; text-decoration:underline;">ביטול</button>
     </div>` : ""}
@@ -6575,7 +6577,7 @@ function renderWodLogSection() {
     </div>
 
     ${history.length > 0 ? `
-    <div style="background:rgba(232,185,138,.12); border:1px solid var(--brass); border-radius:14px; padding:12px 14px; margin-bottom:16px;">
+    <div style="background:var(--p-e8b98a-a12); border:1px solid var(--brass); border-radius:14px; padding:12px 14px; margin-bottom:16px;">
       <div style="color:var(--brass); font-weight:800; font-size:13px; margin-bottom:8px;">↺ עשית את זה ${history.length === 1 ? "פעם אחת" : `${history.length} פעמים`} בעבר — השוואה למטה</div>
       <div class="flex items-center justify-between">
         <div>
@@ -6605,7 +6607,7 @@ function renderWodLogSection() {
       </div>`;
     })()}
 
-    <div id="wodFlashBox" class="flex items-center justify-center" style="display:none; gap:6px; color:#fff; font-weight:800; font-size:14px; background-image:var(--stripe); border-radius:14px; padding:10px 0; margin-bottom:16px; text-shadow:0 1px 3px rgba(0,0,0,.5);">${ICONS.flame}<span data-wod-flash-label>שיא חדש!</span></div>
+    <div id="wodFlashBox" class="flex items-center justify-center" style="display:none; gap:6px; color:var(--p-fff); font-weight:800; font-size:14px; background-image:var(--stripe); border-radius:14px; padding:10px 0; margin-bottom:16px; text-shadow:0 1px 3px var(--p-000000-a50);">${ICONS.flame}<span data-wod-flash-label>שיא חדש!</span></div>
 
     <!-- Design spec §3.6. Hebrew-first with the English kept in parentheses,
          so Rx and Scaled stay LEARNABLE rather than disappearing - the member
@@ -6837,7 +6839,7 @@ function renderWodTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:rgba(216,69,60,.1); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
+    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
     <div class="subtabbar" role="tablist" aria-label="תצוגת ספריית האימונים">
       <button class="subtabbtn ${wodSubTab === "log" ? "active" : ""}" id="wodSubtab-log" data-action="switch-wod-subtab" data-subtab="log" role="tab" aria-selected="${wodSubTab === "log"}" aria-controls="wodContent" tabindex="${wodSubTab === "log" ? "0" : "-1"}">רישום</button>
       <button class="subtabbtn ${wodSubTab === "history" ? "active" : ""}" id="wodSubtab-history" data-action="switch-wod-subtab" data-subtab="history" role="tab" aria-selected="${wodSubTab === "history"}" aria-controls="wodContent" tabindex="${wodSubTab === "history" ? "0" : "-1"}">היסטוריה</button>
@@ -8014,7 +8016,7 @@ async function init() {
   applyTextScalePref();
   if (window.matchMedia) {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (themePref === "auto") syncThemeColorMeta();
+      if (themePref === "auto") applyThemePref();
     });
   }
   document.getElementById("dateLabel").textContent = new Date().toLocaleDateString("he-IL", { weekday: "short", day: "numeric", month: "short" });

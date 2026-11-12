@@ -8,7 +8,8 @@
      it). Loaded FIRST, ahead of theme-init.js, so it runs before anything
      else can render. See frame-guard.js for the full reasoning. -->
 <script src="./frame-guard.js"></script>
-<!-- Stamps data-theme on <html> before first paint, from a stored choice.
+<!-- Stamps data-theme (the choice) and data-scheme (the resolved light/dark the
+     tokens read) on <html> before first paint.
      Must be a separate file, not an inline <script> — script-src 'self'
      below has no 'unsafe-inline'. Runs synchronously so there's no flash. -->
 <script src="./theme-init.js"></script>
@@ -149,13 +150,165 @@
   @font-face{ font-family:'Secular One'; font-style:normal; font-weight:400; font-display:swap; src:url('./assets/fonts/secularone-400-hebrew.woff2') format('woff2'); unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F; }
 
 </style>
-<style>
-  /* Theme tokens, light-first: bare :root is the light palette (the CSS-spec
-     baseline for an un-stamped document). Dark is layered on twice — once for
-     prefers-color-scheme (auto mode) and once for the explicit data-theme
-     stamp (light/dark chosen in the footer) — so the toggle always wins over
-     the OS setting. theme-init.js stamps data-theme="dark" by default so
-     existing users keep today's look until they opt into something else. */
+<style id="tokens">
+  /* THE ONE TOKEN SOURCE. Every color the app draws is defined here, once per
+     scheme: bare :root is light, :root[data-scheme="dark"] is dark. Nothing
+     outside this block names a color: CSS and JS use var(--...) only, and
+     test/design-tokens-guard.test.mjs fails on a color literal anywhere else.
+
+     data-scheme is the RESOLVED scheme, always stamped: theme-init.js before
+     first paint and applyThemePref() after, from the member's choice
+     (data-theme: light, dark, or absent for "auto") and, for auto, the OS
+     setting. Dark used to be written twice, once under prefers-color-scheme
+     for auto and once under data-theme="dark", and the two copies drifted.
+     With one resolved attribute there is one copy. theme-init.js still
+     defaults to dark, so members keep today's look. */
+  /* Primitives: every raw color value the app uses, named by value. Everything
+     outside this block reaches them through the semantic tokens below or var(--p-*). */
+  :root{
+    --p-000000: #000000;
+    --p-000000-a18: rgba(0,0,0,.18);
+    --p-000000-a20: rgba(0,0,0,.2);
+    --p-000000-a25: rgba(0,0,0,.25);
+    --p-000000-a28: rgba(0,0,0,.28);
+    --p-000000-a30: rgba(0,0,0,.3);
+    --p-000000-a35: rgba(0,0,0,.35);
+    --p-000000-a38: rgba(0,0,0,.38);
+    --p-000000-a40: rgba(0,0,0,.4);
+    --p-000000-a46: rgba(0,0,0,.46);
+    --p-000000-a48: rgba(0,0,0,.48);
+    --p-000000-a50: rgba(0,0,0,.5);
+    --p-000000-a60: rgba(0,0,0,.6);
+    --p-000000-a95: rgba(0,0,0,.95);
+    --p-030a14-a14: rgba(3,10,20,.14);
+    --p-030a14-a24: rgba(3,10,20,.24);
+    --p-030a14-a32: rgba(3,10,20,.32);
+    --p-030a14-a34: rgba(3,10,20,.34);
+    --p-030a14-a54: rgba(3,10,20,.54);
+    --p-030a14-a6: rgba(3,10,20,.06);
+    --p-030a14-a64: rgba(3,10,20,.64);
+    --p-030a14-a70: rgba(3,10,20,.7);
+    --p-030a14-a76: rgba(3,10,20,.76);
+    --p-030a14-a8: rgba(3,10,20,.08);
+    --p-030a14-a86: rgba(3,10,20,.86);
+    --p-030a14-a96: rgba(3,10,20,.96);
+    --p-081523: #081523;
+    --p-081523-a32: rgba(8,21,35,.32);
+    --p-081523-a72: rgba(8,21,35,.72);
+    --p-081523-a75: rgba(8,21,35,.75);
+    --p-081523-a85: rgba(8,21,35,.85);
+    --p-081523-a90: rgba(8,21,35,.9);
+    --p-081523-a96: rgba(8,21,35,.96);
+    --p-0a0d16-a10: rgba(10,13,22,.10);
+    --p-0a0d16-a22: rgba(10,13,22,.22);
+    --p-0a0d16-a4: rgba(10,13,22,.04);
+    --p-0a0f16: #0A0F16;
+    --p-0c0c0c: #0c0c0c;
+    --p-0f1423-a55: rgba(15,20,35,.55);
+    --p-10243a: #10243a;
+    --p-141c27: #141C27;
+    --p-141f3a-a80: rgba(20,31,58,.8);
+    --p-1455b8: #1455b8;
+    --p-152342-a10: rgba(21,35,66,.10);
+    --p-152342-a45: rgba(21,35,66,.45);
+    --p-193047: #193047;
+    --p-1a0d08: #1a0d08;
+    --p-1a1a1a: #1A1A1A;
+    --p-1b2531: #1B2531;
+    --p-1c2536: #1C2536;
+    --p-1f3057: #1F3057;
+    --p-241a0d: #241a0d;
+    --p-256b3d: #256B3D;
+    --p-2a3d6b: #2A3D6B;
+    --p-3a2410: #3A2410;
+    --p-3c4d61: #3c4d61;
+    --p-3e6fd9: #3E6FD9;
+    --p-3e6fd9-a60: rgba(62,111,217,.6);
+    --p-3f8455-a15: rgba(63,132,85,.15);
+    --p-425481: #425481;
+    --p-4a4d54: #4a4d54;
+    --p-4b9b5f: #4B9B5F;
+    --p-4b9b5f-a10: rgba(75,155,95,.10);
+    --p-57627a: #57627A;
+    --p-5a5e66: #5a5e66;
+    --p-5cbb74: #5CBB74;
+    --p-7a828c: #7A828C;
+    --p-80551f: #80551f;
+    --p-8a6a1e: #8A6A1E;
+    --p-8a8f97-a10: rgba(138,143,151,.10);
+    --p-8a94a0: #8A94A0;
+    --p-956529: #956529;
+    --p-a8b3c9: #A8B3C9;
+    --p-ad3025: #ad3025;
+    --p-ad4023: #AD4023;
+    --p-b8790a: #B8790A;
+    --p-c0382c: #C0382C;
+    --p-c9a227: #C9A227;
+    --p-c9a227-a70: rgba(201,162,39,.7);
+    --p-d6dfec: #D6DFEC;
+    --p-d8453c: #D8453C;
+    --p-d8453c-a10: rgba(216,69,60,.1);
+    --p-d8453c-a10-135: rgba(216,69,60,.10);
+    --p-d8dee4: #D8DEE4;
+    --p-d8dee4-a80: rgba(216,222,228,.8);
+    --p-d92f2b: #d92f2b;
+    --p-ded9d1: #ded9d1;
+    --p-e0b23c: #E0B23C;
+    --p-e0b23c-a15: rgba(224,178,60,.15);
+    --p-e85d3d-a12: rgba(232,93,61,.12);
+    --p-e85d3d-a15: rgba(232,93,61,.15);
+    --p-e85d3d-a35: rgba(232,93,61,.35);
+    --p-e85d3d-a50: rgba(232,93,61,.5);
+    --p-e85d3d-a60: rgba(232,93,61,.6);
+    --p-e85d3d-a68: rgba(232,93,61,.68);
+    --p-e85d3d-a75: rgba(232,93,61,.75);
+    --p-e8b98a: #E8B98A;
+    --p-e8b98a-106: #e8b98a;
+    --p-e8b98a-a12: rgba(232,185,138,.12);
+    --p-e9eff8: #E9EFF8;
+    --p-efebe5: #efebe5;
+    --p-f0443e: #f0443e;
+    --p-f0dd9c: #F0DD9C;
+    --p-f2b90c: #F2B90C;
+    --p-f2b90c-a80: rgba(242,185,12,.8);
+    --p-f2ece1: #F2ECE1;
+    --p-f2ece1-a15: rgba(242,236,225,.15);
+    --p-f2ece1-a28: rgba(242,236,225,.28);
+    --p-f2ece1-a3_5: rgba(242,236,225,.035);
+    --p-f2ece1-a45: rgba(242,236,225,.45);
+    --p-f2ece1-a5_5: rgba(242,236,225,.055);
+    --p-f2ece1-a6: rgba(242,236,225,.06);
+    --p-f2ece1-a8: rgba(242,236,225,.08);
+    --p-f3f7ff: #F3F7FF;
+    --p-f5f1ea: #f5f1ea;
+    --p-ff6b3d-a40: rgba(255,107,61,.4);
+    --p-ff6b3d-a68: rgba(255,107,61,.68);
+    --p-ff6b3d-a75: rgba(255,107,61,.75);
+    --p-ff7869: #FF7869;
+    --p-ff7869-107: #ff7869;
+    --p-ff7f53: #FF7F53;
+    --p-ff8f6b: #FF8F6B;
+    --p-ffae8c-a55: rgba(255,174,140,.55);
+    --p-ffae8c-a68: rgba(255,174,140,.68);
+    --p-ffae8c-a75: rgba(255,174,140,.75);
+    --p-ffb43c-a85: rgba(255,180,60,.85);
+    --p-fff: #fff;
+    --p-fff-50: white;
+    --p-fff-55: white;
+    --p-fff3c4: #FFF3C4;
+    --p-fff6f1: #FFF6F1;
+    --p-fffdf8: #FFFDF8;
+    --p-fffdf8-a88: rgba(255,253,248,.88);
+    --p-fffdf8-a98: rgba(255,253,248,.98);
+    --p-ffffff: #FFFFFF;
+    --p-ffffff-a12: rgba(255,255,255,.12);
+    --p-ffffff-a16: rgba(255,255,255,.16);
+    --p-ffffff-a22: rgba(255,255,255,.22);
+    --p-ffffff-a28: rgba(255,255,255,.28);
+    --p-ffffff-a32: rgba(255,255,255,.32);
+    --p-ffffff-a78: rgba(255,255,255,.78);
+    --p-ffffff-a8: rgba(255,255,255,.08);
+  }
   :root{
     --bg:#F2F5FA; --surface:#FFFFFF; --surface2:#E9EFF8; --border:#D6DFEC;
     --chalk:#1C2536; --steel:#57627A; --red:#C2392C; --blue:#2E5AA8;
@@ -227,22 +380,8 @@
      white-on-red badge, which is why they are separate). */
   --energy-text:#AD4023; --red-text:#C0382C; --green-text:#256B3D;
 }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#152342; --surface:#1F3057; --surface2:#2A3D6B; --border:#425481;
-      --chalk:#F2ECE1; --steel:#A8B3C9; --red:#D8453C; --blue:#3E6FD9;
-      --yellow:#E0B23C; --green:#4B9B5F; --purple:#9B6FD9; --brass:#E8B98A;
-      --teal:#3FA7A0;
-      --energy:#E85D3D;
-      --avatar-ink:#1a0d08;
-      --color-scheme:dark;
-      --stripe-a:var(--energy); --stripe-b:#ffffff;
-      --shadow-card: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 28px -18px rgba(0,0,0,.65);
-      --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
-        --energy-text:#FF7F53; --red-text:#FF7869; --green-text:#5CBB74; --red:#D2433A;
-  }
-  }
-  :root[data-theme="dark"]{
+  
+  :root[data-scheme="dark"]{
     --bg:#152342; --surface:#1F3057; --surface2:#2A3D6B; --border:#425481;
     --chalk:#F2ECE1; --steel:#A8B3C9; --red:#D8453C; --blue:#3E6FD9;
     --yellow:#E0B23C; --green:#4B9B5F; --purple:#9B6FD9; --brass:#E8B98A;
@@ -297,22 +436,19 @@
     --scene-control-height: 48px;
     --scene-shadow: 0 -18px 42px rgba(3, 12, 24, .20);
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --club-paper: #0b1726;
-      --club-ink: #f7f3eb;
-      --club-muted: #aab5c5;
-      --club-line: rgba(255, 255, 255, .12);
-      --scene-shadow: 0 -20px 50px rgba(0, 0, 0, .42);
-    }
-  }
-  :root[data-theme="dark"]{
+  
+  :root[data-scheme="dark"]{
     --club-paper: #0b1726;
     --club-ink: #f7f3eb;
     --club-muted: #aab5c5;
     --club-line: rgba(255, 255, 255, .12);
     --scene-shadow: 0 -20px 50px rgba(0, 0, 0, .42);
   }
+  /* The browser bar color (meta theme-color), read by syncThemeColorMeta(): a meta tag cannot hold var(). */
+  :root{ --meta-theme-color:#F2F5FA; }
+  :root[data-scheme="dark"]{ --meta-theme-color:#152342; }
+</style>
+<style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   /* Headings carry no visual weight of their own here - every size/weight/
      color/margin is set by the existing class on the same element
@@ -425,7 +561,7 @@
      element rather than each computing its own safe-area offset. Flush to
      the true bottom edge, not a floating pill inset from it - the safe-area
      inset is this bar's OWN bottom padding. */
-  .tabbar{ max-width:480px; margin:0 auto; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px); gap:2px; box-shadow:0 -4px 16px rgba(0,0,0,.18); }
+  .tabbar{ max-width:480px; margin:0 auto; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px); gap:2px; box-shadow:0 -4px 16px var(--p-000000-a18); }
   /* font-size raised from 10.5px (UX audit, defect 3): this labels the
      app's primary navigation and it was the smallest text in the whole
      product. 12px rather than the 14px content floor - up to six tabs
@@ -519,19 +655,19 @@
   .stat-value{ font-weight:800; font-size:16px; }
   .bar-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:20px; margin-bottom:16px; position:relative; overflow:hidden; transition:border-color .3s; box-shadow:var(--shadow-card); }
   .bar-wrap.pr{ border-color:var(--brass); animation:pop .4s ease; }
-  .pr-flash{ position:absolute; inset:0; background-image:var(--stripe); display:flex; align-items:center; justify-content:center; gap:6px; color:#fff; font-weight:800; font-size:14px; z-index:1; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .pr-flash{ position:absolute; inset:0; background-image:var(--stripe); display:flex; align-items:center; justify-content:center; gap:6px; color:var(--p-fff); font-weight:800; font-size:14px; z-index:1; text-shadow:0 1px 3px var(--p-000000-a50); }
   @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.04);} 100%{transform:scale(1);} }
   .barbell{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:14px 0; }
   .bar-row{ display:flex; align-items:center; height:78px; }
-  .plate{ border-radius:3px; border:1px solid rgba(0,0,0,.35); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); flex-shrink:0; transition:all .2s; position:relative; overflow:hidden; }
+  .plate{ border-radius:3px; border:1px solid var(--p-000000-a35); box-shadow:inset 0 0 0 1px var(--p-ffffff-a8); flex-shrink:0; transition:all .2s; position:relative; overflow:hidden; }
   /* A metallic sheen layered over each plate's own weight-tier color (set
      inline per plate by renderBarbell()) via a pseudo-element rather than a
      background-image on .plate itself — an inline style="background:..."
      always wins the cascade for that property and would blank out any
      background-image set here, silently losing the real color coding. */
-  .plate::after{ content:""; position:absolute; inset:0; background-image:linear-gradient(180deg, rgba(255,255,255,.32), transparent 45%, rgba(0,0,0,.2)); pointer-events:none; }
-  .collar{ width:10px; height:10px; border-radius:2px; background:#4a4d54; flex-shrink:0; }
-  .sleeve{ width:46px; height:8px; background:#5a5e66; border-radius:2px; flex-shrink:0; }
+  .plate::after{ content:""; position:absolute; inset:0; background-image:linear-gradient(180deg, var(--p-ffffff-a32), transparent 45%, var(--p-000000-a20)); pointer-events:none; }
+  .collar{ width:10px; height:10px; border-radius:2px; background:var(--p-4a4d54); flex-shrink:0; }
+  .sleeve{ width:46px; height:8px; background:var(--p-5a5e66); border-radius:2px; flex-shrink:0; }
   /* background:var(--surface), not --surface2: found in the same
      light-theme axe pass - --brass was measured and darkened against
      --surface/--bg specifically (see its own :root comment, 5.03:1/4.61:1),
@@ -594,10 +730,8 @@
      property, so theme-token-parity.test.mjs's --token diff does not apply
      to it - kept byte-identical between the two blocks by convention only. */
   .photo-header::after{ content:""; position:absolute; inset:0; pointer-events:none; }
-  :root[data-theme="dark"] .photo-header::after{ background:linear-gradient(180deg, rgba(21,35,66,.10), rgba(21,35,66,.45)); }
-  @media (prefers-color-scheme:dark){
-    :root:not([data-theme="light"]) .photo-header::after{ background:linear-gradient(180deg, rgba(21,35,66,.10), rgba(21,35,66,.45)); }
-  }
+  :root[data-scheme="dark"] .photo-header::after{ background:linear-gradient(180deg, var(--p-152342-a10), var(--p-152342-a45)); }
+  
   /* ==== Immersive scene primitives (IMPLEMENTATION_SPEC.md §3, §5) ======
      .scene-page is the outer wrapper each scene-mapped render function
      returns in place of renderTabHeader()+content. Photo stays UNDER the
@@ -643,9 +777,9 @@
   .scene-page--community{ --scene-image:url('./assets/club-photos/community-logo-wall.jpg'); }
   .scene-page--achievements{ --scene-image:url('./assets/club-photos/achievements-plates.jpg'); }
   .scene-page__scrim{ position:absolute; z-index:-2; inset:0; pointer-events:none;
-    background:linear-gradient(180deg, rgba(3,10,20,.24) 0, rgba(3,10,20,.08) 25%, rgba(3,10,20,.54) 47%, rgba(3,10,20,.76) 100%); }
-  :root[data-theme="dark"] .scene-page__scrim{ background:linear-gradient(180deg, rgba(3,10,20,.34) 0, rgba(3,10,20,.14) 25%, rgba(3,10,20,.64) 47%, rgba(3,10,20,.86) 100%); }
-  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .scene-page__scrim{ background:linear-gradient(180deg, rgba(3,10,20,.34) 0, rgba(3,10,20,.14) 25%, rgba(3,10,20,.64) 47%, rgba(3,10,20,.86) 100%); } }
+    background:linear-gradient(180deg, var(--p-030a14-a24) 0, var(--p-030a14-a8) 25%, var(--p-030a14-a54) 47%, var(--p-030a14-a76) 100%); }
+  :root[data-scheme="dark"] .scene-page__scrim{ background:linear-gradient(180deg, var(--p-030a14-a34) 0, var(--p-030a14-a14) 25%, var(--p-030a14-a64) 47%, var(--p-030a14-a86) 100%); }
+  
   /* 34svh, not a fixed px: user redline measured the title landing at
      10-18% of viewport height (too close under the header, causing the
      collision this whole block was rewritten to fix) against a target of
@@ -654,9 +788,9 @@
      second, viewport-specific override. The safe-area/64px floor only
      matters on a device with a very short viewport, where 34svh alone
      could land inside the header's own 64px band. */
-  .scene-page__intro{ position:absolute; inset-block-start:max(34svh, calc(env(safe-area-inset-top,0px) + 64px + 24px)); inset-inline:var(--scene-inline); color:#fff; text-shadow:0 2px 16px rgba(0,0,0,.46); }
+  .scene-page__intro{ position:absolute; inset-block-start:max(34svh, calc(env(safe-area-inset-top,0px) + 64px + 24px)); inset-inline:var(--scene-inline); color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a46); }
   .scene-page__brand{ font-size:12px; font-weight:700; letter-spacing:.5px; opacity:.85; margin-bottom:6px; }
-  .scene-page__title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:36px; line-height:1.05; color:#fff; text-shadow:0 2px 16px rgba(0,0,0,.48); margin:0 0 6px; display:flex; align-items:center; gap:10px; }
+  .scene-page__title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:36px; line-height:1.05; color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a48); margin:0 0 6px; display:flex; align-items:center; gap:10px; }
   .scene-page__subtitle{ font-size:14px; font-weight:600; opacity:.92; margin:0; }
   /* svh, not dvh - see body's own comment above for why: this is the rule
      that actually caused the reported vibration, since every scene screen
@@ -683,20 +817,16 @@
      redline's item 6 both explicitly forbid and would make their
      already-verified AA contrast numbers meaningless. */
   .scene-sheet{
-    --surface:#FFFFFF; --surface2:#E9EFF8; --border:#D6DFEC; --chalk:#1C2536; --steel:#57627A;
-    --brass:#956529; --energy-text:#AD4023; --red-text:#C0382C; --green-text:#256B3D;
-    background:rgba(255,253,248,.98); color:var(--chalk);
+    --surface:var(--p-ffffff); --surface2:var(--p-e9eff8); --border:var(--p-d6dfec); --chalk:var(--p-1c2536); --steel:var(--p-57627a);
+    --brass:var(--p-956529); --energy-text:var(--p-ad4023); --red-text:var(--p-c0382c); --green-text:var(--p-256b3d);
+    background:var(--p-fffdf8-a98); color:var(--chalk);
   }
-  :root[data-theme="dark"] .scene-sheet{
-    --surface:#1F3057; --surface2:#2A3D6B; --border:#425481; --chalk:#F2ECE1; --steel:#A8B3C9;
-    --brass:#E8B98A; --energy-text:#FF7F53; --red-text:#FF7869; --green-text:#5CBB74;
-    background:rgba(8,21,35,.96); color:var(--chalk);
+  :root[data-scheme="dark"] .scene-sheet{
+    --surface:var(--p-1f3057); --surface2:var(--p-2a3d6b); --border:var(--p-425481); --chalk:var(--p-f2ece1); --steel:var(--p-a8b3c9);
+    --brass:var(--p-e8b98a); --energy-text:var(--p-ff7f53); --red-text:var(--p-ff7869); --green-text:var(--p-5cbb74);
+    background:var(--p-081523-a96); color:var(--chalk);
   }
-  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .scene-sheet{
-    --surface:#1F3057; --surface2:#2A3D6B; --border:#425481; --chalk:#F2ECE1; --steel:#A8B3C9;
-    --brass:#E8B98A; --energy-text:#FF7F53; --red-text:#FF7869; --green-text:#5CBB74;
-    background:rgba(8,21,35,.96); color:var(--chalk);
-  } }
+  
   .scene-sheet-title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:22px; margin:0 0 14px; }
   /* Header/brand-stripe become a transparent overlay riding on top of the
      photo, instead of taking flow space above #content - body[data-scene]
@@ -753,7 +883,7 @@
      Measured live: the logo landed near the wrong edge at 1440px before
      this. Explicit columns make the header correct whether the menu
      button is present (mobile) or not (desktop). */
-  body[data-scene] .header-logo{ grid-column:2; justify-self:center; max-width:150px; max-height:34px; width:auto; height:auto; filter:brightness(0) invert(1) drop-shadow(0 1px 6px rgba(0,0,0,.4)); }
+  body[data-scene] .header-logo{ grid-column:2; justify-self:center; max-width:150px; max-height:34px; width:auto; height:auto; filter:brightness(0) invert(1) drop-shadow(0 1px 6px var(--p-000000-a40)); }
   body[data-scene] .header #medalsBtn{ grid-column:3; }
   body[data-scene] .header #notificationsBellBtn{ grid-column:5; }
   body[data-scene] .header #navMenuBtn{ grid-column:1; }
@@ -764,14 +894,14 @@
   body[data-scene] .header #navMenuBtn,
   body[data-scene] .header #medalsBtn,
   body[data-scene] .header #notificationsBellBtn{
-    width:44px; height:44px; border:1px solid rgba(255,255,255,.22);
-    background:rgba(8,21,35,.32); color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.18);
+    width:44px; height:44px; border:1px solid var(--p-ffffff-a22);
+    background:var(--p-081523-a32); color:var(--p-fff); box-shadow:0 6px 18px var(--p-000000-a18);
     -webkit-backdrop-filter:blur(16px) saturate(135%); backdrop-filter:blur(16px) saturate(135%);
   }
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
     body[data-scene] .header #navMenuBtn,
     body[data-scene] .header #medalsBtn,
-    body[data-scene] .header #notificationsBellBtn{ background:rgba(8,21,35,.72); }
+    body[data-scene] .header #notificationsBellBtn{ background:var(--p-081523-a72); }
   }
   body[data-scene] .brand-stripe{ display:none; }
   /* position:relative only, no z-index: a z-index here (as originally
@@ -813,11 +943,11 @@
      requires. .85 is the lowest opacity that measured clean across every
      scene/theme combination tested; still visibly more transparent/glassy
      than the first pass's .94. */
-  body[data-scene] .tabbar{ background:rgba(8,21,35,.85); border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.18); height:calc(68px + env(safe-area-inset-bottom,0px)); align-items:center; padding-block:0; -webkit-backdrop-filter:blur(18px) saturate(140%); backdrop-filter:blur(18px) saturate(140%); }
+  body[data-scene] .tabbar{ background:var(--p-081523-a85); border-top:1px solid var(--p-ffffff-a12); box-shadow:0 -10px 30px var(--p-000000-a18); height:calc(68px + env(safe-area-inset-bottom,0px)); align-items:center; padding-block:0; -webkit-backdrop-filter:blur(18px) saturate(140%); backdrop-filter:blur(18px) saturate(140%); }
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-    body[data-scene] .tabbar{ background:rgba(8,21,35,.96); }
+    body[data-scene] .tabbar{ background:var(--p-081523-a96); }
   }
-  body[data-scene] .tabbtn{ padding-block:6px; color:rgba(255,255,255,.78); }
+  body[data-scene] .tabbtn{ padding-block:6px; color:var(--p-ffffff-a78); }
   /* color:#FF8F6B, not --club-coral(=--energy, #E85D3D) directly: same
      fill-vs-text-token issue fixed twice already this session
      (.format-chip.active, .rx-btn.active-type) - a fill-tuned color used
@@ -827,7 +957,7 @@
      direction against a dark bar); a fixed bright coral close to dark
      theme's own --energy-text is what actually measures safe here,
      regardless of the user's theme choice. */
-  body[data-scene] .tabbtn.active{ color:#FF8F6B; background:transparent; box-shadow:none; }
+  body[data-scene] .tabbtn.active{ color:var(--p-ff8f6b); background:transparent; box-shadow:none; }
   body[data-scene] .tabbtn.active::before{ background:var(--club-coral); }
   /* Save action (spec: 52px height; current .save-btn's own padding/font
      yields 62px, 10px over tolerance) - scoped to the scene bottom bar only,
@@ -927,7 +1057,7 @@
      The band is opaque --bg so content scrolling underneath cannot show
      through the gutter around the card. */
   .install-dock{ background:var(--bg); padding:10px 12px 2px; }
-  .install-dock-card{ max-width:448px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px; box-shadow:0 -10px 30px rgba(0,0,0,.28); }
+  .install-dock-card{ max-width:448px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px; box-shadow:0 -10px 30px var(--p-000000-a28); }
   /* ...and the page's own content gets that much more bottom room while a
      dock is up, so the last card of a log/feed can still be scrolled into
      view instead of parking permanently behind it. There is no class to
@@ -950,7 +1080,7 @@
      untouched - this only grows the transparent area around it, so nothing
      moves visually. */
   .icon-btn{ min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:12px; }
-  .save-btn{ width:100%; max-width:448px; background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 78%, white), var(--energy)); color:#1a0d08; font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:0.5px; font-size:19px; padding:16px 0; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 10px 26px -6px rgba(232,93,61,.5); transition:opacity .15s; }
+  .save-btn{ width:100%; max-width:448px; background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 78%, var(--p-fff-50)), var(--energy)); color:var(--p-1a0d08); font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:0.5px; font-size:19px; padding:16px 0; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 10px 26px -6px var(--p-e85d3d-a50); transition:opacity .15s; }
   .save-btn:active{ opacity:.85; }
   /* Shared tinted icon chip, reused by the Phase 2 nav menu and anywhere a
      generic gray icon badge would otherwise be re-derived inline per call
@@ -1094,7 +1224,7 @@
      with the icon+box treatment a plain colored line lost somewhere along
      the way, instead of reverting to a flat rule with no cloud-awareness. */
   .settings-warn{ display:flex; align-items:flex-start; gap:8px; background:color-mix(in srgb, var(--yellow) 14%, transparent); border:1px solid var(--yellow); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:12.5px; color:var(--chalk); }
-  .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:50; display:none; align-items:flex-end; overflow:hidden; }
+  .modal-overlay{ position:fixed; inset:0; background:var(--p-000000-a60); z-index:50; display:none; align-items:flex-end; overflow:hidden; }
   /* THE CONFIRM SHEET MUST WIN EVERY TIE. Live bug hunt, fresh round 5
      (2026-09-15) - HIGH, reproduced live.
 
@@ -1125,7 +1255,7 @@
      land cleanly. Scoped to this one card via a class, not a change to
      .modal-overlay itself, which every other dialog in the app still uses
      unchanged. */
-  #celebrationOverlay.arrival-card{ background:rgba(3,10,20,.96); }
+  #celebrationOverlay.arrival-card{ background:var(--p-030a14-a96); }
   /* Live bug hunt round 5 (2026-09-11): width:100% here was uncapped for
      every width below the ≥900px block's own 592px fix further down - #app
      itself stays locked to its mobile max-width:480px across the ENTIRE
@@ -1181,7 +1311,7 @@
   #navMenuList{ display:flex; flex-direction:column; }
   /* Nav menu (replaces the old top tabbar) and its user-info card. */
   .who{ display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px; margin:4px 0 18px; box-shadow:var(--shadow-card); }
-  .who-avatar{ width:42px; height:42px; border-radius:50%; background:linear-gradient(160deg, color-mix(in srgb, var(--brass) 45%, white), var(--brass)); color:#241a0d; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0; }
+  .who-avatar{ width:42px; height:42px; border-radius:50%; background:linear-gradient(160deg, color-mix(in srgb, var(--brass) 45%, var(--p-fff-55)), var(--brass)); color:var(--p-241a0d); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0; }
   /* Live bug hunt (2026-09-11): an 80-char unbreakable name (cleanStr's own
      cap, e.g. one long repeated character with no spaces) overflowed this
      flex item's edge and bled under the settings edit-icon button and card
@@ -1235,7 +1365,7 @@
   .nav-sub{ color:var(--steel); font-size:12px; margin-top:1px; }
   .subnav{ padding:0 0 8px 52px; display:flex; flex-direction:column; gap:2px; }
   .subitem{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:9px 10px; font-size:13.5px; font-weight:600; color:var(--steel); border-radius:10px; min-height:44px; text-align:right; }
-  .nav-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:var(--energy); color:#fff; font-size:10px; font-weight:800; flex-shrink:0; }
+  .nav-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:var(--energy); color:var(--p-fff); font-size:10px; font-weight:800; flex-shrink:0; }
   .divider-label{ color:var(--steel); font-size:11.5px; font-weight:700; letter-spacing:.5px; padding:16px 10px 6px; }
   /* Phase 6: each of the 4 solo tabs gets a small page-title at the top of
      its own content, additive above what was already there (the calendar's
@@ -1311,7 +1441,7 @@
        flex-start/flex-end read backwards to most people and this is exactly
        the kind of rule that gets "fixed" the wrong way later. */
     .install-dock{ background:transparent; padding:0 24px 24px; }
-    .install-dock-card{ margin-inline-start:auto; margin-inline-end:0; max-width:420px; box-shadow:0 18px 44px rgba(0,0,0,.38); }
+    .install-dock-card{ margin-inline-start:auto; margin-inline-end:0; max-width:420px; box-shadow:0 18px 44px var(--p-000000-a38); }
   }
 
   /* ===================================================================
@@ -1612,8 +1742,8 @@
   .rx-toggle{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
   .rx-toggle.unset{ border:1px dashed var(--brass); border-radius:14px; padding:4px; gap:4px; }
   .rx-btn{ flex:1 1 30%; min-width:104px; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:8px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:15px; color:var(--steel); line-height:1.2; }
-  .rx-btn.active-rx{ background:rgba(63,132,85,.15); border-color:var(--green); color:var(--green); }
-  .rx-btn.active-scaled{ background:rgba(224,178,60,.15); border-color:var(--yellow); color:var(--yellow); }
+  .rx-btn.active-rx{ background:var(--p-3f8455-a15); border-color:var(--green); color:var(--green); }
+  .rx-btn.active-scaled{ background:var(--p-e0b23c-a15); border-color:var(--yellow); color:var(--yellow); }
   /* Rx+ — "heavier than prescribed". Built from color-mix over var(--blue)
      rather than a literal rgba, which is the fix the .active-type comment
      just below spells out: a hard-coded tint cannot follow a token across
@@ -1676,14 +1806,10 @@
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator{ cursor:pointer; }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]) input[type="date"]::-webkit-calendar-picker-indicator,
-    :root:not([data-theme="light"]) input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-    :root:not([data-theme="light"]) input[type="time"]::-webkit-calendar-picker-indicator{ filter:invert(1) brightness(1.4); }
-  }
-  :root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
-  :root[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-  :root[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator{ filter:invert(1) brightness(1.4); }
+  
+  :root[data-scheme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+  :root[data-scheme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  :root[data-scheme="dark"] input[type="time"]::-webkit-calendar-picker-indicator{ filter:invert(1) brightness(1.4); }
   .format-chip{ min-height:44px; padding:10px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:13px; color:var(--steel); text-align:center; flex:1; }
   /* color:var(--energy-text), not --energy: found by a light-theme axe
      pass this session - --energy (#E85D3D since it was unified across
@@ -1692,7 +1818,7 @@
      this (see its own :root comment) and every other active-chip-style
      control in this file already goes through it; this one and
      .rx-btn.active-type below did not. */
-  .format-chip.active{ background:rgba(232,93,61,.15); border-color:var(--energy); color:var(--energy-text); }
+  .format-chip.active{ background:var(--p-e85d3d-a15); border-color:var(--energy); color:var(--energy-text); }
   /* COMM-324: a one-line description under each format's name (e.g. "זמן" /
      "כמה מהר סיימתם") - lost somewhere along the way even though the chip
      already had room for it.
@@ -1738,9 +1864,9 @@
      Tier metal tones are deliberately the same in both themes — gold is
      gold regardless of page theme, only the surface around it changes. */
   :root{
-    --bronze-lo:#8A6A1E; --bronze-mid:#C9A227; --bronze-hi:#F0DD9C;
-    --silver-lo:#8A94A0; --silver-mid:#D8DEE4; --silver-hi:#FFFFFF;
-    --gold-lo:#B8790A;  --gold-mid:#F2B90C; --gold-hi:#FFF3C4;
+    --bronze-lo:var(--p-8a6a1e); --bronze-mid:var(--p-c9a227); --bronze-hi:var(--p-f0dd9c);
+    --silver-lo:var(--p-8a94a0); --silver-mid:var(--p-d8dee4); --silver-hi:var(--p-ffffff);
+    --gold-lo:var(--p-b8790a);  --gold-mid:var(--p-f2b90c); --gold-hi:var(--p-fff3c4);
   }
   /* Live bug hunt, round 10 (2026-09-11): every tier/color rule below used
      to be a DESCENDANT selector (".tier-bronze .medal-rim") reaching from
@@ -1764,7 +1890,7 @@
   .medal-face{ fill:var(--medal-face-fill, var(--surface)); }
   .medal-glyph{ fill:none; stroke:var(--medal-glyph-color, currentColor); stroke-linecap:round; stroke-linejoin:round; }
   .medal-glyph-fill{ fill:var(--medal-glyph-color, currentColor); stroke:none; }
-  .medal-rim{ fill:var(--medal-rim-fill); stroke:rgba(0,0,0,.3); stroke-width:1.5; }
+  .medal-rim{ fill:var(--medal-rim-fill); stroke:var(--p-000000-a30); stroke-width:1.5; }
   .medal-shine{ fill:url(#gradShine); pointer-events:none; }
   @media (prefers-reduced-motion: no-preference){
     .medal-badge.earned .medal-shine{ animation:medalTwinkle 3.2s ease-in-out infinite; }
@@ -1773,15 +1899,15 @@
   .tier-bronze{ --medal-rim-fill:url(#gradBronze); --medal-face-fill:url(#gradBronzeFace); --medal-glyph-color:var(--bronze-lo); }
   .tier-silver{ --medal-rim-fill:url(#gradSilver); --medal-face-fill:url(#gradSilverFace); --medal-glyph-color:var(--silver-lo); }
   .tier-gold{ --medal-rim-fill:url(#gradGold); --medal-face-fill:url(#gradGoldFace); --medal-glyph-color:var(--gold-lo); }
-  .medal-milestone{ --medal-rim-fill:var(--energy); --medal-face-fill:var(--energy); --medal-glyph-color:#fff; }
-  .medal-rx{ --medal-rim-fill:var(--blue); --medal-face-fill:var(--blue); --medal-glyph-color:#fff; }
-  .medal-capstone{ --medal-rim-fill:url(#gradCapstone); --medal-face-fill:url(#gradCapstoneFace); --medal-glyph-color:#3A2410; }
+  .medal-milestone{ --medal-rim-fill:var(--energy); --medal-face-fill:var(--energy); --medal-glyph-color:var(--p-fff); }
+  .medal-rx{ --medal-rim-fill:var(--blue); --medal-face-fill:var(--blue); --medal-glyph-color:var(--p-fff); }
+  .medal-capstone{ --medal-rim-fill:url(#gradCapstone); --medal-face-fill:url(#gradCapstoneFace); --medal-glyph-color:var(--p-3a2410); }
   .ribbon{ fill:var(--stripe-a); }
 
   .medal-badge{ width:72px; text-align:center; flex-shrink:0; }
   .medal-shape{ width:64px; height:70px; margin:0 auto; }
   .medal-shape-plate{ height:64px; display:flex; align-items:center; justify-content:center; }
-  .medal-plate{ position:relative; width:64px; height:64px; border-radius:50%; overflow:hidden; box-shadow:inset 0 0 0 2px rgba(255,255,255,.16); }
+  .medal-plate{ position:relative; width:64px; height:64px; border-radius:50%; overflow:hidden; box-shadow:inset 0 0 0 2px var(--p-ffffff-a16); }
   /* Real device feedback: an earned plate medal's glow looked like a square,
      not a circle - on the actual phone this screenshot came from, not in
      this repo's own Chromium checks, which is exactly the signature of a
@@ -1795,16 +1921,16 @@
      .medal-plate (the actual element carrying border-radius:50%) - box-
      shadow's shape is defined by spec to follow its own element's border
      radius, with no filter-compositing ambiguity to fall back from. */
-  .medal-badge.earned .medal-shape-plate .medal-plate{ box-shadow:inset 0 0 0 2px rgba(255,255,255,.16), 0 0 5px var(--glow-color), 0 0 13px var(--glow-color); }
+  .medal-badge.earned .medal-shape-plate .medal-plate{ box-shadow:inset 0 0 0 2px var(--p-ffffff-a16), 0 0 5px var(--glow-color), 0 0 13px var(--glow-color); }
   @media (prefers-reduced-motion: no-preference){
     .medal-badge.earned .medal-shape-plate .medal-plate{ animation:medalGlowPlate 2.6s ease-in-out infinite; }
   }
   @keyframes medalGlowPlate{
-    0%,100%{ box-shadow:inset 0 0 0 2px rgba(255,255,255,.16), 0 0 4px var(--glow-color), 0 0 10px var(--glow-color); }
-    50%{ box-shadow:inset 0 0 0 2px rgba(255,255,255,.16), 0 0 7px var(--glow-color), 0 0 20px var(--glow-color); }
+    0%,100%{ box-shadow:inset 0 0 0 2px var(--p-ffffff-a16), 0 0 4px var(--glow-color), 0 0 10px var(--glow-color); }
+    50%{ box-shadow:inset 0 0 0 2px var(--p-ffffff-a16), 0 0 7px var(--glow-color), 0 0 20px var(--glow-color); }
   }
   .medal-plate img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .medal-plate-shine{ position:absolute; inset:0; border-radius:50%; background:linear-gradient(135deg,rgba(255,255,255,.28),transparent 38%,rgba(0,0,0,.18)); pointer-events:none; }
+  .medal-plate-shine{ position:absolute; inset:0; border-radius:50%; background:linear-gradient(135deg,var(--p-ffffff-a28),transparent 38%,var(--p-000000-a18)); pointer-events:none; }
   .medal-badge.locked .medal-shape-plate{ opacity:.72; }
   .medal-shape.shape-circle{ height:64px; }
   .capstone-badge{ width:auto; }
@@ -1917,7 +2043,7 @@
      to press, matching .save-btn's existing treatment rather than inventing a
      second language for the same idea. Tinted with --energy, not black: a
      grey drop under a warm button looks like dirt. */
-  .chip-btn.primary{ background:var(--energy); color:#1a0d08; border-color:var(--energy); box-shadow:0 8px 18px -10px color-mix(in srgb, var(--energy) 85%, transparent); }
+  .chip-btn.primary{ background:var(--energy); color:var(--p-1a0d08); border-color:var(--energy); box-shadow:0 8px 18px -10px color-mix(in srgb, var(--energy) 85%, transparent); }
   /* .primary was doing double duty as both "primary action" (compose, send,
      save) and "this filter/scope is selected" (feed scope, leaderboard
      scope, mod-queue status) - identical fill, so a selected filter chip
@@ -1947,7 +2073,7 @@
      .primary for the full-fill confirm/run buttons; alone for a plain chip
      that just needs to read as destructive (remove member, delete draft). */
   .chip-btn.danger{ border-color:var(--red); color:var(--red-text); }
-  .chip-btn.primary.danger{ background:var(--red); border-color:var(--red); color:#fff; }
+  .chip-btn.primary.danger{ background:var(--red); border-color:var(--red); color:var(--p-fff); }
   /* Design spec section 7.1 - THE GATE'S SECONDARY ACTION IS A CONTROL, NOT
      A LINK. The community gate used to lead with a login form and push
      "חבר/ה חדש/ה? התחלת הרשמה עם קוד הזמנה" to the bottom as a .link-btn.
@@ -2069,7 +2195,7 @@
      --energy is contrast-safe as a fill/border (this rule's own background/
      border-color), never as small text - the exact distinction this file's
      token comments already establish elsewhere. */
-  .admin-tag{ display:inline-flex; align-items:center; font-size:10px; font-weight:800; letter-spacing:.3px; color:var(--energy-text); background:rgba(232,93,61,.12); border:1px solid var(--energy); border-radius:999px; padding:2px 9px; margin-inline-start:8px; }
+  .admin-tag{ display:inline-flex; align-items:center; font-size:10px; font-weight:800; letter-spacing:.3px; color:var(--energy-text); background:var(--p-e85d3d-a12); border:1px solid var(--energy); border-radius:999px; padding:2px 9px; margin-inline-start:8px; }
   /* Generic small status pill for non-admin badges (challenge/event "joined",
      completed) - previously these overrode .admin-tag's background only,
      leaving its energy-orange text/border in place underneath a brass fill:
@@ -2115,16 +2241,16 @@
   .wod-board{
     position:relative;
     background:
-      radial-gradient(90% 60% at 25% 8%, rgba(242,236,225,.055), transparent 62%),
-      radial-gradient(70% 50% at 85% 95%, rgba(242,236,225,.035), transparent 60%),
-      linear-gradient(178deg, #1B2531, #141C27);
-    border:1px solid #0A0F16;
+      radial-gradient(90% 60% at 25% 8%, var(--p-f2ece1-a5_5), transparent 62%),
+      radial-gradient(70% 50% at 85% 95%, var(--p-f2ece1-a3_5), transparent 60%),
+      linear-gradient(178deg, var(--p-1b2531), var(--p-141c27));
+    border:1px solid var(--p-0a0f16);
     border-radius:8px;
     padding:20px 18px 18px;
     margin-bottom:12px;
-    box-shadow:0 1px 0 rgba(242,236,225,.08) inset, 0 22px 40px -22px rgba(0,0,0,.95);
+    box-shadow:0 1px 0 var(--p-f2ece1-a8) inset, 0 22px 40px -22px var(--p-000000-a95);
     overflow:hidden;
-    color:#F2ECE1;
+    color:var(--p-f2ece1);
   }
   /* Chalk dust. A data URI, so it costs no request and nothing for the CSP
      to allow. */
@@ -2134,14 +2260,14 @@
   }
   .wod-board > *{ position:relative; }
   .wod-board-eyebrow{ font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.16em; }
-  .wod-board-date{ font-size:11px; color:rgba(242,236,225,.45); font-weight:600; }
-  .wod-board-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:21px; line-height:1.15; color:#FFFDF8; margin:14px 0; }
-  .wod-board-lines{ font-family:'JetBrains Mono','Rubik',ui-monospace,monospace; font-size:15px; line-height:1.9; direction:ltr; text-align:left; color:#F2ECE1; white-space:pre-wrap; }
-  .wod-board-rule{ height:1px; background:rgba(242,236,225,.15); margin:16px 0 14px; }
-  .wod-board-label{ font-size:10.5px; color:rgba(242,236,225,.45); font-weight:700; letter-spacing:.14em; margin-bottom:9px; }
-  .wod-board-names{ display:flex; flex-wrap:wrap; align-items:center; font-size:14px; font-weight:600; color:#F2ECE1; }
-  .wod-board-sep{ color:rgba(242,236,225,.28); padding:0 9px; }
-  .wod-board-ghost{ background:rgba(242,236,225,.06); border-color:rgba(242,236,225,.15); color:#F2ECE1; }
+  .wod-board-date{ font-size:11px; color:var(--p-f2ece1-a45); font-weight:600; }
+  .wod-board-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:21px; line-height:1.15; color:var(--p-fffdf8); margin:14px 0; }
+  .wod-board-lines{ font-family:'JetBrains Mono','Rubik',ui-monospace,monospace; font-size:15px; line-height:1.9; direction:ltr; text-align:left; color:var(--p-f2ece1); white-space:pre-wrap; }
+  .wod-board-rule{ height:1px; background:var(--p-f2ece1-a15); margin:16px 0 14px; }
+  .wod-board-label{ font-size:10.5px; color:var(--p-f2ece1-a45); font-weight:700; letter-spacing:.14em; margin-bottom:9px; }
+  .wod-board-names{ display:flex; flex-wrap:wrap; align-items:center; font-size:14px; font-weight:600; color:var(--p-f2ece1); }
+  .wod-board-sep{ color:var(--p-f2ece1-a28); padding:0 9px; }
+  .wod-board-ghost{ background:var(--p-f2ece1-a6); border-color:var(--p-f2ece1-a15); color:var(--p-f2ece1); }
   .post-card{ padding:16px; }
   .post-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
   .post-head-text{ display:flex; flex-direction:column; gap:1px; min-width:0; flex:1 1 auto; }
@@ -2216,7 +2342,7 @@
   .post-composer-trigger{ display:flex; align-items:center; gap:10px; width:100%; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:8px 14px 8px 8px; margin:0 0 10px; box-shadow:var(--shadow-card); text-align:start; }
   .post-composer-trigger-text{ color:var(--steel); font-size:13.5px; }
   .comment-row{ display:flex; align-items:flex-start; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:8px 10px; }
-  .tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; margin-inline-start:6px; border-radius:999px; background:var(--red); color:#fff; font-size:10px; font-weight:800; }
+  .tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; margin-inline-start:6px; border-radius:999px; background:var(--red); color:var(--p-fff); font-size:10px; font-weight:800; }
   /* Promoted from ~19 classless, inline-styled cloud.js elements (COMM-347):
      each of these instances used to retype its whole look inline, in some
      cases identically at 2-3 call sites. Only genuinely dynamic values
@@ -2240,7 +2366,7 @@
      pill is a LABEL ("מאמן/ת ראשי/ת"), and a label that breaks across two
      lines or picks up the underline of whatever link it happens to sit
      inside is wrong on the comment rows too. */
-  .badge-tag{ display:inline-block; vertical-align:middle; font-size:10px; font-weight:800; color:#0c0c0c; background:var(--brass); border-radius:999px; padding:1px 7px; white-space:nowrap; text-decoration:none; }
+  .badge-tag{ display:inline-block; vertical-align:middle; font-size:10px; font-weight:800; color:var(--p-0c0c0c); background:var(--brass); border-radius:999px; padding:1px 7px; white-space:nowrap; text-decoration:none; }
   .post-menu-wrap{ position:relative; margin-inline-start:auto; flex:0 0 auto; }
   /* THE ⋯ MENU, ANCHORED ON THE SIDE THE ROOM IS ON.
      `margin-inline-start:auto` above puts the button at the card's
@@ -2258,7 +2384,7 @@
   .post-menu{ position:absolute; inset-inline-end:0; top:calc(100% + 6px); z-index:60;
     min-width:172px; max-width:min(240px, calc(100vw - 48px));
     background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:4px;
-    box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    box-shadow:0 10px 30px var(--p-000000-a25); }
   /* 44px is this app's own tap-target floor (.tabbtn, .icon-btn, .link-btn--tap
      all declare it) and these are destructive actions being tapped with a
      thumb. A label too long for one line wraps INSIDE the item and the item
@@ -2429,7 +2555,7 @@
   /* "פוסטים חדשים". Sticky rather than fixed, so it rides the top of the
      feed panel and never covers the tab bar or the composer. */
   .new-posts-pill-wrap{ position:sticky; top:8px; z-index:20; display:flex; justify-content:center; pointer-events:none; height:0; }
-  .new-posts-pill{ pointer-events:auto; box-shadow:0 6px 18px rgba(0,0,0,.18); }
+  .new-posts-pill{ pointer-events:auto; box-shadow:0 6px 18px var(--p-000000-a18); }
 
   /* Pull to refresh. Height is written by the touchmove handler, never by a
      render; data-ready flips once the pull passes the trigger distance. */
@@ -2503,8 +2629,8 @@
        confirmed live via an actual print-to-PDF render, not just computed
        styles. A coach's front-desk flyer print wasted ink/paper on pages
        that look like the app crashed. */
-    html{ background:#FFFFFF; }
-    body{ visibility:hidden; background:#FFFFFF; }
+    html{ background:var(--p-ffffff); }
+    body{ visibility:hidden; background:var(--p-ffffff); }
     .invite-print-card, .invite-print-card *{ visibility:visible; }
     .invite-print-card{
       position:absolute; inset-block-start:0; inset-inline-start:0;
@@ -2516,7 +2642,7 @@
          dark theme, and stated explicitly: a dark-themed card would come out
          of the printer as a solid black page, and a QR needs dark modules on
          a light ground to scan at all. */
-      background:#FFFFFF; color:#000000;
+      background:var(--p-ffffff); color:var(--p-000000);
       font-family:Rubik, system-ui, sans-serif;
     }
     .invite-print-club{ font-size:26pt; font-weight:800; }
@@ -2527,7 +2653,7 @@
     .invite-print-code{ font-family:'JetBrains Mono', monospace; font-size:9pt; word-break:break-all; max-width:120mm; }
   }
   /* Approved immersive composition — shared by the existing render paths. */
-  :root{ --club-coral:#f0443e; --club-blue:#1455b8; }
+  :root{ --club-coral:var(--p-f0443e); --club-blue:var(--p-1455b8); }
   /* THE SAME REDUCTION THE ADD SCREEN ALREADY HAD, on the three screens that
      were left out of it. Real-phone report: "the scene photo still takes
      almost half the screen on the workouts library, progress and calendar
@@ -2566,9 +2692,9 @@
   .scene-page--history .cal-grid{ gap:2px; margin-bottom:12px; }
   .scene-page--history .cal-cell{ aspect-ratio:auto; min-height:44px; }
   .scene-page--history .cal-month-stats{ margin-top:8px; }
-  body[data-scene] .header #navMenuBtn, body[data-scene] .header #medalsBtn, body[data-scene] .header #notificationsBellBtn{ background:rgba(8,21,35,.72); border-radius:50%; }
-  body[data-scene] #bottomTabBar{ background:rgba(8,21,35,.96); }
-  body[data-scene] #bottomBar .save-btn{ background:#d92f2b; color:#fff; border-radius:16px; }
+  body[data-scene] .header #navMenuBtn, body[data-scene] .header #medalsBtn, body[data-scene] .header #notificationsBellBtn{ background:var(--p-081523-a72); border-radius:50%; }
+  body[data-scene] #bottomTabBar{ background:var(--p-081523-a96); }
+  body[data-scene] #bottomBar .save-btn{ background:var(--p-d92f2b); color:var(--p-fff); border-radius:16px; }
   /* THE APP'S PRIMARY ACCENT, NOT A SECOND RED. Real-phone report: "today in
      the calendar uses a red circle - use the primary accent instead". Today
      is the selected day whenever the screen is opened, so this rule is what
@@ -2598,7 +2724,7 @@
   .scene-page--add .log-row{ min-height:52px; }
 
   .scene-page > .scene-sheet{background:var(--club-paper);}
-  .scene-page > .scene-page__scrim{background:linear-gradient(180deg,rgba(3,10,20,.32),rgba(3,10,20,.06) 20svh,rgba(3,10,20,.7) 43svh,#081523 85svh);}
+  .scene-page > .scene-page__scrim{background:linear-gradient(180deg,var(--p-030a14-a32),var(--p-030a14-a6) 20svh,var(--p-030a14-a70) 43svh,var(--p-081523) 85svh);}
   .scene-page--add .log-row{padding:6px 8px; border:0; background:var(--surface2); border-radius:12px; box-shadow:none;}
   .scene-page--add .log-row button{min-width:44px; min-height:44px;}
   /* Reported directly: the exercise name/icons wrapped onto a second line
@@ -2625,8 +2751,8 @@
   .scene-progress-primary > .chart-card{border-radius:16px !important; border:1px solid var(--border) !important;}
   .settings-club-edge{height:5px; background:linear-gradient(110deg,var(--club-blue) 0 65%,var(--club-cream) 65% 72%,var(--club-coral) 72% 80%,var(--club-cream) 80%);}
   #achievementsOverlay .modal-sheet{position:relative;}
-  #achievementsOverlay .modal-head{position:absolute; top:0; inset-inline:0; z-index:3; background:rgba(8,21,35,.85); color:#fff;}
-  #achievementsOverlay .modal-head .icon-btn{color:#fff !important;}
+  #achievementsOverlay .modal-head{position:absolute; top:0; inset-inline:0; z-index:3; background:var(--p-081523-a85); color:var(--p-fff);}
+  #achievementsOverlay .modal-head .icon-btn{color:var(--p-fff) !important;}
   #achievementsList{padding:0;}
   #achievementsList .scene-page{margin:0;}
   #achievementsList .scene-sheet{padding-bottom:40px;}
@@ -2637,8 +2763,8 @@
   #welcomeOverlay .scene-sheet{padding-bottom:32px;}
   #welcomeOverlay .scene-page__subtitle{max-width:34ch;}
   #notificationsOverlay .modal-sheet{background:var(--club-paper);}
-  #notificationsOverlay .modal-head{background:linear-gradient(rgba(8,21,35,.75),rgba(8,21,35,.9)),var(--scene-image) center 40%/cover; color:#fff; min-height:100px;}
-  #notificationsOverlay .modal-head .icon-btn{color:#fff !important;}
+  #notificationsOverlay .modal-head{background:linear-gradient(var(--p-081523-a75),var(--p-081523-a90)),var(--scene-image) center 40%/cover; color:var(--p-fff); min-height:100px;}
+  #notificationsOverlay .modal-head .icon-btn{color:var(--p-fff) !important;}
 
   .scene-page__media::after{background-color:transparent;}
   .scene-page--achievements .scene-page__media::after{background-size:100% auto;}
@@ -2668,7 +2794,7 @@
   }
   #achievementsOverlay{align-items:stretch; padding:0;}
   #achievementsOverlay .modal-sheet{height:100svh; max-height:100svh; border-radius:0;}
-  #achievementsOverlay .modal-title{color:#fff;}
+  #achievementsOverlay .modal-title{color:var(--p-fff);}
   .scene-page--progress svg[role="img"] polyline{stroke:var(--club-coral);}
   .scene-page--progress svg[role="img"] circle{fill:var(--club-coral); stroke:var(--club-coral);}
 
@@ -2683,15 +2809,15 @@
   .scene-page__intro{text-align:center;}
   .scene-page__title{justify-content:center;}
   .scene-page--add .scene-page__title > span:has(svg){order:1;}
-  .scene-sheet{--surface:#f5f1ea; --surface2:#efebe5; --border:#ded9d1;}
-  :root[data-theme="dark"] .scene-sheet{--surface:#10243a; --surface2:#193047; --border:#3c4d61;}
-  @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .scene-sheet{--surface:#10243a; --surface2:#193047; --border:#3c4d61;}}
+  .scene-sheet{--surface:var(--p-f5f1ea); --surface2:var(--p-efebe5); --border:var(--p-ded9d1);}
+  :root[data-scheme="dark"] .scene-sheet{--surface:var(--p-10243a); --surface2:var(--p-193047); --border:var(--p-3c4d61);}
+  
   .scene-sheet .log-row button[data-action="edit-entry"],.scene-sheet .log-row button[data-action="delete-entry"]{min-width:44px; min-height:44px;}
   .scene-sheet .log-row > .flex{flex-wrap:wrap;}
 
-  .scene-sheet{--brass:#80551f; --red-text:#ad3025;}
-  :root[data-theme="dark"] .scene-sheet{--brass:#e8b98a; --red-text:#ff7869;}
-  @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .scene-sheet{--brass:#e8b98a; --red-text:#ff7869;}}
+  .scene-sheet{--brass:var(--p-80551f); --red-text:var(--p-ad3025);}
+  :root[data-scheme="dark"] .scene-sheet{--brass:var(--p-e8b98a-106); --red-text:var(--p-ff7869-107);}
+  
   .nav-destinations{display:flex; flex-direction:column; gap:8px;}
   .navrow.active .nav-label{color:var(--energy-text);}
   .scene-page--add .steppers{display:grid; grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -2805,7 +2931,7 @@
      sheet overlaps its own photo. body[data-scene] prefix, not just
      .scene-page - the plain .scene-page > .scene-page__scrim form
      (specificity 0,2,0) is actually WEAKER than the existing
-     :root[data-theme="dark"] .scene-page__scrim rule above (0,3,0), so
+     :root[data-scheme="dark"] .scene-page__scrim rule above (0,3,0), so
      without it this would silently lose in dark theme specifically,
      exactly the theme this was reported against - caught by computing
      specificity, not by trusting source order alone. */
@@ -2818,7 +2944,7 @@
      darkening gradient only now, same as before any Navy Stripe color
      was added to it. */
   body[data-scene] .scene-page > .scene-page__scrim{
-    background: linear-gradient(180deg, rgba(10,13,22,.22) 0%, rgba(10,13,22,.04) 22%, rgba(10,13,22,.10) 55%, rgba(15,20,35,.55) 85%, var(--club-navy) 100%);
+    background: linear-gradient(180deg, var(--p-0a0d16-a22) 0%, var(--p-0a0d16-a4) 22%, var(--p-0a0d16-a10) 55%, var(--p-0f1423-a55) 85%, var(--club-navy) 100%);
   }
 
   /* Real, measured glass - not a token swap - extended to every scene
@@ -2838,19 +2964,15 @@
      next time something gets inserted after this block. This form is
      0,3,1, which wins outright. */
   body[data-scene] .scene-page > .scene-sheet{
-    background:rgba(255,253,248,.88); backdrop-filter:blur(18px) saturate(140%);
+    background:var(--p-fffdf8-a88); backdrop-filter:blur(18px) saturate(140%);
   }
   /* Dark-theme override - specificity here (0,5,1) exceeds the light rule
-     above via the extra :root[data-theme="dark"] compound, not source
+     above via the extra :root[data-scheme="dark"] compound, not source
      order. */
-  :root[data-theme="dark"] body[data-scene] .scene-page > .scene-sheet{
-    background:rgba(20,31,58,.8); backdrop-filter:blur(22px) saturate(160%);
+  :root[data-scheme="dark"] body[data-scene] .scene-page > .scene-sheet{
+    background:var(--p-141f3a-a80); backdrop-filter:blur(22px) saturate(160%);
   }
-  @media(prefers-color-scheme:dark){
-    :root:not([data-theme="light"]) body[data-scene] .scene-page > .scene-sheet{
-      background:rgba(20,31,58,.8); backdrop-filter:blur(22px) saturate(160%);
-    }
-  }
+  
 
   /* The red/white stripe as a real UI element (this app's own identity,
      not photo content) - a soft rounded ribbon, no sharp corners.
@@ -2861,8 +2983,8 @@
      since this ribbon is the new element on the screen. */
   .stripe-ribbon{
     height:6px; margin:0 0 10px; border-radius:999px; overflow:hidden;
-    background:repeating-linear-gradient(115deg, #F3F7FF 0 14px, var(--energy) 14px 28px);
-    box-shadow:0 4px 16px -4px rgba(255,107,61,.4);
+    background:repeating-linear-gradient(115deg, var(--p-f3f7ff) 0 14px, var(--energy) 14px 28px);
+    box-shadow:0 4px 16px -4px var(--p-ff6b3d-a40);
   }
 
   /* The last remaining fully-solid fill on this screen. Light and dark
@@ -2877,25 +2999,18 @@
      opacity; dark theme (below) uses light text at .68, per the earlier
      ship. */
   body[data-scene="scene-page--add"] #bottomBar .save-btn{
-    background:linear-gradient(135deg, rgba(255,174,140,.75), rgba(255,107,61,.75) 55%, rgba(232,93,61,.75));
+    background:linear-gradient(135deg, var(--p-ffae8c-a75), var(--p-ff6b3d-a75) 55%, var(--p-e85d3d-a75));
     backdrop-filter:blur(18px) saturate(150%);
-    border:1.5px solid rgba(232,93,61,.35);
-    color:#1a0d08;
+    border:1.5px solid var(--p-e85d3d-a35);
+    color:var(--p-1a0d08);
   }
-  :root[data-theme="dark"] body[data-scene="scene-page--add"] #bottomBar .save-btn{
-    background:linear-gradient(135deg, rgba(255,174,140,.68), rgba(255,107,61,.68) 55%, rgba(232,93,61,.68));
+  :root[data-scheme="dark"] body[data-scene="scene-page--add"] #bottomBar .save-btn{
+    background:linear-gradient(135deg, var(--p-ffae8c-a68), var(--p-ff6b3d-a68) 55%, var(--p-e85d3d-a68));
     backdrop-filter:blur(20px) saturate(170%);
-    border:1.5px solid rgba(255,174,140,.55);
-    color:#FFF6F1;
+    border:1.5px solid var(--p-ffae8c-a55);
+    color:var(--p-fff6f1);
   }
-  @media(prefers-color-scheme:dark){
-    :root:not([data-theme="light"]) body[data-scene="scene-page--add"] #bottomBar .save-btn{
-      background:linear-gradient(135deg, rgba(255,174,140,.68), rgba(255,107,61,.68) 55%, rgba(232,93,61,.68));
-      backdrop-filter:blur(20px) saturate(170%);
-      border:1.5px solid rgba(255,174,140,.55);
-      color:#FFF6F1;
-    }
-  }
+  
 
   /* ===================================================================
      THE DESKTOP STAFF SHELL (2026-09-18)
@@ -2925,7 +3040,7 @@
      mechanisms at the top of this file, so this shell follows the theme in
      both of them without a single rule of its own. There is nothing here to
      duplicate into the prefers-color-scheme block or into
-     :root[data-theme="dark"], because there is no hardcoded colour to go
+     :root[data-scheme="dark"], because there is no hardcoded colour to go
      stale in either. The one previous attempt at this feature shipped 23
      hardcoded hex values and no dark half at all.
 
@@ -3020,7 +3135,7 @@
      particular), so the copy tells the user the reliable fix — close and
      reopen the app — rather than implying a tap alone is enough. Tapping
      still fires the same SKIP_WAITING handshake as a bonus shortcut. -->
-<button id="updateBanner" data-action="reload-app" role="status" aria-live="polite" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:#1a0d08; text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px rgba(0,0,0,.25);">
+<button id="updateBanner" data-action="reload-app" role="status" aria-live="polite" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
   <div style="font-weight:800; font-size:16px; margin-bottom:3px;">עדכון חדש זמין</div>
   <div style="font-weight:600; font-size:13px; opacity:.85;">סגרו את האפליקציה ופתחו אותה מחדש כדי לעדכן</div>
 </button>
@@ -3087,7 +3202,7 @@
            shape is now unambiguously the Community one. -->
       <button id="notificationsBellBtn" data-action="open-notifications" aria-label="עדכוני גרסה" class="icon-chip icon-chip-steel" style="position:relative; flex-shrink:0;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-        <span id="notificationsBadge" aria-hidden="true" style="display:none; position:absolute; top:0; left:0; background:var(--energy); color:#fff; font-size:9px; font-weight:800; min-width:15px; height:15px; border-radius:8px; align-items:center; justify-content:center; padding:0 3px; line-height:1;"></span>
+        <span id="notificationsBadge" aria-hidden="true" style="display:none; position:absolute; top:0; left:0; background:var(--energy); color:var(--p-fff); font-size:9px; font-weight:800; min-width:15px; height:15px; border-radius:8px; align-items:center; justify-content:center; padding:0 3px; line-height:1;"></span>
       </button>
     </div>
     <div style="text-align:left;">

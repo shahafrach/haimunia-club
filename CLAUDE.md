@@ -23,6 +23,16 @@ their phones. Losing or corrupting it is the worst possible failure.
   `test/middleware.test.mjs` forces that to be a decision.
 - `package.json` is dev-only (tests, version sync). Nothing from it ships.
 
+## Design tokens
+
+- Every color lives in one place: `<style id="tokens">` in `index.html`. Primitives are named by value
+  (`--p-*`), and semantic tokens sit on `:root` (light) and `:root[data-scheme="dark"]` (dark).
+- Outside that block (other CSS, inline `style`, `app.js`, `src/*.js`) only `var(--...)`, never a hex,
+  `rgb()`, `hsl()`, `white` or `black`. `test/design-tokens.test.mjs` fails on one, and checks text
+  contrast (4.5:1) in both schemes.
+- Rules key on `data-scheme` (the resolved light/dark, stamped by `theme-init.js` and
+  `applyThemePref()`), never on `data-theme` (the choice) or `prefers-color-scheme`. Dark is written once.
+
 ## Commands
 
 ```sh
