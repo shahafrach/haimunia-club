@@ -18,6 +18,7 @@ the owner and the coach) and adds what the feed was missing: workouts.
 - A personal record also goes to the club as a percent improvement, for example
   "שיא אישי בסקוואט: +5%", never kilograms. It is computed on the phone from the
   log there, follows the same switch, and is removed if its entry is deleted.
+  Undoing that delete brings the PR card back.
 - The membership query now looks for the club only, so an account that is also
   in BOX-LOG circles still finds its club.
 

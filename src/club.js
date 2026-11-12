@@ -388,13 +388,26 @@
       if (redo) postDay(day);
     }
   }
+  // The PRs this phone shared, so a deleted PR entry that is restored (undo) gets its card back.
+  // { "<club>|<entry id>": { name, pct, n } }, n = how many of its posts were removed. A removed PR post
+  // keeps its key and pr_share returns it as is, so a restored one is sent under pr:<id>:<n+1>.
+  var PR_KEY = "haimunia:clubPrShared";
+  function prs() { try { var v = JSON.parse(localStorage.getItem(PR_KEY) || "{}"); return v && typeof v === "object" ? v : {}; } catch (e) { return {}; } }
+  function savePr(entryId, rec) {
+    var v = prs(); if (rec) v[cid() + "|" + entryId] = rec; else delete v[cid() + "|" + entryId];
+    try { localStorage.setItem(PR_KEY, JSON.stringify(v)); } catch (e) { /* the post itself is already sent */ }
+  }
+  function prRec(entryId) { return prs()[cid() + "|" + entryId] || null; }
+  function prKey(entryId) { var r = prRec(entryId), n = r && r.n ? r.n : 0; return n ? "pr:" + entryId + ":" + (n + 1) : "pr:" + entryId; }
   /** A personal record as a percent improvement, never kilograms (club default share_prs, percent only). */
   async function postPr(entryId, movementName, pct) {
     var d = shareDefaults();
     if (!available() || !entryId || !(pct > 0) || d.share_workouts !== true || d.share_prs === false) return false;
+    var prev = prRec(entryId);
+    savePr(entryId, { name: String(movementName || "").slice(0, 80), pct: pct, n: prev && prev.n ? prev.n : 0 });
     try {
       var c = await client();
-      var args = { p_club_id: cid(), record_id: "pr:" + entryId, note: "שיא אישי ב" + String(movementName || "").slice(0, 80) + ": +" + pct + "%" };
+      var args = { p_club_id: cid(), record_id: prKey(entryId), note: "שיא אישי ב" + String(movementName || "").slice(0, 80) + ": +" + pct + "%" };
       var key = newKey(); if (key) args.p_idempotency_key = key;
       var r = await c.rpc("pr_share", args);
       if (r.error) throw r.error;
@@ -402,18 +415,26 @@
       return true;
     } catch (e) { toast("השיא נשמר בטלפון. השיתוף במועדון לא הצליח הפעם."); return false; }
   }
-  /** The PR post of a deleted entry is removed with it. */
+  /** The PR post of a deleted entry is removed with it. What it said is kept, for an undo. */
   async function removePr(entryId) {
     if (!available() || !entryId) return false;
     try {
       var c = await client();
-      var id = await myPostId(c, "pr:" + entryId);
+      var id = await myPostId(c, prKey(entryId));
       if (!id) return false;
       var d = await c.rpc("post_delete", { post_id: id });
       if (d.error) throw d.error;
+      var r = prRec(entryId);
+      if (r) savePr(entryId, Object.assign({}, r, { n: (r.n || 0) + 1 }));
       C.feed.loaded = false;
       return true;
     } catch (e) { return false; }
+  }
+  /** Undo of a deleted entry: its PR card comes back if this phone had shared one. */
+  async function restorePr(entryId) {
+    var r = prRec(entryId);
+    if (!r || !r.n) return false;
+    return postPr(entryId, r.name, r.pct);
   }
   async function setSharing(on) {
     if (!available() || C.busy.share) return;
@@ -480,5 +501,5 @@
   }
 
   window.haimuniaClub = { init: init, available: available, renderTab: renderTab, runConfirmed: runConfirmed, refresh: refresh,
-    postDay: postDay, postPr: postPr, removePr: removePr, dayPostRow: dayPostRow, sharingOn: sharingOn };
+    postDay: postDay, postPr: postPr, removePr: removePr, restorePr: restorePr, dayPostRow: dayPostRow, sharingOn: sharingOn };
 })();

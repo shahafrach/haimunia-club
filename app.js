@@ -2656,6 +2656,7 @@ async function restoreEntry(entry) {
   try { await dbPut(entry); storageOK = true; } catch (e) { noteStorageError(e); }
   render();
   shareDayToClub(entry.date);
+  try { if (window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.restorePr(entry.id); } catch (e) { /* never in the way */ }
 }
 
 // ---------- Bodyweight ----------

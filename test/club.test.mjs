@@ -313,3 +313,18 @@ test("a PR goes to the club as a percent, never kilograms; its post goes when th
   await until(() => off.window.haimuniaClub.available(), "in club");
   assert.equal(await off.window.haimuniaClub.postPr("e2", "סקוואט", 5), false, "sharing off: no PR either");
 });
+
+test("undo of a deleted PR entry brings its PR card back, under a new key", async () => {
+  const { window, calls, state } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await window.haimuniaClub.postPr("e9", "דדליפט", 4);
+  state.posts.push({ id: "wp-pr9", source_record_id: "pr:e9" });
+  await window.haimuniaClub.removePr("e9");
+  assert.equal(rpcs(calls, "post_delete").at(-1)[1].post_id, "wp-pr9");
+  await window.haimuniaClub.restorePr("e9");
+  const shares = rpcs(calls, "pr_share");
+  assert.equal(shares.length, 2);
+  assert.equal(shares[1][1].record_id, "pr:e9:2", "not the removed key, which pr_share would hand back as is");
+  assert.equal(shares[1][1].note, "שיא אישי בדדליפט: +4%");
+  assert.equal(await window.haimuniaClub.restorePr("never-shared"), false, "nothing to restore for an entry that had no PR card");
+});
