@@ -32,7 +32,9 @@ test("the header CSP is the meta CSP plus frame-ancestors 'none', nothing else d
   const { "frame-ancestors": metaFa, ...metaRest } = metaCsp;
   assert.equal(fa, "'none'");
   assert.deepEqual(rest, metaRest);
-  assert.equal(metaFa, "'none'", "the meta copy keeps its own, as a backstop");
+  // A <meta> CSP cannot carry frame-ancestors (CSP3); listing it there only
+  // logged a console error on every start (audit 2026-11, finding 22).
+  assert.equal(metaFa, undefined, "only the header carries frame-ancestors");
 });
 
 test("only this app, the Supabase project and Turnstile are named; no inline script, eval, wildcard or http", () => {

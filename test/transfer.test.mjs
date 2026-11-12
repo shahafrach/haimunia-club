@@ -49,6 +49,7 @@ const withWeight = {
 async function boot({ installed = true, server, confirm = true, seed } = {}) {
   const requests = [];
   const window = await bootApp({
+    autoConfirmImport: false,
     matchMedia: (q) => (installed && /display-mode:\s*standalone/.test(q)),
     beforeScripts: (w) => {
       w.DecompressionStream = globalThis.DecompressionStream; w.Blob = globalThis.Blob; w.Response = globalThis.Response;
@@ -64,6 +65,14 @@ async function boot({ installed = true, server, confirm = true, seed } = {}) {
     },
   });
   window.localStorage.setItem("haimunia:usageCountingOff", "1");
+  // Import confirms through the app's own sheet (audit 2026-11, finding 18).
+  // Answer it the way `confirm` says, by tapping the real buttons.
+  new window.MutationObserver(() => {
+    const sheet = window.document.querySelector("#appConfirmOverlay[data-confirm-kind='import-backup']");
+    if (!sheet) return;
+    const yes = typeof confirm === "function" ? confirm() : confirm;
+    sheet.querySelector(`[data-action='${yes ? "app-confirm-yes" : "app-confirm-no"}']`).click();
+  }).observe(window.document.body, { childList: true, subtree: true });
   return { window, requests };
 }
 const $ = (w, s) => w.document.querySelector(s);

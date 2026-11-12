@@ -9,7 +9,7 @@ their phones. Losing or corrupting it is the worst possible failure.
 
 - Buildless vanilla JS. No framework, bundler or TypeScript. Do not add one.
 - `index.html` loads the scripts in order with `<script defer>`; they share one
-  global scope. `src/shared/safe-helpers.js`, `app-config.js`, `src/usage.js`,
+  global scope. `src/boot-guard.js`, `src/shared/safe-helpers.js`, `app-config.js`, `src/usage.js`,
   `src/constants.js`, `src/format.js`, `src/sanitize.js`, `src/db.js`, `src/connect.js`, `src/club.js`, `src/transfer.js`, `app.js`.
 - `sw.js`: service worker. A new file loaded by `index.html` must be added to
   `REQUIRED_ASSETS` or `OPTIONAL_ASSETS`.
@@ -67,7 +67,7 @@ Tests boot the real `index.html` in jsdom with fake-indexeddb via
 - `src/usage.js` sends pseudonymous counts to the `training_log_usage` table
   (Supabase, config in `app-config.js`).
 - Never add names, emails, free text or anything that identifies a member to
-  that data. Allowed fields: `device_id`, `event`, `screen`.
+  that data. Allowed fields: `device_id`, `event`, `screen`, `app` (always `"club"`).
 - Tests and browser checks must never send a real count. Test: `test/usage-counting.test.mjs`.
 
 ## Connected mode (src/connect.js)

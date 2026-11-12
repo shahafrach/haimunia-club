@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <!-- Security hunt round 8: hides the page and attempts to bust out if this
-     document is ever loaded inside another page's frame (frame-ancestors in
-     the CSP meta tag below is inert on this host - see the comment above
-     it). Loaded FIRST, ahead of theme-init.js, so it runs before anything
+     document is ever loaded inside another page's frame (frame-ancestors is
+     sent only as a real header, from _headers - see the comment above the
+     CSP meta tag below). Loaded FIRST, ahead of theme-init.js, so it runs before anything
      else can render. See frame-guard.js for the full reasoning. -->
 <script src="./frame-guard.js"></script>
 <!-- Stamps data-theme (the choice) and data-scheme (the resolved light/dark the
@@ -24,33 +24,17 @@
   there is no third-party entry in font-src/style-src at all — the app makes
   zero network requests to any origin but its own.
   frame-ancestors / X-Frame-Options are spec-ignored in <meta> — browsers
-  only honor them as real HTTP response headers, so the directive below is
-  inert HERE and always was.
+  only honor them as real HTTP response headers (CSP3: "not supported inside
+  a <meta> element"). Listing it below did nothing but log a console error
+  on every start, so it was removed (audit 2026-11, finding 22).
+  The real defence is the _headers file: Cloudflare Pages sends
+  frame-ancestors 'none' and X-Frame-Options: DENY as response headers, and
+  test/headers.test.mjs keeps that header CSP equal to this meta CSP plus
+  frame-ancestors.
 
-  IT IS NO LONGER THE ONLY MITIGATION. Since 2026-09-16 the app is served by
-  Cloudflare Pages, which reads the repo's _headers file, and the real headers
-  are live and verified on the origin:
-      content-security-policy: frame-ancestors 'none'
-      x-frame-options: DENY
-      strict-transport-security: max-age=31536000; includeSubDomains
-      cross-origin-opener-policy: same-origin
-  That closes SEC-014, which every earlier version of this comment described
-  as unfixable on the host of the day. Verified directly
-  against the live production app (COMM-334, 2026-09-03: both the raw HTTP
-  response headers and the served HTML of
-  https://haimuniya.github.io/haimunia-app/) rather than assumed: production
-  ships the same kind of meta-tag CSP as this demo, on the same
-  no-real-headers host, and its meta tag already lists frame-ancestors
-  'none' too (as inertly as it does here) — it is not "no CSP at all" as an
-  earlier version of this comment claimed. At that date the only real
-  remaining gap on both apps, at the header/CSP layer specifically, was the
-  same one: moving off GitHub Pages to get real response headers. This app
-  closed it by moving to Cloudflare Pages on 2026-09-16 (the headers above).
-
-  Security hunt round 8: that gap is not being left fully unmitigated
-  anymore. frame-guard.js (loaded first, before this meta tag is even
-  parsed) is a client-side framebuster — it cannot be delivered as a real
-  header on this host, but window.top === window.self holds for every
+  Security hunt round 8: frame-guard.js (loaded first, before this meta tag is even
+  parsed) is a client-side framebuster, a second layer behind those
+  headers: window.top === window.self holds for every
   legitimate load (an installed PWA, an ordinary tab), so a script-level
   check costs nothing real and closes the gap this meta tag cannot. See
   that file for the live-confirmed exploit chain that motivated it.
@@ -72,8 +56,7 @@
   worker-src 'self';
   object-src 'none';
   base-uri 'none';
-  form-action 'none';
-  frame-ancestors 'none'" />
+  form-action 'none'" />
 <meta name="referrer" content="no-referrer" />
 
 <!-- Pinch-zoom is deliberately NOT blocked: user-scalable=no fails WCAG 1.4.4
@@ -196,6 +179,7 @@
     --p-081523-a32: rgba(8,21,35,.32);
     --p-081523-a72: rgba(8,21,35,.72);
     --p-081523-a75: rgba(8,21,35,.75);
+    --p-081523-a86: rgba(8,21,35,.86);
     --p-081523-a85: rgba(8,21,35,.85);
     --p-081523-a90: rgba(8,21,35,.9);
     --p-081523-a96: rgba(8,21,35,.96);
@@ -288,6 +272,7 @@
     --p-ff7869-107: #ff7869;
     --p-ff7f53: #FF7F53;
     --p-ff8f6b: #FF8F6B;
+    --p-ff9488: #FF9488;
     --p-ffae8c-a55: rgba(255,174,140,.55);
     --p-ffae8c-a68: rgba(255,174,140,.68);
     --p-ffae8c-a75: rgba(255,174,140,.75);
@@ -379,6 +364,12 @@
      is used as a fill (lightening --red itself would have broken the
      white-on-red badge, which is why they are separate). */
   --energy-text:#AD4023; --red-text:#C0382C; --green-text:#256B3D;
+    /* Audit 2026-11, finding 15. Ink ON an --energy fill (selected calendar
+       day, primary backup button, "new" badge): white there was 3.46:1 in
+       light; this dark ink is 5.49:1 in both schemes. --danger-text is the
+       destructive chip's text: dark --red-text (#FF7869) measured 4.12:1 on
+       the settings card, #FF9488 is 4.98:1 and the same red family. */
+    --on-energy:var(--p-1a0d08); --danger-text:var(--red-text);
 }
   
   :root[data-scheme="dark"]{
@@ -393,6 +384,7 @@
     --shadow-card: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 28px -18px rgba(0,0,0,.65);
     --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
       --energy-text:#FF7F53; --red-text:#FF7869; --green-text:#5CBB74; --red:#D2433A;
+      --danger-text:var(--p-ff9488);
   }
   /* ---- Immersive club scene layer (2026-09-08 handoff) ------------------
      Full-bleed real-photo page backgrounds for the primary tabs, per
@@ -1678,7 +1670,7 @@
   /* color:var(--avatar-ink), not #fff - see the twin of this rule further
      down the file (the one that used to hard-code #d92f2b) for the measured
      contrast numbers. Both are corrected, not just the one that wins. */
-  body[data-scene] .cal-cell.selected .cal-daynum{ background:var(--energy); color:var(--avatar-ink); box-shadow:none; }
+  body[data-scene] .cal-cell.selected .cal-daynum{ background:var(--energy); color:var(--on-energy); box-shadow:none; }
   body[data-scene] .cal-dot{ width:4px; height:4px; }
   /* The compact stand-in for a chart with too few points to be a trend
      (renderCompactChart, app.js). Built from tokens only - --surface2,
@@ -2072,7 +2064,7 @@
      duplicated verbatim at two confirm-dialog call sites). Combined with
      .primary for the full-fill confirm/run buttons; alone for a plain chip
      that just needs to read as destructive (remove member, delete draft). */
-  .chip-btn.danger{ border-color:var(--red); color:var(--red-text); }
+  .chip-btn.danger{ border-color:var(--red); color:var(--danger-text); }
   .chip-btn.primary.danger{ background:var(--red); border-color:var(--red); color:var(--p-fff); }
   /* Design spec section 7.1 - THE GATE'S SECONDARY ACTION IS A CONTROL, NOT
      A LINK. The community gate used to lead with a login form and push
@@ -2715,7 +2707,7 @@
      text on an --energy fill (see the Add screen's save button): measured
      6.72:1 in light and 5.38:1 in dark against the real token values, where
      white-on-energy is 2.83:1 and would have failed AA outright. */
-  body[data-scene] .cal-cell.selected .cal-daynum{ background:var(--energy); color:var(--avatar-ink); }
+  body[data-scene] .cal-cell.selected .cal-daynum{ background:var(--energy); color:var(--on-energy); }
   @media(min-width:900px){ .scene-page{margin-inline:-16px;} }
   .scene-summary-meta{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; font-weight:700; margin-bottom:12px; }
   .scene-page--add .pick-hero{ background:var(--surface); border-color:var(--border); margin-top:16px; }
@@ -3127,6 +3119,40 @@
   }
   html[data-layout="desktop"][data-staff="1"] .staff-home > .page-title{ margin-bottom:14px; }
 
+  /* ---- Audit 2026-11 fixes ---- */
+  /* 8: backup actions are real buttons, export first. */
+  .backup-actions{ display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
+  .backup-btn{ width:100%; min-height:48px; border-radius:14px; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .backup-btn-primary{ background:var(--energy); color:var(--on-energy); border:0; }
+  .backup-btn-secondary{ min-height:44px; background:transparent; color:var(--chalk); border:1px solid var(--border); font-weight:700; }
+  /* 9: the welcome title and subtitle get their own dark scrim, so they
+     read on any part of the striped photo, in either theme. White on this
+     panel over pure white is about 7:1. */
+  #welcomeOverlay .scene-page__intro{ background:linear-gradient(180deg, var(--p-081523-a72), var(--p-081523-a86)); border-radius:16px; padding:12px 16px 14px; text-shadow:none; }
+  #welcomeOverlay .scene-page__title{ text-shadow:none; font-size:32px; justify-content:center; }
+  #welcomeOverlay .scene-page__subtitle{ opacity:1; max-width:none; }
+  /* Anchored by its BOTTOM edge just above the sheet, so a title that wraps
+     to two lines grows upward over the photo instead of under the sheet. */
+  #welcomeOverlay .scene-page__intro{ top:calc(var(--scene-photo-height) - 12px); transform:translateY(-100%); }
+  /* 12: one line on usage counting. */
+  .welcome-usage-note{ margin:14px auto 0; max-width:34ch; color:var(--steel); font-size:12px; line-height:1.6; }
+  .welcome-usage-note .link-btn{ display:flex; margin:0 auto; font-size:12px; min-height:44px; padding:0 8px; }
+  #settingsOverlay.above-welcome{ z-index:60; }
+  /* 10: on a desktop the welcome sheet stands on an opaque backdrop - the
+     half-visible app behind it, with its sidebar text clipped, read as a
+     broken layout. */
+  @media (min-width:900px){
+    #welcomeOverlay{ background:var(--club-navy); }
+  }
+  /* 14: at 390px a category row wrapped "ימים" onto its own line and the
+     "לפני 50 ימים" badge onto two. The counts and the badge now keep their
+     words together, and the pair moves under the name when it must. */
+  .report-row{ flex-wrap:wrap; row-gap:6px; column-gap:8px; }
+  .report-row-meta{ margin-inline-start:auto; }
+  .report-counts, .report-flag{ white-space:nowrap; }
+  /* 16: the profile edit button was a 30x30 target. */
+  #settingsBody [data-action="edit-user-name"]{ min-width:44px; min-height:44px; }
+  .badge-new{ display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; background:var(--energy); color:var(--on-energy); font-size:11px; font-weight:800; }
 </style>
 </head>
 <body>
@@ -3175,7 +3201,7 @@
       <button id="navMenuBtn" data-action="open-nav-menu" aria-label="תפריט" aria-haspopup="dialog" aria-controls="navMenuOverlay" class="icon-chip icon-chip-steel" style="flex-shrink:0;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <img src="./assets/logo-full.png" alt="האימוניה" class="header-logo" width="900" height="323" />
+      <img src="./assets/logo-full.png" alt="האימוניה" class="header-logo" width="300" height="108" />
       <!-- Live report: "I want a medal icon... I can't see any change" - the
            header's own achievements link (userGreeting button + the "לכל
            המדליות וההישגים שלי" line below it) already exists, but both live
@@ -3635,6 +3661,7 @@
       <input id="welcomeBoxStartInput" type="date" class="text-input" aria-labelledby="welcomeBoxStartLabel" style="margin-bottom:16px; text-align:center;" />
       <button data-action="save-user-name" class="save-btn" style="max-width:none; margin-bottom:10px;"><span id="welcomeSaveLabel">בואו נתחיל</span></button>
       <button id="welcomeSkipBtn" data-action="skip-user-name" class="link-btn">דלג</button>
+      <p id="welcomeUsageNote" class="welcome-usage-note">האפליקציה סופרת שימוש בלי שם ובלי פרטים מהאימונים. <button type="button" class="link-btn" data-action="open-usage-setting">אפשר לכבות בהגדרות</button></p>
     </div>
   </div>
 </div>
@@ -3644,6 +3671,7 @@
      its helpers; app-config before app.js, which reads the brand from it.
      theme-init.js stays synchronous in <head> on purpose: it sets the theme
      before first paint. -->
+<script defer src="./src/boot-guard.js"></script>
 <script defer src="./src/shared/safe-helpers.js"></script>
 <script defer src="./app-config.js"></script>
 <script defer src="./src/usage.js"></script>

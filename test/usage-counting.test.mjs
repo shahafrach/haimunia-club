@@ -38,7 +38,8 @@ test("on open: one app_open and one screen_open, carrying a random id and nothin
     assert.equal(c.url, cfg.url + "/rest/v1/training_log_usage", "the one endpoint");
     assert.equal(c.init.method, "POST");
     assert.equal(c.init.credentials, "omit", "no cookies");
-    assert.deepEqual(Object.keys(c.body).sort().filter((k) => k !== "screen"), ["device_id", "event"], "no other field, ever");
+    assert.deepEqual(Object.keys(c.body).sort().filter((k) => k !== "screen"), ["app", "device_id", "event"], "no other field, ever");
+    assert.equal(c.body.app, "club", "every row says which app sent it");
     assert.match(c.body.device_id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, "a random v4 uuid");
   }
   const events = bodies(r.calls).map((b) => b.event + (b.screen ? ":" + b.screen : "")).sort();

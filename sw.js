@@ -13,7 +13,7 @@
 //
 // SW_VERSION is written by scripts/sync-version.mjs from APP_VERSION in
 // app.js; the cache name carries it, so every release is a fresh cache.
-const SW_VERSION = "3.6.0";
+const SW_VERSION = "3.7.0";
 // The 2.x app's own prefix, kept: its caches are "haimunia-v2.34.0" and so
 // on, and the cleanup below removes them by this prefix.
 const CACHE_PREFIX = "haimunia-v";
@@ -28,6 +28,7 @@ const REQUIRED_ASSETS = [
   "./app.js",
   "./app-config.js",
   "./src/usage.js",
+  "./src/boot-guard.js",
   "./frame-guard.js",
   "./theme-init.js",
   "./src/shared/safe-helpers.js",
@@ -105,8 +106,12 @@ self.addEventListener("activate", (e) => {
       // "delete every cache but mine" took other apps' caches with it.
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE).map((k) => caches.delete(k)));
+      // Navigation preload was enabled by 3.6.0 and earlier, whose navigations went to
+      // the network first. They no longer do, so a preload request would be
+      // a wasted download on every start - and the setting outlives the
+      // worker that set it, so it has to be switched off explicitly.
       if (self.registration.navigationPreload) {
-        await self.registration.navigationPreload.enable().catch(() => {});
+        await self.registration.navigationPreload.disable().catch(() => {});
       }
       await self.clients.claim();
     })()
@@ -135,20 +140,36 @@ self.addEventListener("fetch", (e) => {
   if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") return;
 
 
-  // Navigations: serve the shell. Matching with ignoreSearch is what makes the
-  // manifest shortcuts (./index.html?tab=add) work offline — an exact-URL match
-  // missed on the query string and fell through to a network error.
+  // ONE VERSION AT A TIME, AND NO WAITING ON THE NETWORK (audit 2026-11,
+  // findings 3 and 5).
+  //
+  // Navigations used to be network-first with no timeout. On a weak gym
+  // signal the app sat on a blank screen until the request gave up; and when
+  // the network DID answer, a freshly deployed index.html started against the
+  // app.js still in this worker's cache - a new shell running old scripts.
+  // The stale-while-revalidate branch below had the mirror problem: it wrote
+  // newer network bytes into this version's cache, so the next start mixed
+  // the other way round.
+  //
+  // Now this worker serves only what it precached, under its own versioned
+  // cache name: shell and scripts always come from the same release. A new
+  // release arrives the one way it always has - the browser finds a changed
+  // sw.js, the new worker precaches ITS version into ITS cache, and the
+  // page's update banner swaps them (SKIP_WAITING -> controllerchange ->
+  // reload). This is the precache pattern web.dev's offline cookbook and
+  // Workbox use. The network is only asked for what was never precached.
   if (req.mode === "navigate") {
     e.respondWith(
       (async () => {
+        const cache = await caches.open(CACHE);
+        // ignoreSearch is what makes the manifest shortcuts
+        // (./index.html?tab=add) resolve to the cached shell.
+        const hit = await cache.match(req, { ignoreSearch: true });
+        if (hit) return hit;
         try {
-          const preload = await e.preloadResponse;
-          if (preload) return preload;
           return await fetch(req);
         } catch (err) {
-          const cache = await caches.open(CACHE);
           return (
-            (await cache.match(req, { ignoreSearch: true })) ||
             (await cache.match("./index.html")) ||
             (await cache.match("./")) ||
             new Response("offline", { status: 503, headers: { "Content-Type": "text/plain" } })
@@ -159,32 +180,31 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Same-origin assets: stale-while-revalidate, but only re-cache things that
-  // are part of the app shell.
+  // Same-origin assets: this version's precached copy, never revalidated in
+  // the background (that would write another release's bytes under this
+  // release's name). A precached file missing from the cache - an optional
+  // asset whose download failed at install - is fetched and filled in once.
   e.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req, { ignoreSearch: true });
-      const network = fetch(req)
-        .then((res) => {
-          // Security hunt (2026-09-11): res.redirected was never checked here.
-          // A same-origin redirect still yields type:"basic"/ok:true per the
-          // Fetch spec, so if a precached path were ever redirected, this
-          // would have cached the REDIRECTED body under the ORIGINAL trusted
-          // key - confirmed live by actually redirecting a precached path and
-          // watching the redirected content get served back later, fully
-          // offline. No mechanism on this app's real static-hosting origin
-          // can currently produce such a redirect (checked), so this was not
-          // reachable in production, but it was strictly looser than the
-          // "only cache what was actually asked for" invariant this whole
-          // block exists to enforce, and cheap to close outright.
-          if (res && res.ok && !res.redirected && res.type === "basic" && isPrecached(url)) {
-            cache.put(req, res.clone()).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
+      if (cached) return cached;
+      const res = await fetch(req);
+      // Security hunt (2026-09-11): res.redirected was never checked here.
+      // A same-origin redirect still yields type:"basic"/ok:true per the
+      // Fetch spec, so if a precached path were ever redirected, this
+      // would have cached the REDIRECTED body under the ORIGINAL trusted
+      // key - confirmed live by actually redirecting a precached path and
+      // watching the redirected content get served back later, fully
+      // offline. No mechanism on this app's real static-hosting origin
+      // can currently produce such a redirect (checked), so this was not
+      // reachable in production, but it was strictly looser than the
+      // "only cache what was actually asked for" invariant this whole
+      // block exists to enforce, and cheap to close outright.
+      if (res && res.ok && !res.redirected && res.type === "basic" && isPrecached(url)) {
+        cache.put(req, res.clone()).catch(() => {});
+      }
+      return res;
     })()
   );
 });

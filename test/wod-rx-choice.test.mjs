@@ -66,18 +66,23 @@ test("both options are Hebrew-first, keep the English, and carry a permanent glo
     "two bare nouns are not a question; the heading asks it in words");
 });
 
-test("the save CTA is disabled, and says why, until the choice is made", async () => {
+test("the save CTA reads as unavailable until the choice is made, and a tap on it says why", async () => {
   const window = await bootApp();
   window.saveWelcomeForm("רונית");
   const d = await openWodLogForm(window);
 
-  assert.equal(saveBtn(d).disabled, true);
   assert.equal(saveBtn(d).getAttribute("aria-disabled"), "true");
+  // Audit 2026-11, finding 19: no orange scolding before anything was tried.
+  assert.doesNotMatch(d.getElementById("wodContent").textContent, /בחרו איך ביצעתם את האימון/,
+    "the reason is not shown before a save attempt");
+  saveBtn(d).click();
+  await new Promise((r) => setTimeout(r, 20));
   assert.match(d.getElementById("wodContent").textContent, /בחרו איך ביצעתם את האימון/,
-    "a disabled control with no stated reason is the anti-pattern this spec section is about");
+    "a tap on the unavailable control states the reason - an unexplained dead control is the anti-pattern this spec section is about");
+  assert.equal((await window.dbLoadWodEntries()).length, 0, "and nothing was filed");
 
   scaledBtn(d).click();
-  assert.equal(saveBtn(d).disabled, false, "answering enables it");
+  assert.equal(saveBtn(d).getAttribute("aria-disabled"), "false", "answering enables it");
   assert.equal(toggle(window.document).classList.contains("unset"), false, "and the dashed frame goes");
 });
 

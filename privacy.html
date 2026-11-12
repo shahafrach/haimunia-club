@@ -76,7 +76,8 @@
   .page-wrap{ max-width:640px; margin:0 auto; padding:24px 16px calc(env(safe-area-inset-bottom,0px) + 40px); }
   .header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:12px; }
   .header-logo{ height:36px; width:36px; border-radius:10px; display:block; flex-shrink:0; }
-  .back-link{ color:var(--steel); font-size:12px; font-weight:700; text-decoration:underline; white-space:nowrap; }
+  /* 44px tall hit areas (audit 2026-11, finding 16): these were 14px. */
+  .back-link{ color:var(--steel); font-size:12px; font-weight:700; text-decoration:underline; white-space:nowrap; display:inline-flex; align-items:center; min-height:44px; padding:0 8px; }
   .brand-stripe{ height:6px; border-radius:4px; background-image:var(--stripe); margin-bottom:18px; }
   .page-title{ font-family:'Anton',sans-serif; font-weight:400; letter-spacing:.3px; font-size:24px; color:var(--chalk); margin-bottom:6px; }
   .updated-note{ color:var(--steel); font-size:11px; margin-bottom:20px; }
@@ -95,7 +96,7 @@
   code{ font-family:monospace; font-size:.95em; }
 
   .footer-links{ text-align:center; margin-top:8px; }
-  .footer-links a{ color:var(--steel); font-size:11px; text-decoration:underline; }
+  .footer-links a{ color:var(--steel); font-size:11px; text-decoration:underline; display:inline-flex; align-items:center; min-height:44px; padding:0 12px; }
 </style>
 </head>
 <body>
