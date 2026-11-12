@@ -15,6 +15,11 @@
   if (t === "light" || t === "dark") {
     document.documentElement.setAttribute("data-theme", t);
   }
+  // The resolved scheme the token block reads (index.html <style id="tokens">):
+  // the choice, or for "auto" the OS setting.
+  var scheme = t === "light" || t === "dark" ? t
+    : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.setAttribute("data-scheme", scheme);
   try {
     if (localStorage.getItem("haimunia:textScale") === "large") {
       document.documentElement.setAttribute("data-text-scale", "large");
