@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.4.1";
+const APP_VERSION = "3.5.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -2056,6 +2056,36 @@ function heaviestLoggedWeightFor(id, excludeId) {
 // those are "a save is in flight", only the path that reaches the actual
 // entries.unshift() below is.
 let savingSet = false;
+// ---- The day's summary for the club feed (src/club.js decides if and what is sent) -----
+// One line per lift or WOD logged that date, with and without kilograms. Same shape as BOX-LOG's
+// communityDaySummary. Body weight is a different record type and is never read here.
+function clubStrengthLine(e) {
+  const m = movementById(e.exerciseId);
+  if (!m) return null;
+  const dur = e.type === "duration";
+  return { title: m.name,
+    text: dur ? `${formatClock(e.durationSeconds)}${e.weight ? ` @ ${e.weight} ק״ג` : ""}` : `${e.weight} ק״ג × ${e.reps} × ${e.sets}`,
+    textNoWeight: dur ? formatClock(e.durationSeconds) : `${e.reps} × ${e.sets}`, rx: null };
+}
+function clubWodLine(e) {
+  const w = wodById(e.wodId);
+  if (!w) return null;
+  const noWeight = e.scoreType === "time" ? formatClock(e.timeSeconds)
+    : e.scoreType === "amrap" ? `${e.rounds}+${e.reps}`
+    : e.scoreType === "emom" ? (e.emomReps || []).join(" · ") : "";
+  return { title: w.name, text: formatWodEntry(e), textNoWeight: noWeight, rx: e.rx !== false };
+}
+function clubDaySummary(day) {
+  if (!day) return null;
+  const lines = [];
+  for (const e of entries) if (e.date === day) { const l = clubStrengthLine(e); if (l) lines.push(l); }
+  for (const e of wodEntries) if (e.date === day) { const l = clubWodLine(e); if (l) lines.push(l); }
+  return { day, lines };
+}
+function shareDayToClub(day) {
+  try { if (day && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postDay(day); } catch (e) { /* never in the way of the log */ }
+}
+
 async function saveSet(sanityConfirmed) {
   if (savingSet) return;
   savingSet = true;
@@ -2224,6 +2254,7 @@ async function saveSet(sanityConfirmed) {
   }
   // A new entry is a workout logged; correcting an old one is not.
   if (!existing) countUsage("workout_logged");
+  shareDayToClub(entry && entry.date);
   } finally { savingSet = false; }
 }
 // A ladder (working-set session: same exercise/day, different weight+reps
@@ -4086,6 +4117,7 @@ async function saveWod(sanityConfirmed) {
   }
   // Same rule as saveSet(): a new result counts, an edit does not.
   if (!existing) countUsage("workout_logged");
+  shareDayToClub(entry && entry.date);
   } finally { savingWod = false; }
 }
 // Live bug hunt (2026-09-11): same two-tab staleness fix as startEditEntry()

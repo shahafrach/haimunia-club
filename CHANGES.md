@@ -1,3 +1,20 @@
+# 3.5.0 — The club feed is back, and workouts reach it — 2026-11-12
+
+Owner decision (2026-11-11): connected mode has a feed and reactions. This
+restores what 3.4.1 took out (the feed, the three reactions, "delete post" for
+the owner and the coach) and adds what the feed was missing: workouts.
+
+- After a lift or a WOD is saved, the day is posted to the club: one post per
+  member per day, updated by later entries that day. It carries the movement or
+  WOD names and the results without kilograms. Body weight is never read.
+- The club tab has the member's own switch, "share my workouts", on by
+  default. Turning it off is saved on the server (set_share_defaults) and
+  nothing more is posted. The feed and reactions stay visible either way.
+- A failed share never touches the log: the entry is saved on the phone first,
+  and a short note says the club did not get it this time.
+- The membership query now looks for the club only, so an account that is also
+  in BOX-LOG circles still finds its club.
+
 # 3.4.1 — The club tab without a feed — 2026-11-12
 
 No workout is ever posted from this app, so the club tab no longer has a feed,

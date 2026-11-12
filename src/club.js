@@ -1,22 +1,29 @@
 "use strict";
-// ---- The club tab: announcements, members, coach tools -----------------------------
+// ---- The club tab: feed, reactions, announcements, coach tools --------------------
 //
 // Shown only to a connected member of the club (src/connect.js says who that is). Reads
 // what the backend lets a member read and calls its RPCs; the backend does the
 // authorising, this file only decides what to show. Nothing from the private log is
-// involved. There is deliberately NO feed and NO posting: no workout is ever posted from this app, so
-// the tab shows announcements, the roster and the coach's tools only.
+// involved: the feed is other members' posts, and reacting sends a post id and a kind.
 //
-// Roles: owner and coach may post announcements, remove members and rotate the join link (the coach cannot remove the owner or another coach; the server
+// Roles: owner and coach may post announcements, delete any post, remove members and
+// rotate the join link (the coach cannot remove the owner or another coach; the server
 // enforces it, the buttons just are not drawn). Members see announcements read-only.
 //
 // Classic script, one IIFE, exports window.haimuniaClub. Reads esc, bidiText,
 // askAppConfirm, showToast, render from the shared scope, only inside function bodies.
 (function () {
+  var PAGE = 30;
+  var KINDS = [
+    { kind: "fist_bump", emoji: "👊", label: "אגרוף" },
+    { kind: "fire", emoji: "🔥", label: "אש" },
+    { kind: "clap", emoji: "👏", label: "מחיאות כפיים" },
+  ];
   var ROLE_LABEL = { owner: "בעלים", coach: "מאמן/ת" };
 
   var C = {
     clubId: null,
+    feed: { rows: [], loaded: false, loading: false, done: false, error: false },
     ann: { rows: [], loaded: false, loading: false, error: false },
     members: { rows: [], loaded: false, loading: false, error: false, open: false },
     postDraft: "", postPinned: false, annError: "",
@@ -28,7 +35,7 @@
   function available() { var i = info(); return !!(i.inClub && i.clubId); }
   function client() { return connect().getClient(); }
   function reset() {
-    C.clubId = null;
+    C.clubId = null; C.feed = { rows: [], loaded: false, loading: false, done: false, error: false };
     C.ann = { rows: [], loaded: false, loading: false, error: false };
     C.members = { rows: [], loaded: false, loading: false, error: false, open: false };
     C.postDraft = ""; C.postPinned = false; C.annError = ""; C.newLink = ""; C.linkCopied = false; C.busy = {};
@@ -37,6 +44,21 @@
   function toast(t) { if (typeof showToast === "function") showToast(t); }
 
   // ---- Loading ----------------------------------------------------------------------
+  async function loadFeed(more) {
+    var f = C.feed;
+    if (f.loading || (more && f.done) || !available()) return;
+    f.loading = true; f.error = false; again();
+    try {
+      var c = await client();
+      var cursor = more && f.rows.length ? f.rows[f.rows.length - 1].published_at : null;
+      var r = await c.rpc("circle_feed", { p_club_id: C.clubId, p_cursor: cursor, p_limit: PAGE });
+      if (r.error) throw r.error;
+      var page = Array.isArray(r.data) ? r.data : [];
+      f.rows = more ? f.rows.concat(page) : page;
+      f.done = page.length < PAGE; f.loaded = true;
+    } catch (e) { f.error = true; }
+    f.loading = false; again();
+  }
   async function loadAnnouncements() {
     var a = C.ann;
     if (a.loading || !available()) return;
@@ -69,9 +91,10 @@
   function ensureLoaded() {
     var i = info();
     if (C.clubId !== i.clubId) { reset(); C.clubId = i.clubId; }
+    if (!C.feed.loaded && !C.feed.loading && !C.feed.error) setTimeout(function () { loadFeed(false); }, 0);
     if (!C.ann.loaded && !C.ann.loading && !C.ann.error) setTimeout(loadAnnouncements, 0);
   }
-  function refresh() { C.ann.error = false; C.ann.loaded = false; C.members.loaded = false; again(); }
+  function refresh() { C.feed.error = false; C.ann.error = false; C.feed.loaded = false; C.ann.loaded = false; C.members.loaded = false; again(); }
 
   // ---- Actions ----------------------------------------------------------------------
   function errText(e, fallback) {
@@ -82,6 +105,31 @@
     return fallback;
   }
   function newKey() { try { return crypto.randomUUID(); } catch (e) { return null; } }
+
+  async function react(postId, kind) {
+    var row = C.feed.rows.find(function (r) { return r.post_id === postId; });
+    if (!row || C.busy["r:" + postId + kind]) return;
+    C.busy["r:" + postId + kind] = true;
+    var mine = (row.my_reactions || []).slice(), origCounts = Object.assign({}, row.reaction_counts || {}), counts = Object.assign({}, origCounts);
+    var had = mine.indexOf(kind) >= 0;
+    // Optimistic, rolled back if the server says no.
+    row.my_reactions = had ? mine.filter(function (k) { return k !== kind; }) : mine.concat(kind);
+    counts[kind] = Math.max(0, (counts[kind] || 0) + (had ? -1 : 1));
+    row.reaction_counts = counts;
+    again();
+    try {
+      var c = await client();
+      var args = { p_post_id: postId, p_kind: kind };
+      var key = newKey(); if (key) args.p_idempotency_key = key;
+      var r = await c.rpc("toggle_reaction", args);
+      if (r.error) throw r.error;
+    } catch (e) {
+      row.my_reactions = mine; row.reaction_counts = origCounts;
+      toast(errText(e, "התגובה לא נשמרה, נסו שוב"));
+    }
+    delete C.busy["r:" + postId + kind];
+    again();
+  }
 
   async function postAnnouncement(body, pinned) {
     var text = String(body || "").trim();
@@ -128,13 +176,18 @@
   }
   function runConfirmed(p) {
     if (!p) return;
-    if (p.op === "delete-announcement") {
+    if (p.op === "delete-post") {
+      simpleRpc("post_delete", { post_id: p.id }, "הפוסט נמחק", function () {
+        C.feed.rows = C.feed.rows.filter(function (r) { return r.post_id !== p.id; });
+      });
+    } else if (p.op === "delete-announcement") {
       simpleRpc("club_announcement_delete", { p_id: p.id }, "ההודעה נמחקה", function () {
         C.ann.rows = C.ann.rows.filter(function (r) { return r.id !== p.id; });
       });
     } else if (p.op === "remove-member") {
       simpleRpc("remove_member", { p_club_id: C.clubId, p_user_id: p.id }, "החבר/ה הוסר/ה", function () {
         C.members.rows = C.members.rows.filter(function (r) { return r.user_id !== p.id; });
+        C.feed.loaded = false; C.feed.rows = []; C.feed.done = false;
       });
     } else if (p.op === "rotate") {
       rotateLink();
@@ -171,9 +224,36 @@
       : "";
     var body = a.error ? '<div style="color:var(--steel); font-size:13px; margin-bottom:12px;">לא הצלחנו לטעון הודעות.</div>'
       : (a.loaded && !rows ? "" : rows);
-    if (!form && !body && a.loaded) body = '<div class="card" style="text-align:center; color:var(--steel);">אין הודעות כרגע.</div>';
     if (!form && !body) return "";
     return '<h2 class="settings-block-title" style="margin:6px 0 8px;">הודעות</h2>' + form + body;
+  }
+
+  function reactionsHtml(r) {
+    var mine = r.my_reactions || [], counts = r.reaction_counts || {};
+    return '<div class="chip-row" style="margin-top:10px;" role="group" aria-label="תגובות">' + KINDS.map(function (k) {
+      var on = mine.indexOf(k.kind) >= 0, n = counts[k.kind] || 0;
+      return '<button class="chip-btn' + (on ? " primary" : "") + '" data-club="react" data-id="' + esc(r.post_id) + '" data-kind="' + k.kind +
+        '" aria-pressed="' + on + '" aria-label="' + esc(k.label + (n ? ", " + n : "")) + '"><span aria-hidden="true">' + k.emoji + "</span>" + (n ? " " + n : "") + "</button>";
+    }).join("") + "</div>";
+  }
+  function postHtml(r, staff) {
+    var del = staff ? '<button class="link-btn link-btn--tap" data-club="del-post" data-id="' + esc(r.post_id) + '">מחיקת הפוסט</button>' : "";
+    return '<article class="card" style="margin-bottom:10px;" aria-label="' + esc("פוסט של " + (r.author_name || "חבר/ה")) + '">' +
+      '<div class="who" style="margin:0 0 8px;"><div class="who-avatar" aria-hidden="true">' + esc(r.author_emoji || "🙂") + "</div>" +
+      '<div style="flex:1; min-width:0;"><div class="who-name">' + name(r.author_name) + '</div><div class="who-sub">' + esc(when(r.published_at)) + "</div></div></div>" +
+      (r.title ? '<div style="font-weight:800; font-size:15px;" dir="auto">' + bidiText(r.title) + "</div>" : "") +
+      (r.result_text ? '<div style="font-size:14px; margin-top:2px;" dir="auto">' + bidiText(r.result_text) + "</div>" : "") +
+      (r.body ? '<div style="color:var(--steel); font-size:13.5px; margin-top:6px; white-space:pre-wrap;" dir="auto">' + bidiText(r.body) + "</div>" : "") +
+      reactionsHtml(r) + (del ? '<div style="margin-top:4px;">' + del + "</div>" : "") + "</article>";
+  }
+  function feedHtml(staff) {
+    var f = C.feed;
+    var head = '<h2 class="settings-block-title" style="margin:14px 0 8px;">הפיד</h2>';
+    if (f.error) return head + '<div class="card" style="text-align:center;"><div style="margin-bottom:10px;">לא הצלחנו לטעון את הפיד.</div><button class="chip-btn" data-club="retry">ניסיון חוזר</button></div>';
+    if (!f.loaded) return head + '<div style="color:var(--steel); text-align:center; padding:16px;" role="status">טוענים…</div>';
+    if (!f.rows.length) return head + '<div class="card" style="text-align:center; color:var(--steel);">עוד אין פוסטים במועדון.</div>';
+    return head + f.rows.map(function (r) { return postHtml(r, staff); }).join("") +
+      (f.done ? "" : '<div style="text-align:center;"><button class="chip-btn" data-club="more"' + (f.loading ? " disabled" : "") + ">עוד פוסטים</button></div>");
   }
 
   function membersHtml(i) {
@@ -212,8 +292,79 @@
       '<div class="scene-page__intro"><div class="scene-page__brand">' + esc(typeof brandWordmark === "function" ? brandWordmark() : "") + "</div>" +
       '<h1 id="pageTitle-club" class="scene-page__title">' + esc(i.clubName || "המועדון") + "</h1></div>" +
       '<div class="scene-sheet"><div class="stripe-ribbon" aria-hidden="true"></div>' +
-      announcementsHtml(i.staff) + membersHtml(i) + (i.staff ? linkToolHtml() : "") +
+      announcementsHtml(i.staff) + sharingHtml() + feedHtml(i.staff) + membersHtml(i) + (i.staff ? linkToolHtml() : "") +
       "</div></section>";
+  }
+
+  // ---- Sharing workouts to the club ----------------------------------------------------
+  // Owner decision (2026-11-11): connected mode has a feed and reactions. In a club every logged
+  // workout is posted by default, with no kilograms (circle_share_defaults('club'), 202611120001).
+  // The member's own setting always wins (circle_members.share_defaults, set_share_defaults). The unit
+  // is a training DAY, the same as BOX-LOG: one post per member per day, upserted on
+  // (author_id, club_id, source_type, source_record_id) so a second lift that day updates it.
+  // What is sent: the movement or WOD names and the results without weights, nothing else. Body weight
+  // is a different record and never reaches here.
+  var CLUB_DEFAULTS = { share_workouts: true, show_weights: false };
+  function shareDefaults() { return Object.assign({}, CLUB_DEFAULTS, info().shareDefaults || {}); }
+  function sharingOn() { return shareDefaults().share_workouts === true; }
+  /** The row for one day, or null when nothing is sent. Pure: summary is clubDaySummary(day). */
+  function dayPostRow(summary, clubId, userId, defaults) {
+    if (!summary || !summary.day || !clubId || !userId || !defaults || defaults.share_workouts !== true) return null;
+    var lines = (summary.lines || []).filter(function (l) { return l && l.title; });
+    if (!lines.length) return null;
+    var text = lines.map(function (l) {
+      var t = defaults.show_weights === true ? l.text : l.textNoWeight;
+      return t ? l.title + " " + t : l.title;
+    }).join(" · ");
+    return {
+      author_id: userId, club_id: clubId, source_type: "strength_entry", source_record_id: "day:" + summary.day,
+      visibility: "club", occurred_on: summary.day,
+      title: (lines.length === 1 ? lines[0].title : lines[0].title + " ועוד " + (lines.length - 1)).slice(0, 120),
+      result_text: text.slice(0, 240) || null,
+      rx: lines.length === 1 && typeof lines[0].rx === "boolean" ? lines[0].rx : null,
+    };
+  }
+  var posting = {};
+  /** Called by app.js after a workout is saved. Silent on success; a failure never touches the log. */
+  async function postDay(day) {
+    var i = info();
+    if (!available() || !i.userId || !day || posting[day]) return false;
+    var summary = typeof clubDaySummary === "function" ? clubDaySummary(day) : null;
+    var row = dayPostRow(summary, i.clubId, i.userId, shareDefaults());
+    if (!row) return false;
+    posting[day] = true;
+    try {
+      var c = await client();
+      var r = await c.from("workout_posts").upsert(row, { onConflict: "author_id,club_id,source_type,source_record_id" });
+      if (r.error) throw r.error;
+      C.feed.loaded = false;
+      return true;
+    } catch (e) {
+      toast("האימון נשמר בטלפון. השיתוף במועדון לא הצליח הפעם.");
+      return false;
+    } finally { delete posting[day]; }
+  }
+  async function setSharing(on) {
+    if (!available() || C.busy.share) return;
+    C.busy.share = true; again();
+    try {
+      var c = await client();
+      var r = await c.rpc("set_share_defaults", { p_club_id: C.clubId, p_defaults: { share_workouts: !!on, show_weights: false } });
+      if (r.error) throw r.error;
+      connect().setShareDefaults({ share_workouts: !!on, show_weights: false });
+      toast(on ? "האימונים שלכם ישותפו במועדון" : "האימונים שלכם לא ישותפו במועדון");
+    } catch (e) { toast(errText(e, "השינוי לא נשמר, נסו שוב")); }
+    delete C.busy.share; again();
+  }
+  function sharingHtml() {
+    var on = sharingOn();
+    return '<div class="card" style="margin-bottom:12px;">' +
+      '<div style="font-weight:700; font-size:14px; color:var(--chalk); margin-bottom:4px;">שיתוף האימונים שלי</div>' +
+      '<div style="color:var(--steel); font-size:12.5px; margin-bottom:10px;">' +
+      (on ? "כל אימון שנרשם מופיע בפיד של המועדון: שם התרגיל או האימון והתוצאה, בלי משקלים. משקל גוף לא נשלח אף פעם."
+          : "האימונים שלכם נשארים בטלפון בלבד. אפשר לראות את הפיד ולהגיב.") + "</div>" +
+      '<button class="chip-btn" data-club="share" data-on="' + (on ? "0" : "1") + '" style="width:100%; min-height:44px;"' + (C.busy.share ? " disabled" : "") + ">" +
+      (on ? "להפסיק לשתף" : "לשתף את האימונים שלי") + "</button></div>";
   }
 
   // ---- Events -----------------------------------------------------------------------
@@ -221,8 +372,13 @@
     var t = e.target.closest && e.target.closest("[data-club]");
     if (!t) return;
     var a = t.getAttribute("data-club"), id = t.getAttribute("data-id");
-    if (a === "pin") setPinned(id, t.getAttribute("data-pinned") === "1");
+    if (a === "react") react(id, t.getAttribute("data-kind"));
+    else if (a === "share") setSharing(t.getAttribute("data-on") === "1");
+    else if (a === "more") loadFeed(true);
+    else if (a === "retry") { C.feed.error = false; C.ann.error = false; again(); }
+    else if (a === "pin") setPinned(id, t.getAttribute("data-pinned") === "1");
     else if (a === "del-ann") askConfirm({ title: "מחיקת הודעה", message: "ההודעה תימחק לכל המועדון.", confirmLabel: "מחיקה", payload: { op: "delete-announcement", id: id } });
+    else if (a === "del-post") askConfirm({ title: "מחיקת פוסט", message: "הפוסט יימחק לכל המועדון.", confirmLabel: "מחיקה", payload: { op: "delete-post", id: id } });
     else if (a === "rm-member") askConfirm({ title: "הסרת חבר/ה", message: (t.getAttribute("data-name") || "החבר/ה") + " יוסר/ו מהמועדון, והפוסטים שלהם יימחקו.", confirmLabel: "הסרה", payload: { op: "remove-member", id: id } });
     else if (a === "rotate") askConfirm({ title: "קישור הצטרפות חדש", message: "הקישור הנוכחי יפסיק לעבוד ולא יהיה אפשר לשחזר אותו.", confirmLabel: "יצירת קישור חדש", payload: { op: "rotate" } });
     else if (a === "members") { C.members.open = !C.members.open; if (C.members.open && !C.members.loaded) loadMembers(); again(); }
@@ -252,5 +408,6 @@
     });
   }
 
-  window.haimuniaClub = { init: init, available: available, renderTab: renderTab, runConfirmed: runConfirmed, refresh: refresh };
+  window.haimuniaClub = { init: init, available: available, renderTab: renderTab, runConfirmed: runConfirmed, refresh: refresh,
+    postDay: postDay, dayPostRow: dayPostRow, sharingOn: sharingOn };
 })();
