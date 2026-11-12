@@ -304,6 +304,7 @@
   // (author_id, club_id, source_type, source_record_id) so a second lift that day updates it.
   // What is sent: the movement or WOD names and the results without weights, nothing else. Body weight
   // is a different record and never reaches here.
+  function cid() { return C.clubId || info().clubId; }
   var CLUB_DEFAULTS = { share_workouts: true, show_weights: false };
   function shareDefaults() { return Object.assign({}, CLUB_DEFAULTS, info().shareDefaults || {}); }
   function sharingOn() { return shareDefaults().share_workouts === true; }
@@ -325,31 +326,101 @@
     };
   }
   var posting = {};
-  /** Called by app.js after a workout is saved. Silent on success; a failure never touches the log. */
+  /** The id of my own live post with this source_record_id in the club, or null (RLS shows no removed row). */
+  async function myPostId(c, sourceRecordId) {
+    var r = await c.from("workout_posts").select("id").eq("author_id", info().userId).eq("club_id", cid())
+      .eq("source_record_id", sourceRecordId).limit(1);
+    if (r.error) throw r.error;
+    return r.data && r.data[0] ? r.data[0].id : null;
+  }
+  // A removed post (post_delete is a soft delete) keeps its key, and it is invisible to its own author,
+  // so an upsert onto it is refused. A day that comes back after its post was removed (by its member
+  // here, or by the coach) gets the next key: day:D, then day:D:2, day:D:3. The count is kept on this
+  // phone, keyed by club and day.
+  var REV_KEY = "haimunia:clubDayRev";
+  function revs() { try { var v = JSON.parse(localStorage.getItem(REV_KEY) || "{}"); return v && typeof v === "object" ? v : {}; } catch (e) { return {}; } }
+  function dayKey(day) { var n = revs()[cid() + "|" + day] || 0; return n ? "day:" + day + ":" + (n + 1) : "day:" + day; }
+  function bumpDay(day) {
+    var v = revs(), k = cid() + "|" + day; v[k] = (v[k] || 0) + 1;
+    try { localStorage.setItem(REV_KEY, JSON.stringify(v)); } catch (e) { /* the retry below still works this once */ }
+  }
+  function rlsRefused(e) { return /row-level security|violates|42501/i.test(String((e && (e.message || e.code)) || "")); }
+  /**
+   * Called by app.js after a workout is saved, deleted or restored. The day's post follows the log:
+   * updated while the day has logged results, removed when its last one is deleted. Silent on success;
+   * a failure never touches the log.
+   */
   async function postDay(day) {
     var i = info();
-    if (!available() || !i.userId || !day || posting[day]) return false;
+    if (!available() || !i.userId || !day) return false;
+    if (posting[day]) { posting[day] = "again"; return false; }
     var summary = typeof clubDaySummary === "function" ? clubDaySummary(day) : null;
-    var row = dayPostRow(summary, i.clubId, i.userId, shareDefaults());
-    if (!row) return false;
+    var defaults = shareDefaults();
+    var row = dayPostRow(summary, i.clubId, i.userId, defaults);
+    var empty = !summary || !(summary.lines || []).length;
+    if (!row && !(empty && defaults.share_workouts === true)) return false;
     posting[day] = true;
     try {
       var c = await client();
-      var r = await c.from("workout_posts").upsert(row, { onConflict: "author_id,club_id,source_type,source_record_id" });
-      if (r.error) throw r.error;
+      if (row) {
+        var conflict = { onConflict: "author_id,club_id,source_type,source_record_id" };
+        row.source_record_id = dayKey(day);
+        var r = await c.from("workout_posts").upsert(row, conflict);
+        if (r.error && rlsRefused(r.error)) {
+          // This day's post was removed earlier: write it under the next key.
+          bumpDay(day); row.source_record_id = dayKey(day);
+          r = await c.from("workout_posts").upsert(row, conflict);
+        }
+        if (r.error) throw r.error;
+      } else {
+        // The day's last entry was deleted: the post goes too, and a later entry that day starts a new one.
+        var id = await myPostId(c, dayKey(day));
+        if (id) { var d = await c.rpc("post_delete", { post_id: id }); if (d.error) throw d.error; bumpDay(day); }
+      }
       C.feed.loaded = false;
       return true;
     } catch (e) {
-      toast("האימון נשמר בטלפון. השיתוף במועדון לא הצליח הפעם.");
+      toast("השינוי נשמר בטלפון. המועדון לא התעדכן הפעם.");
       return false;
-    } finally { delete posting[day]; }
+    } finally {
+      var redo = posting[day] === "again";
+      delete posting[day];
+      if (redo) postDay(day);
+    }
+  }
+  /** A personal record as a percent improvement, never kilograms (club default share_prs, percent only). */
+  async function postPr(entryId, movementName, pct) {
+    var d = shareDefaults();
+    if (!available() || !entryId || !(pct > 0) || d.share_workouts !== true || d.share_prs === false) return false;
+    try {
+      var c = await client();
+      var args = { p_club_id: cid(), record_id: "pr:" + entryId, note: "שיא אישי ב" + String(movementName || "").slice(0, 80) + ": +" + pct + "%" };
+      var key = newKey(); if (key) args.p_idempotency_key = key;
+      var r = await c.rpc("pr_share", args);
+      if (r.error) throw r.error;
+      C.feed.loaded = false;
+      return true;
+    } catch (e) { toast("השיא נשמר בטלפון. השיתוף במועדון לא הצליח הפעם."); return false; }
+  }
+  /** The PR post of a deleted entry is removed with it. */
+  async function removePr(entryId) {
+    if (!available() || !entryId) return false;
+    try {
+      var c = await client();
+      var id = await myPostId(c, "pr:" + entryId);
+      if (!id) return false;
+      var d = await c.rpc("post_delete", { post_id: id });
+      if (d.error) throw d.error;
+      C.feed.loaded = false;
+      return true;
+    } catch (e) { return false; }
   }
   async function setSharing(on) {
     if (!available() || C.busy.share) return;
     C.busy.share = true; again();
     try {
       var c = await client();
-      var r = await c.rpc("set_share_defaults", { p_club_id: C.clubId, p_defaults: { share_workouts: !!on, show_weights: false } });
+      var r = await c.rpc("set_share_defaults", { p_club_id: cid(), p_defaults: { share_workouts: !!on, show_weights: false } });
       if (r.error) throw r.error;
       connect().setShareDefaults({ share_workouts: !!on, show_weights: false });
       toast(on ? "האימונים שלכם ישותפו במועדון" : "האימונים שלכם לא ישותפו במועדון");
@@ -409,5 +480,5 @@
   }
 
   window.haimuniaClub = { init: init, available: available, renderTab: renderTab, runConfirmed: runConfirmed, refresh: refresh,
-    postDay: postDay, dayPostRow: dayPostRow, sharingOn: sharingOn };
+    postDay: postDay, postPr: postPr, removePr: removePr, dayPostRow: dayPostRow, sharingOn: sharingOn };
 })();

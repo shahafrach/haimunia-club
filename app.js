@@ -2082,6 +2082,29 @@ function clubDaySummary(day) {
   for (const e of wodEntries) if (e.date === day) { const l = clubWodLine(e); if (l) lines.push(l); }
   return { day, lines };
 }
+// A PR as a percent improvement (club default: PRs as percent, never kilograms). Computed here, from
+// the log on this phone: the club has no cloud copy of the private log (owner decision 3).
+function clubPrPercent(entry, detail) {
+  if (!entry) return null;
+  if (entry.type === "duration") {
+    const prev = bestDurationFor(entry.exerciseId, entry.id) || 0;
+    return prev > 0 && entry.durationSeconds > prev ? Math.round((entry.durationSeconds - prev) / prev * 1000) / 10 : null;
+  }
+  if (!detail) return null;
+  const [now, prev] = detail.repRecordPR && detail.prevRepRecord > 0 ? [detail.weight, detail.prevRepRecord]
+    : detail.est1rmPR && detail.prevEst1RM > 0 ? [detail.est, detail.prevEst1RM] : [0, 0];
+  return prev > 0 && now > prev ? Math.round((now - prev) / prev * 1000) / 10 : null;
+}
+function shareRecordToClub(entry, detail) {
+  try {
+    const pct = clubPrPercent(entry, detail);
+    const mov = movementById(entry.exerciseId);
+    if (pct && mov && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postPr(entry.id, mov.name, pct);
+  } catch (e) { /* never in the way of the log */ }
+}
+function removeRecordFromClub(entryId) {
+  try { if (entryId && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.removePr(entryId); } catch (e) { /* never in the way */ }
+}
 function shareDayToClub(day) {
   try { if (day && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postDay(day); } catch (e) { /* never in the way of the log */ }
 }
@@ -2255,6 +2278,7 @@ async function saveSet(sanityConfirmed) {
   // A new entry is a workout logged; correcting an old one is not.
   if (!existing) countUsage("workout_logged");
   shareDayToClub(entry && entry.date);
+  if (celebratePR && entry) shareRecordToClub(entry, prDetail);
   } finally { savingSet = false; }
 }
 // A ladder (working-set session: same exercise/day, different weight+reps
@@ -2618,6 +2642,8 @@ async function deleteEntry(id) {
   if (removed) {
     const mov = movementById(removed.exerciseId);
     offerUndo(`${mov ? mov.name : "הסט"} — ${entrySummary(removed)} נמחק`, () => restoreEntry(removed));
+    shareDayToClub(removed.date);
+    removeRecordFromClub(removed.id);
   }
   render();
 }
@@ -2629,6 +2655,7 @@ async function restoreEntry(entry) {
   entries.sort((a, b) => (b.ts || 0) - (a.ts || 0));
   try { await dbPut(entry); storageOK = true; } catch (e) { noteStorageError(e); }
   render();
+  shareDayToClub(entry.date);
 }
 
 // ---------- Bodyweight ----------
@@ -4193,6 +4220,7 @@ async function deleteWodEntry(id) {
   if (removed) {
     const w = wodById(removed.wodId);
     offerUndo(`${w ? w.name : "האימון"} — ${formatWodEntry(removed)} נמחק`, () => restoreWodEntry(removed));
+    shareDayToClub(removed.date);
   }
   render();
 }
@@ -4215,6 +4243,7 @@ async function restoreWodEntry(entry) {
   wodEntries.sort((a, b) => (b.ts || 0) - (a.ts || 0));
   try { await dbPutWodEntry(entry); storageOK = true; } catch (e) { noteStorageError(e); }
   render();
+  shareDayToClub(entry.date);
 }
 
 let wodPrFlashTimeout = null;

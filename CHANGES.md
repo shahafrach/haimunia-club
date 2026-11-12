@@ -12,6 +12,12 @@ the owner and the coach) and adds what the feed was missing: workouts.
   nothing more is posted. The feed and reactions stay visible either way.
 - A failed share never touches the log: the entry is saved on the phone first,
   and a short note says the club did not get it this time.
+- Deleting a day's last lift or WOD removes that day's post. Undo, or a new
+  entry that day, posts it again. If the post was removed earlier, by the member
+  or the coach, it comes back under a new key.
+- A personal record also goes to the club as a percent improvement, for example
+  "שיא אישי בסקוואט: +5%", never kilograms. It is computed on the phone from the
+  log there, follows the same switch, and is removed if its entry is deleted.
 - The membership query now looks for the club only, so an account that is also
   in BOX-LOG circles still finds its club.
 

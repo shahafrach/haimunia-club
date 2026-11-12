@@ -26,7 +26,7 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, sha
     { user_id: OTHER, role: "member", joined_at: "2026-11-03", profiles: { display_name: "נועה", emoji: "🔥" } },
     { user_id: ME, role: role, joined_at: "2026-11-04", profiles: { display_name: "אני", emoji: "💪" } },
   ].filter((m) => m.user_id !== ME || role === "member" || false);
-  const state = { announcements: [{ id: "a1", body: "אימון חג בשישי", pinned: true, created_at: "2026-11-09T08:00:00Z" }, { id: "a2", body: "הודעה ישנה", pinned: false, created_at: "2026-11-01T08:00:00Z" }] };
+  const state = { posts: [], removed: [], announcements: [{ id: "a1", body: "אימון חג בשישי", pinned: true, created_at: "2026-11-09T08:00:00Z" }, { id: "a2", body: "הודעה ישנה", pinned: false, created_at: "2026-11-01T08:00:00Z" }] };
   const meId = role === "member" ? ME : role === "coach" ? COACH : OWNER;
   const client = {
     auth: {
@@ -39,6 +39,12 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, sha
       if (n === "circle_feed") return { data: a.p_cursor ? [] : feed, error: null };
       if (n === "toggle_reaction") return { data: true, error: null };
       if (n === "rotate_club_link") return { data: "cd".repeat(32), error: null };
+      if (n === "post_delete") {
+        const p = state.posts.find((x) => x.id === a.post_id);
+        if (p) { state.posts = state.posts.filter((x) => x !== p); state.removed.push(p.source_record_id); }
+        return { data: null, error: null };
+      }
+      if (n === "pr_share") return { data: "pr-post", error: null };
       return { data: null, error: null };
     },
     from: (t) => {
@@ -48,12 +54,22 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, sha
         then: (res) => {
           if (t === "circle_members") return res({ data: q._members ? members : [{ club_id: "c1", role, share_defaults: shareDefaults, clubs: { type: "club", name: "האימוניה" } }], error: null });
           if (t === "club_announcements") return res({ data: state.announcements, error: null });
+          if (t === "workout_posts") return res({ data: state.posts.filter((p) => p.source_record_id === q._src), error: null });
           return res({ data: [], error: null });
         },
       };
       // The same table answers two questions: "which club am I in" (own row) and "who is in it" (the roster).
       const sel = q.select; q.select = (cols) => { q._members = /profiles/.test(cols || ""); return sel(); };
-      q.upsert = async (row, opts) => { calls.push(["upsert:" + t, row, opts]); return { data: null, error: upsertFail ? { message: upsertFail } : null }; };
+      q.upsert = async (row, opts) => {
+        calls.push(["upsert:" + t, row, opts]);
+        if (upsertFail) return { data: null, error: { message: upsertFail } };
+        if (t === "workout_posts") {
+          if (state.removed.includes(row.source_record_id)) return { data: null, error: { message: "new row violates row-level security policy for table \"workout_posts\"" } };
+          if (!state.posts.some((p) => p.source_record_id === row.source_record_id)) state.posts.push({ id: "wp" + (state.posts.length + 1), source_record_id: row.source_record_id });
+        }
+        return { data: null, error: null };
+      };
+      const eq = q.eq; q.eq = (col, val) => { if (col === "source_record_id") q._src = val; return eq(); };
       return q;
     },
   };
@@ -182,7 +198,7 @@ test("the club source never touches the private log or any other table", async (
   assert.doesNotMatch(src, /private_records|bodyweight|dbGet|dbPut|entries\b/i);
   const tables = [...src.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]).sort();
   assert.deepEqual([...new Set(tables)], ["circle_members", "club_announcements", "workout_posts"]);
-  assert.doesNotMatch(src, /\.from\("workout_posts"\)\.(select|delete|update|insert)/, "workout_posts is only ever upserted, one row per day");
+  assert.doesNotMatch(src, /\.from\("workout_posts"\)\.(delete|update|insert)/, "workout_posts is upserted or read; removal goes through post_delete");
 });
 
 // ---- Sharing workouts (owner decision 2026-11-11: feed and reactions; club default: every workout, no weights) ----
@@ -242,4 +258,58 @@ test("dayPostRow: nothing without consent or without lines; weights only when th
     assert.equal(f(sum, "c1", ME, { share_workouts: true, show_weights: false }).result_text, "סקוואט 5 × 1");
     assert.equal(f(sum, "c1", ME, { share_workouts: true, show_weights: true }).result_text, "סקוואט 100 ק״ג × 5 × 1");
   });
+});
+
+test("deleting the day's last entry removes the day's post; logging again that day starts a new one", async () => {
+  const { window, calls, state } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  window.choosePickedMovement("back-squat");
+  window.applyFieldValue("step", "weight", 100);
+  window.applyFieldValue("step", "reps", 5);
+  await window.saveSet();
+  await until(() => state.posts.length === 1, "posted");
+  const day = state.posts[0].source_record_id;
+  const id = (await window.buildBackupPayload()).entries[0].id;
+  await window.deleteEntry(id);
+  await until(() => rpcs(calls, "post_delete").length === 1, "post_delete");
+  assert.equal(rpcs(calls, "post_delete")[0][1].post_id, "wp1");
+  assert.equal(state.posts.length, 0);
+  window.choosePickedMovement("back-squat");
+  window.applyFieldValue("step", "weight", 90);
+  window.applyFieldValue("step", "reps", 5);
+  await window.saveSet();
+  await until(() => state.posts.length === 1, "posted again");
+  assert.equal(state.posts[0].source_record_id, day + ":2", "a new key, not the removed one");
+});
+
+test("a day whose post the coach removed is written under the next key", async () => {
+  const { window, state } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  const today = window.todayISO();
+  state.removed.push("day:" + today);
+  window.choosePickedMovement("back-squat");
+  window.applyFieldValue("step", "weight", 70);
+  window.applyFieldValue("step", "reps", 5);
+  await window.saveSet();
+  await until(() => state.posts.length === 1, "posted");
+  assert.equal(state.posts[0].source_record_id, "day:" + today + ":2");
+});
+
+test("a PR goes to the club as a percent, never kilograms; its post goes when the entry is deleted", async () => {
+  const { window, calls, state } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  assert.equal(window.clubPrPercent({ type: "reps" }, { repRecordPR: true, weight: 105, prevRepRecord: 100 }), 5);
+  assert.equal(window.clubPrPercent({ type: "reps" }, { repRecordPR: false, est1rmPR: true, est: 110, prevEst1RM: 100 }), 10);
+  assert.equal(window.clubPrPercent({ type: "reps" }, { repRecordPR: true, weight: 100, prevRepRecord: 0 }), null, "no history, no percent");
+  await window.haimuniaClub.postPr("e1", "סקוואט", 5);
+  const [, args] = rpcs(calls, "pr_share")[0];
+  assert.equal(args.p_club_id, "c1"); assert.equal(args.record_id, "pr:e1");
+  assert.equal(args.note, "שיא אישי בסקוואט: +5%");
+  assert.equal("p_weight" in args, false, "no absolute weight");
+  state.posts.push({ id: "wp-pr", source_record_id: "pr:e1" });
+  await window.haimuniaClub.removePr("e1");
+  assert.equal(rpcs(calls, "post_delete").at(-1)[1].post_id, "wp-pr");
+  const off = await boot({ shareDefaults: { share_workouts: false } });
+  await until(() => off.window.haimuniaClub.available(), "in club");
+  assert.equal(await off.window.haimuniaClub.postPr("e2", "סקוואט", 5), false, "sharing off: no PR either");
 });
