@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.1.1";
+const APP_VERSION = "3.4.1";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -172,6 +172,10 @@ function getNavItems() {
     { id: "calendar", tab: "calendar", rowId: "tabCalendarBtn", label: "לוח שנה", tint: "yellow", icon: ICONS.calendarIcon, main: true, group: "mine" },
     { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "אימונים", tint: "purple", icon: ICONS.stopwatchIcon, main: true, group: "mine" },
   ];
+  // The club tab exists only for a connected member of the club.
+  if (window.haimuniaClub && window.haimuniaClub.available()) {
+    items.push({ id: "club", tab: "club", rowId: "tabClubBtn", label: "מועדון", tint: "energy", icon: ICONS.clubIcon, main: true, group: "club" });
+  }
   return items;
 }
 // The fixed bottom tab bar (#bottomTabBar, index.html) - one tap to any of
@@ -2379,6 +2383,7 @@ function runAppConfirm() {
   else if (c.action === "delete-measure-type") deleteMeasureType(c.payload.id);
   else if (c.action === "delete-measurement-entry") deleteMeasurementEntry(c.payload.id);
   else if (c.action === "delete-custom-wod") deleteCustomWod(c.payload.id);
+  else if (c.action === "club-action") window.haimuniaClub.runConfirmed(c.payload);
   else if (c.action === "save-set") saveSet(true);
   else if (c.action === "save-wod") saveWod(true);
   else render();
@@ -2897,7 +2902,10 @@ function saveWelcomeForm(name) {
   // Reading it unconditionally is deliberate: it keeps ONE save path, so
   // editing the profile can never silently discard a date the member typed.
   saveBoxStartDate(boxInput ? boxInput.value : "");
+  const wasFirstRun = !welcomeEditing;
   saveUserName(name);
+  // First run only: ask once whether to connect or stay offline.
+  if (wasFirstRun && window.haimuniaConnect) window.haimuniaConnect.openFirstRun();
   // Design spec §1.2. This function used to open the five-screen explainer
   // straight after the welcome sheet - a second full-screen gate whose
   // primary button carried the same label as the one just tapped. The
@@ -3190,7 +3198,7 @@ function triggerImport() {
 // received from someone else. Every record is rebuilt field by field from a
 // whitelist; nothing from the file object is ever stored or rendered as-is.
 async function importDataFromFile(file) {
-  const bad = (msg) => { setImportMessage(msg || "הייבוא נכשל — הקובץ אינו קובץ גיבוי תקין"); render(); };
+  const bad = (msg) => { setImportMessage(msg || "הייבוא נכשל — הקובץ אינו קובץ גיבוי תקין"); render(); return false; };
 
   if (!file || file.size > MAX_BACKUP_BYTES) {
     return bad("הייבוא נכשל — הקובץ גדול מדי (מעל 25MB)");
@@ -3200,6 +3208,16 @@ async function importDataFromFile(file) {
   try {
     data = JSON.parse(await file.text());
   } catch (e) { return bad(); }
+  return importBackupData(data, {});
+}
+
+// The ONE import path. A backup file and a transfer code (src/transfer.js) both end here, so both are
+// rebuilt field by field from the same whitelist and merged the same way. Resolves true only when the
+// records were written; false when it was refused, cancelled or invalid (the caller keeps the data
+// and can offer it again). opts.prefs: the transfer's device settings, applied by applyTransferPrefs.
+async function importBackupData(data, opts) {
+  opts = opts || {};
+  const bad = (msg) => { setImportMessage(msg || "הייבוא נכשל — הקובץ אינו קובץ גיבוי תקין"); render(); return false; };
   if (!data || typeof data !== "object" || Array.isArray(data)) return bad();
   if (data.app !== BACKUP_APP_ID) return bad(`הייבוא נכשל — הקובץ אינו גיבוי של ${brandName()}`);
   if (Number(data.version) > BACKUP_VERSION) {
@@ -3284,7 +3302,7 @@ async function importDataFromFile(file) {
   const question = hasExisting
     ? `הייבוא יוסיף ${incomingLabel} לנתונים הקיימים ולא ניתן לבטל אותו.\nלפני כן יורד גיבוי של המצב הנוכחי.\n\nלהמשיך?`
     : `לייבא ${incomingLabel}?`;
-  if (!window.confirm(question)) { setImportMessage("הייבוא בוטל"); render(); return; }
+  if (!window.confirm(question)) { setImportMessage("הייבוא בוטל"); render(); return false; }
 
   if (hasExisting) {
     try { downloadBackup(await buildBackupPayload(), `box-log-rollback-${todayISO()}.json`); } catch (e) {}
@@ -3311,6 +3329,7 @@ async function importDataFromFile(file) {
   }
 
   await reloadFromDb();
+  if (opts.prefs) await applyTransferPrefs(opts.prefs, !hasExisting);
   // Imported history is past progress, not something earned right now: the
   // 2.x app re-baselined here, and without it a restored log's next save
   // popped one celebration listing every medal it had ever earned.
@@ -3327,6 +3346,32 @@ async function importDataFromFile(file) {
   if (failed) parts.push(`${failed} נכשלו בשמירה`);
   setImportMessage(parts.join(", "));
   render();
+  return ok > 0;
+}
+
+// The device settings a transfer code carries (research D/A): name, box start, bar weight, % increment, Rx
+// default, theme, text scale. Each is checked against the same allow-list its own setter uses. A name or
+// box-start date only fills an empty one. The rest are applied only on a device with no training data yet,
+// so a transfer never overrides settings someone already chose here.
+async function applyTransferPrefs(prefs, freshDevice) {
+  if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) return;
+  try {
+    if (userName === null && typeof prefs.userName === "string" && cleanStr(prefs.userName, LIMITS.nameLen)) {
+      userName = cleanStr(prefs.userName, LIMITS.nameLen);
+      await dbSetSetting(USER_NAME_KEY, userName);
+      renderUserGreeting();
+    }
+    if (!boxStartDate && typeof prefs.boxStartDate === "string") {
+      const d = cleanISODate(prefs.boxStartDate);
+      if (d && d <= todayISO()) saveBoxStartDate(d);
+    }
+    if (!freshDevice) return;
+    if (BAR_OPTIONS.includes(prefs.barWeight)) setBarWeight(prefs.barWeight);
+    if (PCT_INCREMENTS.includes(prefs.pctIncrement)) setPctIncrement(prefs.pctIncrement);
+    if (wodEffortAnswered(prefs.wodRxDefault)) setWodRx(prefs.wodRxDefault);
+    if (prefs.theme === "light" || prefs.theme === "dark" || prefs.theme === "auto") setThemePref(prefs.theme);
+    if (prefs.textScale === "normal" || prefs.textScale === "large") setTextScalePref(prefs.textScale);
+  } catch (e) { noteStorageError(e); }
 }
 
 // Single source of truth for pulling state out of IndexedDB. Everything is
@@ -3382,6 +3427,7 @@ async function clearAllData() {
     await dbClearSettings();
     try { localStorage.removeItem(USER_NAME_KEY); localStorage.removeItem(LAST_EXPORT_KEY); } catch (e) {}
     userName = null;
+    if (window.haimuniaConnect) window.haimuniaConnect.forget();
     boxStartDate = null;
     seenAchievementIds = new Set();
     lastExportAt = null;
@@ -4219,6 +4265,7 @@ const ICONS = {
   bell: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
   calendarIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   chartIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M12 20V4M20 20v-7"/></svg>',
+  clubIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="7" r="2.4"/><path d="M16.5 12.2c2.7.3 4.5 2.4 4.5 5.3"/></svg>',
   stopwatchIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg>',
   logIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg>',
   communityIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="9" r="2.3"/><path d="M16.3 14c2.6.2 4.5 2.1 5 5"/></svg>',
@@ -5711,6 +5758,20 @@ function renderHistoryTab() {
 // content. Called unconditionally from render() into #settingsBody, same
 // "always regenerated into a normally-hidden container" treatment as
 // renderNavMenuList().
+function renderConnectRow() {
+  const st = window.haimuniaConnect && window.haimuniaConnect.statusLabel();
+  if (!st) return "";
+  return `<div class="settings-block">
+        <div class="settings-block-title">מועדון</div>
+        <button class="exercise-row" data-action="open-connect" style="margin-bottom:0;">
+          <div style="text-align:right;">
+            <div style="font-weight:700; font-size:13.5px;">${esc(st.title)}</div>
+            <div style="color:var(--steel); font-size:12px; margin-top:2px;">${esc(st.sub)}</div>
+          </div>
+          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
+        </button>
+      </div>`;
+}
 function renderSettingsBody() {
   const hasData = entries.length || wodEntries.length || bodyweightEntries.length || measureTypes.length;
   const days = daysSinceLastExport();
@@ -5741,6 +5802,8 @@ function renderSettingsBody() {
         </div>
         <button class="icon-chip icon-chip-steel" data-action="edit-user-name" aria-label="עריכת פרופיל">${ICONS.edit}</button>
       </div>
+
+      ${renderConnectRow()}
 
       <div class="settings-block">
         <div class="settings-block-title">מראה</div>
@@ -5807,6 +5870,8 @@ function renderSettingsBody() {
           <button class="link-btn" data-action="export-data">ייצוא גיבוי</button>
           <span style="color:var(--border); font-size:11px;">·</span>
           <button class="link-btn" data-action="import-data">ייבוא גיבוי</button>
+          <span style="color:var(--border); font-size:11px;">·</span>
+          <button class="link-btn" data-action="open-transfer">קוד העברה מהאפליקציה הישנה</button>
         </div>
         ${importMessage ? `<div class="footer-note" role="status" aria-live="polite" style="color:var(--brass); margin-bottom:8px;">${esc(importMessage)}</div>` : ""}
         <div class="footer-note" style="margin-bottom:0;">קובץ הגיבוי הוא טקסט פשוט (JSON) וכולל את יומן האימונים המלא, התרגילים והאימונים שהוספתם, משקל גוף ומדידות — בלי השם שלכם ובלי הגדרות. הוא יורד לתיקיית ההורדות של המכשיר ונשאר שם: במכשיר משותף כל מי שמשתמש בו יכול לפתוח אותו. שמרו אותו במקום בטוח, ומחקו אותו מההורדות אם אינכם צריכים אותו שם</div>
@@ -6107,6 +6172,8 @@ function render() {
       content = renderHistoryTab();
     } else if (tab === "calendar") {
       content = renderCalendarTab();
+    } else if (tab === "club") {
+      content = window.haimuniaClub ? window.haimuniaClub.renderTab() : "";
     } else if (tab === "wod") {
       content = renderWodTab();
       syncWodSaveCta(wodSubTab === "log" ? wodById(selectedWodId) : null);
@@ -7035,6 +7102,8 @@ registerAppDialog("achievements", { overlayId: "achievementsOverlay", isOpen: ()
 registerAppDialog("celebration", { overlayId: "celebrationOverlay", isOpen: () => document.getElementById("celebrationOverlay").classList.contains("open"), close: closeCelebration });
 registerAppDialog("notifications", { overlayId: "notificationsOverlay", isOpen: () => document.getElementById("notificationsOverlay").classList.contains("open"), close: closeNotifications });
 registerAppDialog("onboarding", { overlayId: "onboardingOverlay", isOpen: () => document.getElementById("onboardingOverlay").classList.contains("open"), close: closeOnboarding, escapable: false });
+registerAppDialog("connect", { overlayId: "connectOverlay", isOpen: () => !!(window.haimuniaConnect && window.haimuniaConnect.isOpen()), close: () => window.haimuniaConnect.close(), escapable: true });
+registerAppDialog("transfer", { overlayId: "transferOverlay", isOpen: () => !!(window.haimuniaTransfer && window.haimuniaTransfer.isOpen()), close: () => window.haimuniaTransfer.close(), escapable: true });
 registerAppDialog("welcome", { overlayId: "welcomeOverlay", isOpen: () => document.getElementById("welcomeOverlay").classList.contains("open"), close: closeWelcomeModal, escapable: false });
 
 // Real-user report: on a phone, with an app dialog open (achievements was
@@ -7543,6 +7612,11 @@ document.addEventListener("click", (e) => {
   else if (action === "upgrade-backup-download") { markEditionSeen(); exportData(); }
   else if (action === "upgrade-backup-dismiss") { markEditionSeen(); render(); }
   else if (action === "import-data") { triggerImport(); }
+  else if (action === "open-transfer") { closeSettings(); if (window.haimuniaTransfer) window.haimuniaTransfer.open(); }
+  else if (action === "close-transfer") {
+    if (el.id === "transferOverlay" && e.target !== el) return;
+    if (window.haimuniaTransfer) window.haimuniaTransfer.close();
+  }
   else if (action === "ask-clear") { confirmClear = true; render(); }
   else if (action === "do-clear") { clearAllData(); }
   else if (action === "cancel-clear") { confirmClear = false; render(); }
@@ -7721,6 +7795,11 @@ document.addEventListener("click", (e) => {
     showToast(`מולא: ${entrySummaryFromParts(w, r, st)}`);
   }
   else if (action === "open-support") { openSupport(); }
+  else if (action === "open-connect") { closeSettings(); if (window.haimuniaConnect) window.haimuniaConnect.open(); }
+  else if (action === "close-connect") {
+    if (el.id === "connectOverlay" && e.target !== el) return;
+    if (window.haimuniaConnect) window.haimuniaConnect.close();
+  }
   else if (action === "close-support") {
     // THE BACKDROP GUARD, missing when this shipped and reported from a real
     // phone the same day: "trying to put text it closes page". #supportOverlay
@@ -7944,6 +8023,8 @@ async function init() {
   // which a duplicate credential field is live in the document.
   setSettingsInert(true);
   renderUserGreeting();
+  if (window.haimuniaClub) window.haimuniaClub.init();
+  if (window.haimuniaConnect) window.haimuniaConnect.init();
   countUsage("app_open");
   render();
   maybeShowIOSInstallBanner();

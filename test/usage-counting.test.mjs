@@ -192,12 +192,13 @@ test("the privacy page says the same: pseudonymous, linked across days, IP logs,
   assert.match(html, /עודכן לאחרונה: 23 בספטמבר 2026/);
 });
 
-test("the CSP opens exactly one origin, for this endpoint, and only for connect", () => {
+test("the CSP opens the usage endpoint for connect only, plus Turnstile for script and frame", () => {
   const html = read("index.html");
   const csp = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
   const cfg = read("app-config.js").match(/url: "([^"]+)"/)[1];
   const hosts = [...csp.matchAll(/https?:\/\/[^\s;]+/g)].map((m) => m[0]);
-  assert.deepEqual(hosts, [cfg], csp);
+  // The other origin is Turnstile, for connected mode's sign-up challenge (script and frame only).
+  assert.deepEqual([...new Set(hosts)].sort(), [cfg, "https://challenges.cloudflare.com"].sort(), csp);
   assert.match(csp, new RegExp(`connect-src 'self' ${cfg.replace(/[.]/g, "\\.")};`));
 });
 

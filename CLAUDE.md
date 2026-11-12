@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-האימוניה training log. The live PWA members use every day, served at
-haimuniya.github.io/haimunia-app/. Members' training data lives in IndexedDB on
+האימוניה training log (the club app). The live PWA members use every day, served at
+haimunia.pages.dev. The backend (Supabase project `hvwakffluwvegedefoth`: migrations,
+Edge Functions, RLS, docs) lives in `shahafrach/haimunia-app-demo`; never change it from here. Members' training data lives in IndexedDB on
 their phones. Losing or corrupting it is the worst possible failure.
 
 ## Stack
@@ -9,11 +10,17 @@ their phones. Losing or corrupting it is the worst possible failure.
 - Buildless vanilla JS. No framework, bundler or TypeScript. Do not add one.
 - `index.html` loads the scripts in order with `<script defer>`; they share one
   global scope. `src/shared/safe-helpers.js`, `app-config.js`, `src/usage.js`,
-  `src/constants.js`, `src/format.js`, `src/sanitize.js`, `src/db.js`, `app.js`.
+  `src/constants.js`, `src/format.js`, `src/sanitize.js`, `src/db.js`, `src/connect.js`, `src/club.js`, `src/transfer.js`, `app.js`.
 - `sw.js`: service worker. A new file loaded by `index.html` must be added to
   `REQUIRED_ASSETS` or `OPTIONAL_ASSETS`.
-- CSP in `index.html` allows only the app's own origin plus the usage host. No
+- CSP in `index.html` allows only the app's own origin, the Supabase host and Turnstile (script and frame). No
   inline scripts.
+- `_headers` (Cloudflare Pages) sends the same CSP as a real header, plus `frame-ancestors`, HSTS, nosniff,
+  no-referrer, Permissions-Policy, COOP, and `no-cache` for `/`, `/index.html`, `/sw.js`. Change the
+  `<meta>` CSP and `_headers` together; `test/headers.test.mjs` fails if they drift.
+- `functions/_middleware.js` answers 404 for `test/`, `scripts/`, `package*.json`, top-level `.md`/`.sql`/`.mjs` and
+  similar (the repo root is the site). A new top-level file is served unless blocked there;
+  `test/middleware.test.mjs` forces that to be a decision.
 - `package.json` is dev-only (tests, version sync). Nothing from it ships.
 
 ## Commands
@@ -53,10 +60,22 @@ Tests boot the real `index.html` in jsdom with fake-indexeddb via
   that data. Allowed fields: `device_id`, `event`, `screen`.
 - Tests and browser checks must never send a real count. Test: `test/usage-counting.test.mjs`.
 
+## Connected mode (src/connect.js)
+
+- Optional. A member chooses at first run to connect with a username or stay offline; opening the app
+  never touches the network for an offline device. `vendor/supabase.js` and Turnstile load only on demand.
+- Private log stays on the phone. No cloud copy, no email, phone, payment or health data. Body weight
+  never leaves the device, except inside the encrypted transfer code (phase 3).
+- Always send `app = "club"` where the backend asks (push subscriptions, `notif_list` /
+  `notif_unread_count` `p_app`, bug reports).
+- The club is joined by one fixed link (`#join=<64 hex>`, read from the fragment only).
+- The design is this app's own: reuse its components and tokens, never BOX-LOG's.
+
 ## Sibling repo
 
-`haimuniya/haimunia-app-demo` is the community edition. A fix to shared screens
-usually belongs in both. Every PR says whether the sibling needs the same fix.
+`shahafrach/haimunia-app-demo` holds the backend and BOX-LOG. Read its `docs/circles/decisions.md`
+("Haimunia club") and `docs/club/research.md` before connected-mode work. A fix to shared screens
+may belong in both; every PR says whether the sibling needs the same fix.
 
 ## Releases
 

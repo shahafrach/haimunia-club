@@ -1,3 +1,49 @@
+# 3.4.1 — The club tab without a feed — 2026-11-12
+
+No workout is ever posted from this app, so the club tab no longer has a feed,
+reactions or "delete post". It shows announcements (pinned first, read-only
+for members), the member list and, for the owner and the coach, the announcement,
+remove-member and new-link tools. This replaces the feed and reactions described
+under 3.3.0.
+
+# 3.4.0 — Transfer code from the old app — 2026-11-12
+
+Settings > "קוד העברה מהאפליקציה הישנה". In the installed app, the member pastes
+the one-time code made by the old app. The encrypted backup is fetched once
+(`transfer-take`), decrypted on this phone (HKDF + AES-GCM, the key exists only
+in the code) and merged through the same import as a backup file: records, body
+weight and session notes. The name and box-start date only fill empty ones; bar
+weight, % increment, Rx default, theme and text size apply only on a device
+with no training data yet. In a browser tab the dialog says to install first.
+If the import is declined or fails after the code is spent, the data stays in
+memory so the member can retry or save it as a backup file; closing the dialog
+drops it. The backup import is now one function, `importBackupData`, shared by
+the file and the code. `src/transfer.js`, `test/transfer.test.mjs`.
+
+# 3.3.0 — The club tab — 2026-11-12
+
+A connected member of the club gets a fifth tab, מועדון: the club's feed
+(30 posts a page), reactions (אגרוף, אש, מחיאות כפיים; a member may hold all
+three), and announcements, with the pinned one first, read-only for members.
+The owner and the coach also post, pin and delete announcements, delete any
+post, remove members (never the owner) and create a new join link, each
+destructive step behind the app's own confirm sheet. The server decides what
+each role may do; the buttons are only drawn where the action can work.
+Nothing from the private log is involved. `src/club.js`, `test/club.test.mjs`.
+
+# 3.2.0 — Connect with a username, join the club — 2026-11-12
+
+First run now asks once: connect with a username, or stay offline. Staying
+offline changes nothing: the app opens without touching the network, and the
+choice is reversible from Settings (מועדון). Connecting creates an account
+(username and password, no email or phone), shows a recovery code once, and
+joins the club through the one fixed link (`#join=<token>`, or pasted), then
+asks for the name and emoji the club sees. Sign-in, sign-out and joining later
+are in the same dialog. The private log stays on the phone.
+New: `src/connect.js`, `vendor/supabase.js` (loaded only on demand). The CSP
+adds Turnstile (script and frame) for the sign-up challenge.
+`test/connect.test.mjs`.
+
 # 3.1.1 — Progress lists each lift once — 2026-09-24
 
 The Progress screen showed every logged lift twice: in the exercise list

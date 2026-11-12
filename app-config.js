@@ -17,6 +17,17 @@ window.HAIMUNIA_CONFIG = Object.freeze({
     key: "sb_publishable_MRSX0PLMZjoDIX4iuDbI2g_G2EdMRu6",
   }),
 
+  // Connected mode (src/connect.js): the same Supabase project, publishable key
+  // (public by design) and the Turnstile site key (public by design) that
+  // BOX-LOG uses. Nothing here is secret. Nothing is contacted until a member
+  // chooses to connect.
+  cloud: Object.freeze({
+    supabaseUrl: "https://hvwakffluwvegedefoth.supabase.co",
+    supabasePublishableKey: "sb_publishable_MRSX0PLMZjoDIX4iuDbI2g_G2EdMRu6",
+    captchaSiteKey: "0x4AAAAAAE6mfjw79idh0ptH",
+    app: "club",
+  }),
+
   brand: Object.freeze({
     appName: "האימוניה",
     wordmark: "האימוניה",

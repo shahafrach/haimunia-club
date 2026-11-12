@@ -65,6 +65,17 @@ export async function dismissWelcomeModal(page, name = "בדיקה") {
     { timeout: 10000 },
   );
 
+  // First run now also asks once: connect with a username, or stay offline.
+  // Scenarios run offline, so they answer "stay offline".
+  try {
+    await page.waitForSelector("#connectOverlay.open [data-connect='offline']", { timeout: 2000 });
+    await page.click("[data-connect='offline']");
+    await page.waitForFunction(
+      () => !document.getElementById("connectOverlay")?.classList.contains("open"),
+      { timeout: 10000 },
+    );
+  } catch { /* no choice dialog: a profile already existed */ }
+
   if (await overlayOpen(page, "onboardingOverlay")) {
     await page.click("[data-action='close-onboarding']");
     await page.waitForFunction(
