@@ -29,6 +29,7 @@
     view: "", busy: false, error: "", errors: {}, drafts: {},
     code: "", saved: false, copied: false,
     user: null, profile: null, inClub: null, // inClub: null = unknown
+    clubId: null, role: null, clubName: "",
     choice: null, firstRun: false, offline: false,
   };
   var client = null;
@@ -166,15 +167,23 @@
     var sess = await c.auth.getSession();
     var user = sess && sess.data && sess.data.session ? sess.data.session.user : null;
     S.user = user && !user.is_anonymous ? user : (user || null);
-    S.profile = null; S.inClub = null;
-    if (!user) return;
+    S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.clubName = "";
+    if (!user) { changed(); return; }
     var m = await c.from("circle_members").select("club_id,role").eq("user_id", user.id);
     if (m.error) throw m.error;
     S.inClub = (m.data || []).length > 0;
+    if (S.inClub) {
+      S.clubId = m.data[0].club_id; S.role = m.data[0].role;
+      var cl = await c.from("clubs").select("name").eq("id", S.clubId).maybeSingle();
+      S.clubName = (cl && cl.data && cl.data.name) || "";
+    }
     var p = await c.from("profiles").select("display_name,emoji").eq("id", user.id).maybeSingle();
     if (p.error) throw p.error;
     S.profile = p.data || null;
+    changed();
   }
+  var listeners = [];
+  function changed() { listeners.forEach(function (f) { try { f(); } catch (e) {} }); }
   function signedIn() { return !!(S.user && !S.user.is_anonymous); }
   function memberName() {
     if (S.profile && S.profile.display_name) return S.profile.display_name;
@@ -320,7 +329,8 @@
 
   async function doSignOut() {
     try { var c = await getClient(); await c.auth.signOut(); } catch (e) {}
-    S.user = null; S.profile = null; S.inClub = null; S.drafts = {};
+    S.user = null; S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.drafts = {};
+    changed();
     setChoice("offline");
     S.view = "choice"; paint();
     if (typeof showToast === "function") showToast("התנתקתם. האימונים נשארים בטלפון.");
@@ -328,7 +338,8 @@
   // "Delete everything" on the device also forgets the session, so the next person starts clean.
   function forget() {
     try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
-    S.user = null; S.profile = null; S.inClub = null; S.choice = null; joinToken = null;
+    S.user = null; S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.choice = null; joinToken = null;
+    changed();
   }
 
   // ---- Screens -----------------------------------------------------------------------
@@ -524,6 +535,13 @@
   window.haimuniaConnect = {
     init: init, open: open, close: close, openFirstRun: openFirstRun, forget: forget,
     isOpen: isOpen, enabled: enabled, parseToken: parseToken,
+    getClient: getClient,
+    onChange: function (f) { listeners.push(f); },
+    // What the club screen needs to know, nothing more.
+    info: function () {
+      return { signedIn: signedIn(), inClub: !!(signedIn() && S.inClub), userId: S.user ? S.user.id : null,
+        clubId: S.clubId, role: S.role, staff: S.role === "owner" || S.role === "coach", clubName: S.clubName };
+    },
     statusLabel: function () {
       if (!enabled()) return null;
       if (S.choice !== "connected" || !signedIn()) return { title: "חיבור למועדון", sub: "אפשר להתחבר עם שם משתמש ולהצטרף למועדון" };
