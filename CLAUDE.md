@@ -10,11 +10,17 @@ their phones. Losing or corrupting it is the worst possible failure.
 - Buildless vanilla JS. No framework, bundler or TypeScript. Do not add one.
 - `index.html` loads the scripts in order with `<script defer>`; they share one
   global scope. `src/shared/safe-helpers.js`, `app-config.js`, `src/usage.js`,
-  `src/constants.js`, `src/format.js`, `src/sanitize.js`, `src/db.js`, `src/connect.js`, `src/club.js`, `app.js`.
+  `src/constants.js`, `src/format.js`, `src/sanitize.js`, `src/db.js`, `src/connect.js`, `src/club.js`, `src/transfer.js`, `app.js`.
 - `sw.js`: service worker. A new file loaded by `index.html` must be added to
   `REQUIRED_ASSETS` or `OPTIONAL_ASSETS`.
 - CSP in `index.html` allows only the app's own origin, the Supabase host and Turnstile (script and frame). No
   inline scripts.
+- `_headers` (Cloudflare Pages) sends the same CSP as a real header, plus `frame-ancestors`, HSTS, nosniff,
+  no-referrer, Permissions-Policy, COOP, and `no-cache` for `/`, `/index.html`, `/sw.js`. Change the
+  `<meta>` CSP and `_headers` together; `test/headers.test.mjs` fails if they drift.
+- `functions/_middleware.js` answers 404 for `test/`, `scripts/`, `package*.json`, top-level `.md`/`.sql`/`.mjs` and
+  similar (the repo root is the site). A new top-level file is served unless blocked there;
+  `test/middleware.test.mjs` forces that to be a decision.
 - `package.json` is dev-only (tests, version sync). Nothing from it ships.
 
 ## Commands
