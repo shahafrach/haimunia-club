@@ -1,3 +1,11 @@
+# 3.4.1 — The club tab without a feed — 2026-11-12
+
+No workout is ever posted from this app, so the club tab no longer has a feed,
+reactions or "delete post". It shows announcements (pinned first, read-only
+for members), the member list and, for the owner and the coach, the announcement,
+remove-member and new-link tools. This replaces the feed and reactions described
+under 3.3.0.
+
 # 3.4.0 — Transfer code from the old app — 2026-11-12
 
 Settings > "קוד העברה מהאפליקציה הישנה". In the installed app, the member pastes
