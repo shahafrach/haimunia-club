@@ -99,7 +99,12 @@ await page.waitForFunction(
 await page.waitForTimeout(400);
 
 // ---- S2: the explainer is offered, not imposed -------------------------
-check("S2: nothing opens after the welcome sheet", (await openOverlays(page)).length === 0,
+// The one thing that opens is the connect-or-stay-offline choice (3.2.0). The explainer is still not a gate.
+check("S2: after the welcome sheet only the connect choice opens", (await openOverlays(page)).join(",") === "connectOverlay",
+  (await openOverlays(page)).join(", "));
+await tap("[data-connect='offline']");
+await page.waitForTimeout(300);
+check("S2: after staying offline nothing is open", (await openOverlays(page)).length === 0,
   (await openOverlays(page)).join(", "));
 const s2 = await page.evaluate(() => {
   const tour = document.querySelector("#content [data-action='open-onboarding']");
@@ -202,7 +207,8 @@ await page.waitForTimeout(300);
 // metric — the time-poor persona was told to imagine 90 seconds before his
 // kid needed him — and it is asserted rather than reported because a number
 // nobody checks is a number that creeps back.
-check("cold open to a saved first set costs 4 taps", tapsToFirstSet === 4, `${tapsToFirstSet} taps`);
+// 3.2.0: 5. The connect-or-stay-offline choice after the welcome sheet is one tap ("להישאר בלי חיבור").
+check("cold open to a saved first set costs 5 taps (4 + the connect choice)", tapsToFirstSet === 5, `${tapsToFirstSet} taps`);
 
 check("no console errors across the whole first run", errors.length === 0, errors.join(" | "));
 

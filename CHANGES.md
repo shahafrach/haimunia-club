@@ -1,3 +1,16 @@
+# 3.2.0 — Connect with a username, join the club — 2026-11-12
+
+First run now asks once: connect with a username, or stay offline. Staying
+offline changes nothing: the app opens without touching the network, and the
+choice is reversible from Settings (מועדון). Connecting creates an account
+(username and password, no email or phone), shows a recovery code once, and
+joins the club through the one fixed link (`#join=<token>`, or pasted), then
+asks for the name and emoji the club sees. Sign-in, sign-out and joining later
+are in the same dialog. The private log stays on the phone.
+New: `src/connect.js`, `vendor/supabase.js` (loaded only on demand). The CSP
+adds Turnstile (script and frame) for the sign-up challenge.
+`test/connect.test.mjs`.
+
 # 3.1.1 — Progress lists each lift once — 2026-09-24
 
 The Progress screen showed every logged lift twice: in the exercise list

@@ -14,6 +14,7 @@ import { bootApp, SCRIPT_FILES } from "./helpers/boot.mjs";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const read = (f) => readFileSync(path.join(root, f), "utf8");
+const TURNSTILE_HOST = "https://challenges.cloudflare.com";
 const USAGE_HOST = read("app-config.js").match(/url: "(https:\/\/[^"]+)"/)[1];
 
 test("the CSP names no origin but 'self' - and the usage host for connect-src only", () => {
@@ -21,6 +22,9 @@ test("the CSP names no origin but 'self' - and the usage host for connect-src on
   const directives = csp.split(";").map((d) => d.trim()).filter(Boolean);
   for (const d of directives) {
     if (d.startsWith("connect-src")) assert.equal(d, `connect-src 'self' ${USAGE_HOST}`);
+    // Connected mode: Turnstile (the sign-up challenge) is the only other origin, for scripts and its frame.
+    else if (d.startsWith("script-src")) assert.equal(d, `script-src 'self' ${TURNSTILE_HOST}`);
+    else if (d.startsWith("frame-src")) assert.equal(d, `frame-src ${TURNSTILE_HOST}`);
     else assert.doesNotMatch(d, /https?:|wss?:|\*/, d);
   }
 });
@@ -32,7 +36,8 @@ test("no shipped script names a remote host, except the usage endpoint in app-co
       // wa.me is the member's own hand-off in the support sheet, opened only
       // when they tap it; w3.org is the SVG namespace string.
       .filter((h) => !/^(wa\.me|www\.w3\.org)$/.test(h))
-      .filter((h) => !(f === "app-config.js" && `https://${h}` === USAGE_HOST));
+      .filter((h) => !(f === "app-config.js" && `https://${h}` === USAGE_HOST))
+      .filter((h) => !(f === "src/connect.js" && `https://${h}` === TURNSTILE_HOST));
     assert.deepEqual(hosts, [], `${f} names ${hosts.join(", ")}`);
   }
 });

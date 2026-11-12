@@ -61,6 +61,9 @@ await page.waitForSelector("#app", { state: "visible" });
 await page.fill("#welcomeNameInput", "בודק סבב");
 await page.click("[data-action='save-user-name']");
 await page.waitForTimeout(400);
+// 3.2.0: the connect-or-stay-offline choice is the only thing that opens; the member answers it.
+await page.click("#connectOverlay.open [data-connect='offline']");
+await page.waitForTimeout(300);
 const overlaysAfterWelcome = await page.evaluate(() =>
   [...document.querySelectorAll(".modal-overlay.open")].map((el) => el.id));
 check("nothing at all opens after the welcome sheet — the explainer is no longer a gate",

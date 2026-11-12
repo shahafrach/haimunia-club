@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.1.1";
+const APP_VERSION = "3.2.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -2897,7 +2897,10 @@ function saveWelcomeForm(name) {
   // Reading it unconditionally is deliberate: it keeps ONE save path, so
   // editing the profile can never silently discard a date the member typed.
   saveBoxStartDate(boxInput ? boxInput.value : "");
+  const wasFirstRun = !welcomeEditing;
   saveUserName(name);
+  // First run only: ask once whether to connect or stay offline.
+  if (wasFirstRun && window.haimuniaConnect) window.haimuniaConnect.openFirstRun();
   // Design spec §1.2. This function used to open the five-screen explainer
   // straight after the welcome sheet - a second full-screen gate whose
   // primary button carried the same label as the one just tapped. The
@@ -3382,6 +3385,7 @@ async function clearAllData() {
     await dbClearSettings();
     try { localStorage.removeItem(USER_NAME_KEY); localStorage.removeItem(LAST_EXPORT_KEY); } catch (e) {}
     userName = null;
+    if (window.haimuniaConnect) window.haimuniaConnect.forget();
     boxStartDate = null;
     seenAchievementIds = new Set();
     lastExportAt = null;
@@ -5711,6 +5715,20 @@ function renderHistoryTab() {
 // content. Called unconditionally from render() into #settingsBody, same
 // "always regenerated into a normally-hidden container" treatment as
 // renderNavMenuList().
+function renderConnectRow() {
+  const st = window.haimuniaConnect && window.haimuniaConnect.statusLabel();
+  if (!st) return "";
+  return `<div class="settings-block">
+        <div class="settings-block-title">מועדון</div>
+        <button class="exercise-row" data-action="open-connect" style="margin-bottom:0;">
+          <div style="text-align:right;">
+            <div style="font-weight:700; font-size:13.5px;">${esc(st.title)}</div>
+            <div style="color:var(--steel); font-size:12px; margin-top:2px;">${esc(st.sub)}</div>
+          </div>
+          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
+        </button>
+      </div>`;
+}
 function renderSettingsBody() {
   const hasData = entries.length || wodEntries.length || bodyweightEntries.length || measureTypes.length;
   const days = daysSinceLastExport();
@@ -5741,6 +5759,8 @@ function renderSettingsBody() {
         </div>
         <button class="icon-chip icon-chip-steel" data-action="edit-user-name" aria-label="עריכת פרופיל">${ICONS.edit}</button>
       </div>
+
+      ${renderConnectRow()}
 
       <div class="settings-block">
         <div class="settings-block-title">מראה</div>
@@ -7035,6 +7055,7 @@ registerAppDialog("achievements", { overlayId: "achievementsOverlay", isOpen: ()
 registerAppDialog("celebration", { overlayId: "celebrationOverlay", isOpen: () => document.getElementById("celebrationOverlay").classList.contains("open"), close: closeCelebration });
 registerAppDialog("notifications", { overlayId: "notificationsOverlay", isOpen: () => document.getElementById("notificationsOverlay").classList.contains("open"), close: closeNotifications });
 registerAppDialog("onboarding", { overlayId: "onboardingOverlay", isOpen: () => document.getElementById("onboardingOverlay").classList.contains("open"), close: closeOnboarding, escapable: false });
+registerAppDialog("connect", { overlayId: "connectOverlay", isOpen: () => !!(window.haimuniaConnect && window.haimuniaConnect.isOpen()), close: () => window.haimuniaConnect.close(), escapable: true });
 registerAppDialog("welcome", { overlayId: "welcomeOverlay", isOpen: () => document.getElementById("welcomeOverlay").classList.contains("open"), close: closeWelcomeModal, escapable: false });
 
 // Real-user report: on a phone, with an app dialog open (achievements was
@@ -7721,6 +7742,11 @@ document.addEventListener("click", (e) => {
     showToast(`מולא: ${entrySummaryFromParts(w, r, st)}`);
   }
   else if (action === "open-support") { openSupport(); }
+  else if (action === "open-connect") { closeSettings(); if (window.haimuniaConnect) window.haimuniaConnect.open(); }
+  else if (action === "close-connect") {
+    if (el.id === "connectOverlay" && e.target !== el) return;
+    if (window.haimuniaConnect) window.haimuniaConnect.close();
+  }
   else if (action === "close-support") {
     // THE BACKDROP GUARD, missing when this shipped and reported from a real
     // phone the same day: "trying to put text it closes page". #supportOverlay
@@ -7944,6 +7970,7 @@ async function init() {
   // which a duplicate credential field is live in the document.
   setSettingsInert(true);
   renderUserGreeting();
+  if (window.haimuniaConnect) window.haimuniaConnect.init();
   countUsage("app_open");
   render();
   maybeShowIOSInstallBanner();
