@@ -1,6 +1,7 @@
-// CONNECTED MODE, PHASE 2: the club tab. Feed, reactions, announcements (read-only for members),
-// and the coach's tools. The Supabase client is a fake that records every call; the backend does
-// the real authorising, so these tests pin what is shown to whom and what is sent.
+// CONNECTED MODE, PHASE 2: the club tab. Announcements (read-only for members), the roster, and the
+// coach's tools. There is deliberately no feed, no posting and no reactions: no workout is ever posted
+// from this app. The Supabase client is a fake that records every call; the backend does the real
+// authorising, so these tests pin what is shown to whom and what is sent.
 import { test } from "node:test";
 import assert from "node:assert";
 import { readFileSync } from "node:fs";
@@ -13,20 +14,18 @@ const wait = (ms = 20) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, label) { for (let i = 0; i < 150; i++) { if (fn()) return; await wait(10); } assert.fail("timed out: " + label); }
 
 const ME = "u-me", OWNER = "u-owner", COACH = "u-coach", OTHER = "u-other";
-function post(i, extra = {}) {
-  return { post_id: "p" + i, author_id: OTHER, author_name: "נועה " + i, author_emoji: "🔥", post_type: "POST_WORKOUT", title: "אימון " + i,
-    result_text: "20 דקות", body: null, metadata: {}, occurred_on: "2026-11-10", published_at: `2026-11-${String(30 - i).padStart(2, "0")}T10:00:00Z`,
-    reaction_counts: { fire: 1 }, my_reactions: [], unreacted_pr: false, ...extra };
-}
-function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {} } = {}) {
+const ANNOUNCEMENTS = [
+  { id: "a1", body: "אימון חג בשישי", pinned: true, created_at: "2026-11-09T08:00:00Z" },
+  { id: "a2", body: "הודעה ישנה", pinned: false, created_at: "2026-11-01T08:00:00Z" },
+];
+function backend({ role = "member", rpcFail = {}, announcements = ANNOUNCEMENTS } = {}) {
   const calls = [];
   const members = [
     { user_id: OWNER, role: "owner", joined_at: "2026-11-01", profiles: { display_name: "בעלים", emoji: "👑" } },
     { user_id: COACH, role: "coach", joined_at: "2026-11-02", profiles: { display_name: "מאמן", emoji: "🏋️" } },
     { user_id: OTHER, role: "member", joined_at: "2026-11-03", profiles: { display_name: "נועה", emoji: "🔥" } },
-    { user_id: ME, role: role, joined_at: "2026-11-04", profiles: { display_name: "אני", emoji: "💪" } },
-  ].filter((m) => m.user_id !== ME || role === "member" || false);
-  const state = { announcements: [{ id: "a1", body: "אימון חג בשישי", pinned: true, created_at: "2026-11-09T08:00:00Z" }, { id: "a2", body: "הודעה ישנה", pinned: false, created_at: "2026-11-01T08:00:00Z" }] };
+    { user_id: ME, role: "member", joined_at: "2026-11-04", profiles: { display_name: "אני", emoji: "💪" } },
+  ].filter((m) => m.user_id !== ME || role === "member");
   const meId = role === "member" ? ME : role === "coach" ? COACH : OWNER;
   const client = {
     auth: {
@@ -36,18 +35,17 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {} } = 
     rpc: async (n, a) => {
       calls.push([n, a]);
       if (rpcFail[n]) return { data: null, error: { message: rpcFail[n] } };
-      if (n === "circle_feed") return { data: a.p_cursor ? [] : feed, error: null };
-      if (n === "toggle_reaction") return { data: true, error: null };
       if (n === "rotate_club_link") return { data: "cd".repeat(32), error: null };
       return { data: null, error: null };
     },
     from: (t) => {
+      calls.push(["from", t]);
       const q = {
         select: () => q, eq: () => q, order: () => q, limit: () => q,
         maybeSingle: async () => ({ data: t === "clubs" ? { name: "האימוניה" } : { display_name: "אני", emoji: "💪" }, error: null }),
         then: (res) => {
           if (t === "circle_members") return res({ data: q._members ? members : [{ club_id: "c1", role }], error: null });
-          if (t === "club_announcements") return res({ data: state.announcements, error: null });
+          if (t === "club_announcements") return res({ data: announcements, error: null });
           return res({ data: [], error: null });
         },
       };
@@ -56,7 +54,7 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {} } = 
       return q;
     },
   };
-  return { client, calls, state };
+  return { client, calls };
 }
 
 async function boot(opts = {}) {
@@ -70,12 +68,13 @@ async function boot(opts = {}) {
 }
 const $ = (w, s) => w.document.querySelector(s);
 const $$ = (w, s) => [...w.document.querySelectorAll(s)];
-async function openClub(window) {
+async function openClub(window, expect = /הודעות/) {
   await until(() => $(window, "[data-action='switch-tab'][data-tab='club']"), "club tab");
   $(window, "[data-action='switch-tab'][data-tab='club']").click();
-  await until(() => $$(window, "#content article").length > 0, "feed");
+  await until(() => expect.test($(window, "#content").textContent), "club tab content");
 }
 const rpcs = (calls, name) => calls.filter(([n]) => n === name);
+const NEVER = ["circle_feed", "toggle_reaction", "post_create", "post_delete", "post_edit_caption"];
 
 test("offline, or not in the club: there is no club tab", async () => {
   const { window } = await boot({ connected: false });
@@ -83,48 +82,27 @@ test("offline, or not in the club: there is no club tab", async () => {
   assert.equal($(window, "[data-tab='club']"), null);
 });
 
-test("a member sees the feed and announcements, read-only: no coach tools anywhere", async () => {
+test("a member sees announcements read-only: no coach tools, and no feed, posts or reactions at all", async () => {
   const { window, calls } = await boot();
   await openClub(window);
-  const html = $(window, "#content").textContent;
-  assert.match(html, /אימון חג בשישי/);
-  assert.match(html, /נעוץ/);
-  assert.equal($$(window, "#content article").length, 2);
-  assert.equal($(window, "[data-club-form='ann']"), null, "no announcement form");
-  assert.equal($(window, "[data-club='pin']"), null);
-  assert.equal($(window, "[data-club='del-ann']"), null);
-  assert.equal($(window, "[data-club='del-post']"), null);
-  assert.equal($(window, "[data-club='rotate']"), null);
-  assert.deepEqual(rpcs(calls, "circle_feed")[0][1], { p_club_id: "c1", p_cursor: null, p_limit: 30 });
+  const text = $(window, "#content").textContent;
+  assert.match(text, /אימון חג בשישי/);
+  assert.match(text, /נעוץ/);
+  for (const sel of ["[data-club-form='ann']", "[data-club='pin']", "[data-club='del-ann']", "[data-club='rotate']", "[data-club='react']", "[data-club='del-post']", "#content article"]) {
+    assert.equal($(window, sel), null, sel);
+  }
+  assert.doesNotMatch(text, /הפיד|פוסטים/);
+  for (const n of NEVER) assert.equal(rpcs(calls, n).length, 0, n);
 });
 
-test("reactions: three kinds, toggled with the post id and kind, shown at once, undone if the server refuses", async () => {
-  const { window, calls } = await boot();
-  await openClub(window);
-  const kinds = $$(window, "#content article:first-of-type [data-club='react']").map((b) => b.dataset.kind);
-  assert.deepEqual(kinds, ["fist_bump", "fire", "clap"]);
-  $(window, "#content article:first-of-type [data-kind='clap']").click();
-  await until(() => rpcs(calls, "toggle_reaction").length === 1, "rpc");
-  const [, args] = rpcs(calls, "toggle_reaction")[0];
-  assert.equal(args.p_post_id, "p1"); assert.equal(args.p_kind, "clap");
-  assert.equal($(window, "#content article:first-of-type [data-kind='clap']").getAttribute("aria-pressed"), "true");
-  // Tap again: taken back.
-  $(window, "#content article:first-of-type [data-kind='clap']").click();
-  await until(() => rpcs(calls, "toggle_reaction").length === 2, "rpc 2");
-  assert.equal($(window, "#content article:first-of-type [data-kind='clap']").getAttribute("aria-pressed"), "false");
+test("with no announcements a member is told so", async () => {
+  const { window } = await boot({ announcements: [] });
+  await openClub(window, /אין הודעות כרגע/);
 });
 
-test("a refused reaction is rolled back", async () => {
-  const { window } = await boot({ rpcFail: { toggle_reaction: "rate_limited" } });
-  await openClub(window);
-  const btn = () => $(window, "#content article:first-of-type [data-kind='fire']");
-  btn().click();
-  await until(() => btn().getAttribute("aria-pressed") === "false" && /1/.test(btn().textContent), "rolled back");
-});
-
-test("a coach sees the tools; members' roster hides remove for the owner, and the call carries the right ids", async () => {
+test("a coach sees the tools and every call carries the right ids", async () => {
   const { window, calls } = await boot({ role: "coach" });
-  await openClub(window);
+  await openClub(window, /אימון חג בשישי/);
   assert.ok($(window, "[data-club-form='ann']"));
   assert.ok($(window, "[data-club='pin']"));
   // Post an announcement, pinned.
@@ -137,13 +115,12 @@ test("a coach sees the tools; members' roster hides remove for the owner, and th
   $(window, "[data-club='pin'][data-id='a2']").click();
   await until(() => rpcs(calls, "club_announcement_set_pinned").length === 1, "pin");
   assert.deepEqual(rpcs(calls, "club_announcement_set_pinned")[0][1], { p_id: "a2", p_pinned: true });
-  // Delete a post: asks first, then calls post_delete.
-  $(window, "[data-club='del-post'][data-id='p1']").click();
-  assert.equal(rpcs(calls, "post_delete").length, 0, "nothing before the confirmation");
+  // Delete an announcement: asks first, then calls the RPC.
+  $(window, "[data-club='del-ann'][data-id='a2']").click();
+  assert.equal(rpcs(calls, "club_announcement_delete").length, 0, "nothing before the confirmation");
   $(window, "[data-action='app-confirm-yes']").click();
-  await until(() => rpcs(calls, "post_delete").length === 1, "post_delete");
-  assert.deepEqual(rpcs(calls, "post_delete")[0][1], { post_id: "p1" });
-  await until(() => $$(window, "#content article").length === 1, "post gone");
+  await until(() => rpcs(calls, "club_announcement_delete").length === 1, "delete");
+  assert.deepEqual(rpcs(calls, "club_announcement_delete")[0][1], { p_id: "a2" });
   // Roster: no remove on the owner or on myself; one on the plain member.
   $(window, "[data-club='members']").click();
   await until(() => $$(window, "[data-club='rm-member']").length > 0, "roster");
@@ -152,6 +129,7 @@ test("a coach sees the tools; members' roster hides remove for the owner, and th
   $(window, "[data-action='app-confirm-yes']").click();
   await until(() => rpcs(calls, "remove_member").length === 1, "remove");
   assert.deepEqual(rpcs(calls, "remove_member")[0][1], { p_club_id: "c1", p_user_id: OTHER });
+  for (const n of NEVER) assert.equal(rpcs(calls, n).length, 0, n);
 });
 
 test("rotating the link asks first, then shows the new link once", async () => {
@@ -170,15 +148,16 @@ test("rotating the link asks first, then shows the new link once", async () => {
 test("an empty announcement never reaches the server", async () => {
   const { window, calls } = await boot({ role: "owner" });
   await openClub(window);
-  const submit = () => $(window, "[data-club-form='ann']").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
-  $(window, "#clubAnnBody").value = "   "; submit();
+  $(window, "#clubAnnBody").value = "   ";
+  $(window, "[data-club-form='ann']").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
   await until(() => /כתבו משהו/.test($(window, "#content").textContent), "empty message");
   assert.equal(rpcs(calls, "club_announcement_post").length, 0);
 });
 
-test("the club source never touches the private log or any other table", async () => {
+test("the club source has no feed, posting or reaction code, and touches only two tables", async () => {
   const src = readFileSync(path.join(root, "src/club.js"), "utf8");
   assert.doesNotMatch(src, /private_records|bodyweight|dbGet|dbPut|entries\b/i);
+  for (const n of NEVER) assert.equal(src.includes(n), false, n);
   const tables = [...src.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]).sort();
   assert.deepEqual([...new Set(tables)], ["circle_members", "club_announcements"]);
 });
