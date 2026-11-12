@@ -1,0 +1,316 @@
+{
+ "generatedBy": "haimunia-app 2.34.0 (tag rollback-2.34.0) driven in jsdom",
+ "appVersion": "2.34.0",
+ "dbName": "box-log-db",
+ "dbVersion": 7,
+ "keyPaths": {
+  "bodyweight": "id",
+  "customWods": "id",
+  "entries": "id",
+  "measureTypes": "id",
+  "measurements": "id",
+  "movements": "id",
+  "settings": "key",
+  "wodEntries": "id"
+ },
+ "stores": {
+  "bodyweight": [
+   {
+    "id": "bw-219bffdf-4c1b-44a6-8b17-0d5cfef42615",
+    "date": "2026-09-23",
+    "ts": 1790186084013,
+    "weight": 72.5
+   }
+  ],
+  "customWods": [
+   {
+    "id": "customwod-a3d52902-98d8-499e-a047-6103995875a2",
+    "name": "EMOM שלישי",
+    "category": "Custom",
+    "scoreType": "emom",
+    "desc": "EMOM 10: 12 Wall Balls @ 9kg / 45\" Plank Hold / Rest / 8 Box Jumps",
+    "emomMinutes": 10,
+    "emomMovements": [
+     "Wall Balls",
+     "Plank Hold",
+     "Burpees",
+     "Box Jumps"
+    ],
+    "emomMovementTypes": [
+     "reps",
+     "duration",
+     "rest",
+     "reps"
+    ],
+    "emomTargetReps": [
+     12,
+     0,
+     0,
+     8
+    ],
+    "emomTargetDurations": [
+     0,
+     45,
+     0,
+     0
+    ],
+    "emomTargetWeights": [
+     9,
+     0,
+     0,
+     0
+    ]
+   }
+  ],
+  "entries": [
+   {
+    "id": "set-1aa5ca64-30d0-4193-a0e3-6acbc390d8c5",
+    "ts": 1790186082846,
+    "exerciseId": "deadlift",
+    "type": "reps",
+    "weight": 100,
+    "reps": 3,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 110,
+    "durationSeconds": 0,
+    "groupId": "ladder-afacdc78-2b41-4a08-b763-1836f6afa852",
+    "blockLabel": null
+   },
+   {
+    "id": "set-1ba5a337-f795-4fa9-9def-b96e34698e8f",
+    "ts": 1790186082657,
+    "exerciseId": "back-squat",
+    "type": "reps",
+    "weight": 70,
+    "reps": 5,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 81.7,
+    "durationSeconds": 0,
+    "groupId": null,
+    "blockLabel": null
+   },
+   {
+    "id": "set-30a97a14-0d46-4600-bfb2-c0abfe1b0ad2",
+    "ts": 1790186082785,
+    "exerciseId": "back-squat",
+    "type": "reps",
+    "weight": 90,
+    "reps": 1,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 90,
+    "durationSeconds": 0,
+    "groupId": null,
+    "blockLabel": null
+   },
+   {
+    "id": "set-77b0d834-0a75-461a-b9c8-eb93050dfd95",
+    "ts": 1790186082728,
+    "exerciseId": "back-squat",
+    "type": "reps",
+    "weight": 80,
+    "reps": 3,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 88,
+    "durationSeconds": 0,
+    "groupId": null,
+    "blockLabel": null
+   },
+   {
+    "id": "set-c1cda937-aa0e-4df4-b60d-6721717cc9bb",
+    "ts": 1790186083006,
+    "exerciseId": "strict-press",
+    "type": "reps",
+    "weight": 40,
+    "reps": 5,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 46.7,
+    "durationSeconds": 0,
+    "groupId": "ladder-ae65570b-42ed-4068-a721-3891688e2321",
+    "blockLabel": null
+   },
+   {
+    "id": "set-c1e0d0a0-8d02-4ad8-9552-1013889781b4",
+    "ts": 1790186083155,
+    "exerciseId": "custom-675476e9-6cfa-4e82-9da0-f3973423d771",
+    "type": "duration",
+    "weight": 10,
+    "reps": 0,
+    "sets": 3,
+    "durationSeconds": 30,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 0,
+    "groupId": null,
+    "blockLabel": null
+   },
+   {
+    "id": "set-e54f31ec-6f12-47bf-aaf9-296134535585",
+    "ts": 1790186082574,
+    "exerciseId": "back-squat",
+    "type": "reps",
+    "weight": 60,
+    "reps": 5,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 70,
+    "durationSeconds": 0,
+    "groupId": null,
+    "blockLabel": null
+   },
+   {
+    "id": "set-f08df1e7-72a4-4eb0-976b-3a19b74e622a",
+    "ts": 1790186083067,
+    "exerciseId": "weighted-pullup",
+    "type": "reps",
+    "weight": 10,
+    "reps": 6,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 12,
+    "durationSeconds": 0,
+    "groupId": "ladder-ae65570b-42ed-4068-a721-3891688e2321",
+    "blockLabel": null
+   },
+   {
+    "id": "set-f786c647-db11-430c-94ea-38e01de58003",
+    "ts": 1790186082917,
+    "exerciseId": "deadlift",
+    "type": "reps",
+    "weight": 110,
+    "reps": 3,
+    "sets": 1,
+    "date": "2026-09-23",
+    "isPR": true,
+    "est1RM": 121,
+    "durationSeconds": 0,
+    "groupId": "ladder-afacdc78-2b41-4a08-b763-1836f6afa852",
+    "blockLabel": null
+   }
+  ],
+  "measureTypes": [
+   {
+    "id": "meas-type-8f7f2d40-bd82-4037-89a7-907396c82d35",
+    "name": "מותניים"
+   }
+  ],
+  "measurements": [
+   {
+    "id": "meas-863d90ec-6119-441a-bc13-dda8b33c8514",
+    "typeId": "meas-type-8f7f2d40-bd82-4037-89a7-907396c82d35",
+    "date": "2026-09-23",
+    "value": 81,
+    "ts": 1790186084081
+   }
+  ],
+  "movements": [
+   {
+    "id": "custom-675476e9-6cfa-4e82-9da0-f3973423d771",
+    "name": "Ring Hold",
+    "category": "Other"
+   }
+  ],
+  "settings": [
+   {
+    "key": "boxlog:lastExportAt",
+    "value": 1790186084148
+   },
+   {
+    "key": "haimunia:barWeight",
+    "value": 15
+   },
+   {
+    "key": "haimunia:boxStartDate",
+    "value": "2025-03-01"
+   },
+   {
+    "key": "haimunia:hasOnboarded",
+    "value": true
+   },
+   {
+    "key": "haimunia:lastSeenVersion",
+    "value": "2.34.0"
+   },
+   {
+    "key": "haimunia:seenAchievements",
+    "value": [
+     "pr-Squat-bronze",
+     "tenure-month1",
+     "tenure-month6",
+     "tenure-year1",
+     "pr-Deadlift-bronze",
+     "pr-Press-bronze",
+     "pr-Pull-bronze",
+     "rx-fran",
+     "rx-cindy"
+    ]
+   },
+   {
+    "key": "haimunia:userName",
+    "value": "דנה"
+   },
+   {
+    "key": "sessionNote:2026-09-23",
+    "value": "הרגשתי חזק היום"
+   }
+  ],
+  "wodEntries": [
+   {
+    "id": "wod-8fd5df6f-dec6-45cd-b95d-346c4aeae5af",
+    "ts": 1790186083405,
+    "date": "2026-09-23",
+    "wodId": "cindy",
+    "scoreType": "amrap",
+    "rx": true,
+    "rounds": 18,
+    "reps": 7,
+    "notes": null,
+    "scaledWeight": null,
+    "isPR": true
+   },
+   {
+    "id": "wod-cf998e46-0de4-40c5-86fe-f73260d3f824",
+    "ts": 1790186083287,
+    "date": "2026-09-23",
+    "wodId": "fran",
+    "scoreType": "time",
+    "rx": true,
+    "timeSeconds": 275,
+    "notes": null,
+    "scaledWeight": null,
+    "isPR": true
+   },
+   {
+    "id": "wod-d3ad15bf-f7d4-40ca-8c41-fe8519d9f498",
+    "ts": 1790186083975,
+    "date": "2026-09-23",
+    "wodId": "customwod-a3d52902-98d8-499e-a047-6103995875a2",
+    "scoreType": "emom",
+    "rx": true,
+    "emomReps": [
+     11,
+     40,
+     7
+    ],
+    "notes": null,
+    "scaledWeight": null,
+    "isPR": false
+   }
+  ]
+ },
+ "localStorage": {
+  "haimunia:theme": "light",
+  "haimunia:textScale": "large"
+ }
+}

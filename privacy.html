@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<!-- Stamps data-theme on <html> before first paint, from a stored choice.
+     Must be a separate file, not an inline <script> — script-src 'self'
+     below has no 'unsafe-inline'. Runs synchronously so there's no flash.
+     Shared verbatim with index.html so this page follows the same
+     light/dark/auto choice as the rest of the app. -->
+<script src="./theme-init.js"></script>
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  font-src 'self';
+  img-src 'self';
+  connect-src 'self';
+  object-src 'none';
+  base-uri 'none';
+  form-action 'none';
+  frame-ancestors 'none'" />
+<meta name="referrer" content="no-referrer" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>מדיניות פרטיות – האימוניה</title>
+<meta name="theme-color" content="#152342" />
+<link rel="icon" href="./icon-192.png" />
+<style>
+  /* Font set trimmed to what this page actually uses: Rubik for the Hebrew
+     chrome (header, back link, "last updated" line) and Anton for the page
+     title, matching index.html's own use of .page-title. No JetBrains Mono
+     here — nothing on this page is numeric/tabular. Same self-hosted files,
+     same unicode-range split, as index.html. */
+  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:400; font-display:swap; src:url('./assets/fonts/rubik-400-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:400; font-display:swap; src:url('./assets/fonts/rubik-400-hebrew.woff2') format('woff2'); unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F; }
+  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:700; font-display:swap; src:url('./assets/fonts/rubik-700-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:700; font-display:swap; src:url('./assets/fonts/rubik-700-hebrew.woff2') format('woff2'); unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F; }
+  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:800; font-display:swap; src:url('./assets/fonts/rubik-800-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:800; font-display:swap; src:url('./assets/fonts/rubik-800-hebrew.woff2') format('woff2'); unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F; }
+  @font-face{ font-family:'Anton'; font-style:normal; font-weight:400; font-display:swap; src:url('./assets/fonts/anton-400-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
+  /* Theme tokens — same variable names and values as index.html's :root /
+     prefers-color-scheme / [data-theme="dark"] blocks. Only the tokens this
+     page actually uses are carried over (surface, border, chalk, steel,
+     brass, bg, shadow-card, stripe); nothing invented. */
+  :root{
+    --bg:#F2F5FA; --surface:#FFFFFF; --border:#D6DFEC;
+    --chalk:#1C2536; --steel:#57627A; --brass:#956529;
+    --energy:#C94B29;
+    --stripe-a:var(--energy); --stripe-b:#22345C;
+    --stripe:repeating-linear-gradient(135deg, var(--stripe-a) 0 14px, var(--stripe-b) 14px 28px);
+    --shadow-card: 0 1px 0 rgba(255,255,255,.6) inset, 0 10px 20px -14px rgba(28,37,54,.16);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#152342; --surface:#1F3057; --border:#425481;
+      --chalk:#F2ECE1; --steel:#A8B3C9; --brass:#E8B98A;
+      --energy:#E85D3D;
+      --stripe-a:var(--energy); --stripe-b:#ffffff;
+      --shadow-card: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 28px -18px rgba(0,0,0,.65);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#152342; --surface:#1F3057; --border:#425481;
+    --chalk:#F2ECE1; --steel:#A8B3C9; --brass:#E8B98A;
+    --energy:#E85D3D;
+    --stripe-a:var(--energy); --stripe-b:#ffffff;
+    --shadow-card: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 28px -18px rgba(0,0,0,.65);
+  }
+
+  * { box-sizing: border-box; }
+  h1, h2, h3 { margin: 0; font: inherit; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; }
+  a{ color:inherit; }
+  a:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--brass); outline-offset:2px; }
+
+  .page-wrap{ max-width:640px; margin:0 auto; padding:24px 16px calc(env(safe-area-inset-bottom,0px) + 40px); }
+  .header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:12px; }
+  .header-logo{ height:36px; width:36px; border-radius:10px; display:block; flex-shrink:0; }
+  .back-link{ color:var(--steel); font-size:12px; font-weight:700; text-decoration:underline; white-space:nowrap; }
+  .brand-stripe{ height:6px; border-radius:4px; background-image:var(--stripe); margin-bottom:18px; }
+  .page-title{ font-family:'Anton',sans-serif; font-weight:400; letter-spacing:.3px; font-size:24px; color:var(--chalk); margin-bottom:6px; }
+  .updated-note{ color:var(--steel); font-size:11px; margin-bottom:20px; }
+  .intro{ font-size:13.5px; line-height:1.6; color:var(--chalk); margin-bottom:20px; }
+
+  /* One .chart-card per policy section — the same card component the app
+     uses elsewhere (index.html's .chart-card), not a new visual language. */
+  .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px; margin-bottom:16px; box-shadow:var(--shadow-card); }
+  .chart-card h2{ font-size:15px; font-weight:800; color:var(--chalk); margin-bottom:8px; }
+  .chart-card p{ font-size:13.5px; line-height:1.6; color:var(--chalk); margin:0 0 10px; }
+  .chart-card p:last-child{ margin-bottom:0; }
+  .chart-card ul{ margin:0 0 10px; padding-inline-start:20px; display:flex; flex-direction:column; gap:6px; }
+  .chart-card ul:last-child{ margin-bottom:0; }
+  .chart-card li{ font-size:13.5px; line-height:1.6; color:var(--chalk); }
+  .chart-card strong{ font-weight:700; }
+  code{ font-family:monospace; font-size:.95em; }
+
+  .footer-links{ text-align:center; margin-top:8px; }
+  .footer-links a{ color:var(--steel); font-size:11px; text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <header class="header">
+    <img class="header-logo" src="./icon-192.png" alt="" />
+    <a class="back-link" href="./index.html">חזרה לאפליקציה</a>
+  </header>
+  <div class="brand-stripe"></div>
+
+  <h1 class="page-title">מדיניות פרטיות</h1>
+  <div class="updated-note">עודכן לאחרונה: 23 בספטמבר 2026</div>
+
+  <p class="intro">
+    המסמך מסביר איזה מידע האפליקציה שומרת, איפה, ומה בשליטתכם. הגרסה הזו של
+    האפליקציה היא יומן אימונים אישי: אין בה חשבונות, אין התחברות ואין
+    קהילה.
+  </p>
+
+  <section class="chart-card">
+    <h2>בקצרה</h2>
+    <ul>
+      <li><strong>יומן האימונים נשמר על המכשיר שלכם בלבד.</strong> האימונים,
+        התרגילים, המשקלים, המדידות, ההערות וההגדרות לא נשלחים לשום שרת.</li>
+      <li><strong>ספירת שימוש, שאפשר לכבות.</strong> האפליקציה סופרת פתיחה,
+        רישום אימון ופתיחת מסך, עם מזהה אקראי קבוע של הטלפון — בלי שם. הספירות
+        נמחקות אחרי 180 יום — ראו "ספירת שימוש" למטה.</li>
+      <li><strong>אין חשבון ואין התחברות.</strong> אין שם משתמש, סיסמה, כתובת
+        מייל או מספר טלפון — לא מבקשים ולא שומרים.</li>
+      <li><strong>אין פרסומות, אין מיקום ואין מכירת מידע.</strong></li>
+    </ul>
+  </section>
+
+  <section class="chart-card">
+    <h2>מי מפעיל את האפליקציה</h2>
+    <p>
+      אין חברה מאחורי האפליקציה. היא מופעלת ישירות על ידי צוות המאמנים של
+      המועדון עבור החברים שלו. לכל שאלה, בקשה או תלונה בנושא פרטיות — פנו
+      למאמן/ת שלכם ישירות, כמו בכל נושא אחר במועדון.
+    </p>
+  </section>
+
+  <section class="chart-card">
+    <h2>מה נשמר במכשיר</h2>
+    <p>
+      כל מה שאתם רושמים נשמר בזיכרון של הדפדפן במכשיר עצמו. השם שאתם מזינים
+      משמש רק לברכה במסך, ונשאר גם הוא במכשיר.
+    </p>
+    <p>
+      טעינת האפליקציה עצמה פונה לשרת שמארח אותה (GitHub Pages), כמו כל אתר:
+      הדפדפן מבקש את קבצי האפליקציה, ולכן השרת רואה כתובת IP וסוג דפדפן. מה
+      שהוא לא מקבל הוא מה שכתבתם.
+    </p>
+  </section>
+
+  <section class="chart-card" id="usage-counting">
+    <h2>ספירת שימוש</h2>
+    <p>
+      כדי שהמועדון ידע כמה אנשים משתמשים באפליקציה וכמה מהם רושמים אימונים,
+      האפליקציה שולחת שלושה סוגי עובדות בלבד: שהאפליקציה נפתחה, שנרשם אימון,
+      ושנפתח מסך (רישום, התקדמות, לוח שנה או אימונים). כל עובדה נשלחת לכל
+      היותר פעם ביום.
+    </p>
+    <p>
+      לכל עובדה מצורף רק מזהה אקראי שנוצר בטלפון שלכם בפעם הראשונה ונשמר בו.
+      הוא לא נגזר מהשם, מהמכשיר או מכל פרט אחר, ומחיקת נתוני האתר בדפדפן יוצרת
+      מזהה חדש. לא נשלחים שם, תוכן אימון, משקלים, הערות, מיקום או שעה — השרת
+      רושם רק את התאריך.
+    </p>
+    <p>
+      <strong>המזהה הוא כינוי, לא אנונימיות מלאה.</strong> הוא לא מגלה מי
+      אתם, אבל אותו מזהה מצורף לכל ספירה מהטלפון שלכם, ולכן הוא מקשר את
+      הספירות של טלפון אחד לאורך הימים. זה מה שמאפשר לדעת כמה מכשירים
+      השתמשו השבוע ומה המגמה משבוע לשבוע.
+    </p>
+    <p>
+      המידע נשמר בשרת Supabase של המועדון (באזור <code>ap-southeast-1</code>,
+      סינגפור). אף אחד לא רואה את השורות עצמן, גם לא צוות המועדון: הצוות
+      מקבל רק סיכומים — כמה מכשירים פתחו את האפליקציה, כמה רשמו אימון, ומגמה
+      שבועית. <strong>כל ספירה נמחקת אוטומטית אחרי 180 יום.</strong>
+    </p>
+    <p>
+      כמו כל אתר, השרת רואה בזמן הבקשה את כתובת ה־IP ואת סוג הדפדפן. הם לא
+      נשמרים בטבלת הספירה, אבל יומני הבקשות של ספק השרת (Supabase) שומרים
+      אותם לזמן קצר, לצורכי תפעול ואבטחה, ואז הם נמחקים.
+    </p>
+    <p>
+      <strong>אפשר לכבות את זה בכל רגע</strong>: בהגדרות, "ספירת שימוש" ←
+      "כבוי". מרגע הכיבוי לא נשלח דבר, והמזהה האקראי נמחק מהטלפון. האפליקציה
+      עובדת בדיוק אותו דבר גם כשהספירה כבויה, וגם בלי חיבור לאינטרנט.
+    </p>
+  </section>
+
+  <section class="chart-card">
+    <h2>גיבוי</h2>
+    <p>
+      מכיוון שהנתונים נמצאים רק על המכשיר, הדרך לשמור עליהם היא קובץ גיבוי:
+      בהגדרות, "ייצוא גיבוי" מוריד קובץ עם כל היומן לתיקיית ההורדות. הקובץ
+      נשאר אצלכם — לא נשלח לשום מקום — ואפשר לשחזר ממנו בכל מכשיר דרך "ייבוא
+      גיבוי". בטלפונים מסוימים הדפדפן עלול למחוק נתוני אתרים שלא נפתחו זמן
+      רב, ולכן כדאי לשמור קובץ גיבוי מדי פעם.
+    </p>
+  </section>
+
+  <section class="chart-card">
+    <h2>דיווח על תקלה</h2>
+    <p>
+      אם תבחרו לשלוח דיווח על תקלה, הוא יוצא מהאפליקציה שלכם — בוואטסאפ או
+      במייל — רק כשאתם שולחים אותו. לפני השליחה מוצגים לכם כל הפרטים הטכניים
+      שיצורפו: גרסת האפליקציה, סוג הדפדפן ומצב החיבור — בלי השם שלכם ובלי
+      יומן האימונים.
+    </p>
+  </section>
+
+  <section class="chart-card">
+    <h2>הזכויות שלכם</h2>
+    <p>
+      יומן האימונים נמצא אצלכם: אפשר לייצא אותו, לתקן כל רישום, ולמחוק הכול
+      דרך "מחיקת כל הנתונים" בהגדרות. אין לנו עותק של יומן האימונים שלכם.
+      את ספירת השימוש אפשר לכבות בהגדרות, והמזהה האקראי נמחק אז מהטלפון.
+      ספירות שכבר נשלחו אינן מקושרות לשמכם, אלא רק זו לזו, דרך המזהה
+      האקראי. אחרי הכיבוי המזהה כבר לא נמצא בטלפון, ולכן גם אנחנו לא יכולים
+      לדעת אילו ספירות הגיעו ממנו; הן נמחקות מעצמן אחרי 180 יום.
+    </p>
+  </section>
+
+  <section class="chart-card">
+    <h2>שינויים במסמך</h2>
+    <p>
+      אם המדיניות תשתנה, התאריך בראש המסמך יתעדכן, ובמקום שנדרש תופיע גם
+      הודעה בתוך האפליקציה.
+    </p>
+  </section>
+
+  <div class="footer-links"><a href="./index.html">חזרה לאפליקציה</a></div>
+</div>
+</body>
+</html>

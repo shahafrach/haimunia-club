@@ -1,0 +1,34 @@
+{
+  "app": "box-log",
+  "version": 1,
+  "exportedAt": "2026-09-16T11:39:23.690Z",
+  "entries": [
+    { "id": "set-old-1", "exerciseId": "deadlift", "date": "2026-09-07", "type": "reps",
+      "weight": 100, "reps": 1, "sets": 1, "durationSeconds": 0, "ts": 1788799694463,
+      "isPR": true, "groupId": null, "blockLabel": null, "est1RM": 100 },
+    { "id": "set-old-2", "exerciseId": "snatch", "date": "2026-09-01", "type": "reps",
+      "weight": 50, "reps": 1, "sets": 1, "durationSeconds": 0, "ts": 1788364163442,
+      "isPR": true, "groupId": "ladder-old-1", "blockLabel": "D", "est1RM": 50 },
+    { "id": "set-old-3", "exerciseId": "snatch", "date": "2026-09-01", "type": "reps",
+      "weight": 40, "reps": 2, "sets": 1, "durationSeconds": 0, "ts": 1788364147484,
+      "isPR": true, "groupId": "ladder-old-1", "blockLabel": "C", "est1RM": 42.7 },
+    { "id": "set-old-4", "exerciseId": "custom-old-hold", "date": "2026-08-26", "type": "duration",
+      "weight": 0, "reps": 0, "sets": 4, "durationSeconds": 20, "ts": 1787728795346,
+      "isPR": true, "groupId": null, "blockLabel": null, "est1RM": 0 }
+  ],
+  "customMovements": [
+    { "id": "custom-old-row", "name": "Ring Row", "category": "Pull" },
+    { "id": "custom-old-hold", "name": "Ring Hold", "category": "Pull" }
+  ],
+  "wodEntries": [],
+  "customWods": [
+    { "id": "customwod-old-1", "name": "01/09", "category": "Custom", "scoreType": "time",
+      "desc": "80 Box Step-Ups, 40 Sit-Ups, 30 Push-Ups, 20 Truster @ 40kg, 800 Run (Meters)",
+      "timeCapSeconds": 900 }
+  ],
+  "bodyweightEntries": [
+    { "id": "bw-old-1", "date": "2026-08-26", "weight": 80, "ts": 1787734062212 }
+  ],
+  "measureTypes": [],
+  "measureEntries": []
+}

@@ -1,0 +1,19 @@
+{
+  "name": "haimunia-browser-check",
+  "private": true,
+  "version": "1.0.0",
+  "description": "On-demand real-Chromium smoke tests for service worker, fonts, offline behavior, and DOM interactions. playwright is pinned EXACTLY, not caret-ranged: the library version selects the Chromium build (1.62.1 -> revision 1234, Chromium 151.0.7922.34), and that build is what the measured layout numbers in CLAUDE.md come from. Moving it is a decision someone makes and re-measures, not something a range does quietly.",
+  "scripts": {
+    "setup": "npm install && npx playwright install chromium",
+    "check:boot": "node boot-smoke.mjs",
+    "check:ladder": "node ladder.mjs",
+    "check:update": "node update-flow.mjs",
+    "check:all": "node run-all.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.62.1"
+  },
+  "devDependencies": {
+    "axe-core": "^4.13.0"
+  }
+}

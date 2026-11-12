@@ -1,0 +1,15 @@
+{
+  "name": "haimunia-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Dev-only tooling for the האימוניה training-log PWA. The app itself is plain HTML/CSS/JS with no build step and no runtime dependencies — this package.json only exists for local scripts and tests, none of which ship to the deployed site.",
+  "scripts": {
+    "sync-version": "node scripts/sync-version.mjs",
+    "check-version": "node scripts/sync-version.mjs --check",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.0.0",
+    "jsdom": "^30.1.0"
+  }
+}

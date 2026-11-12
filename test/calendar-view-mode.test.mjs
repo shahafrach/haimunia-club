@@ -1,0 +1,20 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {bootApp} from './helpers/boot.mjs';
+test('calendar/list switching preserves month, selected date and editable workout records', async()=>{
+ const w=await bootApp();await w.addMovement('Mode test squat','Squat');w.applyFieldValue('step','weight',60);await w.saveSet();
+ w.document.getElementById('tabCalendarBtn').click();
+ const selected=w.document.querySelector('.cal-cell.selected').dataset.date;
+ const month=w.document.getElementById('calMonthLabel').textContent;
+ w.document.querySelector('[data-action="cal-toggle-view"]').click();
+ assert.ok(w.document.querySelector('.history-month-list').textContent.includes('Mode test squat'));
+ assert.ok(w.document.querySelector('.history-month-list [data-action="edit-entry"]'));
+ assert.equal(w.document.getElementById('calMonthLabel').textContent,month);
+ w.document.querySelector('[data-action="cal-prev"]').click();
+ assert.notEqual(w.document.getElementById('calMonthLabel').textContent,month);
+ w.document.querySelector('[data-action="cal-next"]').click();
+ w.document.querySelector('[data-action="cal-toggle-view"]').click();
+ assert.equal(w.document.getElementById('calMonthLabel').textContent,month);
+ assert.equal(w.document.querySelector('.cal-cell.selected').dataset.date,selected);
+ assert.equal(w.document.getElementById('calDetail').hidden,false);
+});

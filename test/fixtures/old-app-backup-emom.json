@@ -1,0 +1,68 @@
+{
+  "app": "box-log",
+  "version": 1,
+  "exportedAt": "2026-09-16T11:39:23.690Z",
+  "entries": [],
+  "customMovements": [],
+  "wodEntries": [
+    {
+      "id": "wod-old-emom-1",
+      "ts": 1788880000000,
+      "date": "2026-09-08",
+      "wodId": "customwod-old-emom-1",
+      "scoreType": "emom",
+      "rx": true,
+      "emomReps": [
+        11,
+        40,
+        7
+      ],
+      "notes": null,
+      "scaledWeight": null,
+      "isPR": false
+    }
+  ],
+  "customWods": [
+    {
+      "id": "customwod-old-emom-1",
+      "name": "EMOM ביום שלישי",
+      "category": "Custom",
+      "scoreType": "emom",
+      "desc": "EMOM 16: 12 Wall Balls @ 9kg / 45\" Plank Hold / Rest / 8 Box Jumps",
+      "emomMinutes": 16,
+      "emomMovements": [
+        "Wall Balls",
+        "Plank Hold",
+        "Burpees",
+        "Box Jumps"
+      ],
+      "emomMovementTypes": [
+        "reps",
+        "duration",
+        "rest",
+        "reps"
+      ],
+      "emomTargetReps": [
+        12,
+        0,
+        0,
+        8
+      ],
+      "emomTargetDurations": [
+        0,
+        45,
+        0,
+        0
+      ],
+      "emomTargetWeights": [
+        9,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "bodyweightEntries": [],
+  "measureTypes": [],
+  "measureEntries": []
+}
