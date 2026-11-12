@@ -19,6 +19,21 @@
 const DB_NAME = "box-log-db", DB_VERSION = 7, STORE = "entries", MOVSTORE = "movements", WODSTORE = "wodEntries", CUSTOMWODSTORE = "customWods", BWSTORE = "bodyweight", SETTINGSTORE = "settings", MEASTYPESTORE = "measureTypes", MEASSTORE = "measurements";
 const WOD_TAGS_SETTING = "wodMovementTags";
 let _dbPromise = null;
+
+// A WRITE MUST SETTLE EVEN WHEN THE TRANSACTION ABORTS (audit 2026-11).
+// Every write below resolved on oncomplete and rejected on onerror only. Per
+// the IndexedDB spec a transaction can also abort at COMMIT time with no
+// request ever failing - QuotaExceededError when the disk fills is the real
+// case - and then only "abort" fires on the transaction, never "error". The
+// save promise never settled and the member saw nothing. onabort now rejects
+// with tx.error (the spec sets it to the abort reason), or a named error when
+// a browser leaves it null. A reject after onerror already rejected is a
+// no-op, so the two handlers never conflict.
+function txAbortError(tx) {
+  if (tx && tx.error) return tx.error;
+  try { return new DOMException("IndexedDB transaction aborted", "AbortError"); }
+  catch (e) { const err = new Error("IndexedDB transaction aborted"); err.name = "AbortError"; return err; }
+}
 // Live bug hunt (2026-09-11): confirmed live with two real tabs sharing one
 // origin - a v9 connection left open and idle in tab A (an entirely
 // ordinary "background PWA tab") permanently blocked tab B's v10 open
@@ -80,6 +95,7 @@ async function dbSetSetting(key, value) {
     tx.objectStore(SETTINGSTORE).put({ key, value });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearSettings() {
@@ -89,6 +105,7 @@ async function dbClearSettings() {
     tx.objectStore(SETTINGSTORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 // Live bug hunt, round 9 (2026-09-11): buildBackupPayload() needs every
@@ -120,6 +137,7 @@ async function dbAddMovement(m) {
     tx.objectStore(MOVSTORE).put(m);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearMovements() {
@@ -129,6 +147,7 @@ async function dbClearMovements() {
     tx.objectStore(MOVSTORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 // A user-typed WOD builder movement (e.g. "Sandbag Carry") is remembered
@@ -153,6 +172,7 @@ async function dbAddWodMovementTag(t) {
     };
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearWodMovementTags() {
@@ -162,6 +182,7 @@ async function dbClearWodMovementTags() {
     tx.objectStore(SETTINGSTORE).delete(WOD_TAGS_SETTING);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbLoadWodEntries() {
@@ -180,6 +201,7 @@ async function dbPutWodEntry(entry) {
     tx.objectStore(WODSTORE).put(entry);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbDeleteWodEntry(id) {
@@ -189,6 +211,7 @@ async function dbDeleteWodEntry(id) {
     tx.objectStore(WODSTORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearWodEntries() {
@@ -198,6 +221,7 @@ async function dbClearWodEntries() {
     tx.objectStore(WODSTORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbLoadCustomWods() {
@@ -216,6 +240,7 @@ async function dbAddCustomWod(w) {
     tx.objectStore(CUSTOMWODSTORE).put(w);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearCustomWods() {
@@ -225,6 +250,7 @@ async function dbClearCustomWods() {
     tx.objectStore(CUSTOMWODSTORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbLoadBodyweight() {
@@ -243,6 +269,7 @@ async function dbPutBodyweight(entry) {
     tx.objectStore(BWSTORE).put(entry);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbDeleteBodyweight(id) {
@@ -252,6 +279,7 @@ async function dbDeleteBodyweight(id) {
     tx.objectStore(BWSTORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearBodyweight() {
@@ -261,6 +289,7 @@ async function dbClearBodyweight() {
     tx.objectStore(BWSTORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbLoadMeasureTypes() {
@@ -278,6 +307,7 @@ async function dbAddMeasureType(t) {
     tx.objectStore(MEASTYPESTORE).put(t);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbDeleteMeasureType(id) {
@@ -287,6 +317,7 @@ async function dbDeleteMeasureType(id) {
     tx.objectStore(MEASTYPESTORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearMeasureTypes() {
@@ -296,6 +327,7 @@ async function dbClearMeasureTypes() {
     tx.objectStore(MEASTYPESTORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbLoadMeasurements() {
@@ -313,6 +345,7 @@ async function dbPutMeasurement(m) {
     tx.objectStore(MEASSTORE).put(m);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbDeleteMeasurement(id) {
@@ -322,6 +355,7 @@ async function dbDeleteMeasurement(id) {
     tx.objectStore(MEASSTORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClearMeasurements() {
@@ -331,6 +365,7 @@ async function dbClearMeasurements() {
     tx.objectStore(MEASSTORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbLoadAll() {
@@ -349,6 +384,7 @@ async function dbPut(entry) {
     tx.objectStore(STORE).put(entry);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbDelete(id) {
@@ -358,6 +394,7 @@ async function dbDelete(id) {
     tx.objectStore(STORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbClear() {
@@ -367,6 +404,7 @@ async function dbClear() {
     tx.objectStore(STORE).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbDeleteMovementRecord(id) {
@@ -374,8 +412,9 @@ async function dbDeleteMovementRecord(id) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(MOVSTORE, "readwrite");
     tx.objectStore(MOVSTORE).delete(id);
-    tx.oncomplete = resolve;
+    tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
   });
 }
 async function dbDeleteCustomWod(id) {
@@ -385,5 +424,53 @@ async function dbDeleteCustomWod(id) {
     tx.objectStore(CUSTOMWODSTORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
+  });
+}
+
+// IMPORT IS ALL OR NOTHING (audit 2026-11, finding 13). It used to write one
+// transaction per record, so a backup that failed half way - quota, a crash,
+// the tab closed - left half of it merged in and no way to tell which half.
+// Now every record, session note and WOD-builder tag goes in through ONE
+// readwrite transaction over every store it touches: IndexedDB commits all of
+// it or none of it. Records arrive already sanitized; nothing here changes
+// their shape. `settings` is a list of {key, value} rows; `wodTags` merge into
+// the one WOD_TAGS_SETTING row the same way dbAddWodMovementTag() does.
+async function dbImportAll(batch) {
+  const db = await openDB();
+  const groups = [
+    [MOVSTORE, batch.movements], [CUSTOMWODSTORE, batch.customWods], [STORE, batch.entries],
+    [WODSTORE, batch.wodEntries], [BWSTORE, batch.bodyweight], [MEASTYPESTORE, batch.measureTypes],
+    [MEASSTORE, batch.measurements], [SETTINGSTORE, batch.settings],
+  ].filter(([, list]) => Array.isArray(list) && list.length);
+  const tags = Array.isArray(batch.wodTags) ? batch.wodTags : [];
+  const stores = new Set(groups.map(([name]) => name));
+  if (tags.length) stores.add(SETTINGSTORE);
+  if (!stores.size) return;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([...stores], "readwrite");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(txAbortError(tx));
+    try {
+      for (const [name, list] of groups) {
+        const store = tx.objectStore(name);
+        for (const rec of list) store.put(rec);
+      }
+      if (tags.length) {
+        const store = tx.objectStore(SETTINGSTORE);
+        const req = store.get(WOD_TAGS_SETTING);
+        req.onsuccess = () => {
+          let list = req.result && Array.isArray(req.result.value) ? req.result.value : [];
+          for (const t of tags) list = list.filter((x) => x && x.name !== t.name).concat([t]);
+          store.put({ key: WOD_TAGS_SETTING, value: list });
+        };
+      }
+    } catch (e) {
+      // A put that throws (DataError, DataCloneError) rolls back everything
+      // already queued in this transaction.
+      try { tx.abort(); } catch (e2) {}
+      reject(e);
+    }
   });
 }

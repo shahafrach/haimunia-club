@@ -26,7 +26,7 @@
 // that quietly ignored it would let an entry count itself while being edited.
 import { test } from "node:test";
 import assert from "node:assert";
-import { bootApp } from "./helpers/boot.mjs";
+import { bootApp, showCalendarMonth } from "./helpers/boot.mjs";
 
 const MOVES = ["back-squat", "deadlift", "snatch", "strict-press", "overhead-squat", "push-press"];
 
@@ -168,6 +168,8 @@ test("buildDayIndex agrees with hasAnyEntryOn on every day the fixture touches, 
 test("the calendar grid still draws a dot on exactly the days that have data", async () => {
   const window = await seeded();
   window.document.getElementById("tabCalendarBtn").click();
+  // A month the fixture fills (August 2026), whatever today's date is.
+  showCalendarMonth(window, "2026-08-15");
   const grid = window.document.getElementById("calGrid");
   assert.ok(grid, "the calendar rendered");
 

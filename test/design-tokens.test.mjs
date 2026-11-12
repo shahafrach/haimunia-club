@@ -63,6 +63,19 @@ test("text tokens clear WCAG 2.2 AA (4.5:1) on --surface and --bg, in light and 
   }
 });
 
+test("ink on an --energy fill and the destructive chip's text clear 4.5:1 in both schemes (audit 2026-11, finding 15)", () => {
+  for (const dark of [false, true]) {
+    const t = scheme(dark);
+    const name = dark ? "dark" : "light";
+    const onEnergy = ratio(t["on-energy"], t.energy);
+    assert.ok(onEnergy >= 4.5, `${name} --on-energy on --energy is ${onEnergy.toFixed(2)}:1`);
+    for (const bg of ["surface", "bg"]) {
+      const r = ratio(t["danger-text"], t[bg]);
+      assert.ok(r >= 4.5, `${name} --danger-text on --${bg} is ${r.toFixed(2)}:1`);
+    }
+  }
+});
+
 test("dark is written once: no prefers-color-scheme rule, and no data-theme selector in any stylesheet", () => {
   const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1].replace(/\/\*[\s\S]*?\*\//g, "")).join("\n");
   assert.doesNotMatch(css, /prefers-color-scheme/);

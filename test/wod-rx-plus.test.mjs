@@ -61,7 +61,7 @@ test("Rx+ sits beside Rx and Scaled, Hebrew-first and glossed like both of them"
   assert.equal(rxBtn(d).getAttribute("aria-checked"), "false");
   assert.equal(scaledBtn(d).getAttribute("aria-checked"), "false");
   assert.ok(d.querySelector(".rx-toggle").classList.contains("unset"));
-  assert.equal(saveBtn(d).disabled, true, "three ways to answer, and none of them chosen yet");
+  assert.equal(saveBtn(d).getAttribute("aria-disabled"), "true", "three ways to answer, and none of them chosen yet");
 });
 
 test("Rx+ is not behind a club key - it is how a member describes their own session", async () => {

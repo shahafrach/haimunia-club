@@ -105,6 +105,16 @@ export async function bootApp(opts = {}) {
   if (opts.serviceWorkerStub) window.navigator.serviceWorker = opts.serviceWorkerStub;
   if (typeof opts.beforeScripts === "function") opts.beforeScripts(window);
   window.eval(readAppSrc());
+  // Import asks through the app's own confirm sheet (audit 2026-11, finding
+  // 18), not window.confirm. Tests that import a backup to SET UP a scenario
+  // get it accepted the way the old window.confirm stub did; a test about
+  // the confirmation itself passes autoConfirmImport: false and drives it.
+  if (opts.autoConfirmImport !== false) {
+    new window.MutationObserver(() => {
+      const yes = window.document.querySelector("#appConfirmOverlay[data-confirm-kind='import-backup'] [data-action='app-confirm-yes']");
+      if (yes) yes.click();
+    }).observe(window.document.body, { childList: true, subtree: true });
+  }
 
   await waitFor(() => window.document.getElementById("loading").style.display === "none", 5000);
   return window;
@@ -192,3 +202,18 @@ export function waitFor(check, timeoutMs = 2000, intervalMs = 5, label = "") {
   });
 }
 
+
+// The calendar opens on the CURRENT month, so a test that looks for a fixed
+// fixture date on the grid only passed while that date's month was "now"
+// (audit 2026-11, finding 1). This walks the real cal-prev/cal-next buttons
+// from the month the app opened on to the month holding `iso`, the way a
+// member would. Call it with the calendar tab already open and untouched.
+export function showCalendarMonth(window, iso) {
+  const now = new window.Date();
+  const [y, m] = iso.split("-").map(Number);
+  let diff = (y * 12 + (m - 1)) - (now.getFullYear() * 12 + now.getMonth());
+  const action = diff < 0 ? "cal-prev" : "cal-next";
+  for (diff = Math.abs(diff); diff > 0; diff--) {
+    window.document.querySelector(`[data-action='${action}']`).click();
+  }
+}

@@ -1,3 +1,30 @@
+# 3.7.0 — Quality fixes from the old app's 3.3.0 — 2026-11-12
+
+Ported from haimuniya/haimunia-app 3.3.0 (f4fa272), adapted to this app.
+
+- Data safety: every IndexedDB write rejects when its transaction aborts
+  (commit-time quota) instead of never settling. Backup import (file or
+  transfer code) is one all-or-nothing transaction, confirmed in the app's own
+  sheet, and a backup holding only session notes is accepted.
+- Boot: a database that fails to load shows an error with a retry button
+  instead of the fresh-install welcome; any boot exception, or a boot that
+  hangs 15 s, shows a message with a reload button (`src/boot-guard.js`).
+- Service worker: navigations and assets come from this release's own
+  precache, so a weak signal never delays start and shell and scripts never
+  mix versions. Navigation preload is switched off.
+- Calendar month "sets" sums each line's sets. Backup export/import/transfer
+  are real buttons. Header "version updates" opens every release note, new
+  ones tagged. The tour closes with Escape. The Rx/Scaled hint shows only after
+  a save attempt. The header date refreshes on return to the foreground.
+- Welcome: a scrim behind the title, an opaque backdrop on desktop, and one
+  line on usage counting that links to the setting.
+- Contrast: `--on-energy` (ink on coral fills) and `--danger-text` (dark
+  delete-all) tokens; 44 px targets for profile edit, privacy and 404 links.
+- `frame-ancestors` leaves the meta CSP (ignored there, logged an error); the
+  `_headers` CSP still sends it.
+- Usage rows carry `app: "club"`.
+- Header logo and mark at 2x their largest display size (smaller downloads).
+
 # 3.6.0 — One token source for every color — 2026-11-12
 
 No visible change. Every color the app draws is now defined once, in

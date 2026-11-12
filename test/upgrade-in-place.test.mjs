@@ -16,7 +16,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { readFileSync } from "node:fs";
-import { bootApp } from "./helpers/boot.mjs";
+import { bootApp, showCalendarMonth } from "./helpers/boot.mjs";
 
 const snap = JSON.parse(readFileSync(new URL("./fixtures/v2.34.0-device.json", import.meta.url), "utf8"));
 const S = snap.stores;
@@ -107,6 +107,7 @@ test("settings come across: name, box start date, bar weight, theme, text size, 
   await new Promise((r) => setTimeout(r, 50));
   // Tap that day the way a member does (the note may be from any date).
   const day = noteRow.key.slice("sessionNote:".length);
+  showCalendarMonth(window, day);
   const cell = doc.querySelector(`[data-action='cal-select-day'][data-date='${day}']`);
   assert.ok(cell, `the calendar shows ${day}`);
   cell.click();
