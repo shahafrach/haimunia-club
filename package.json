@@ -6,10 +6,13 @@
   "scripts": {
     "sync-version": "node scripts/sync-version.mjs",
     "check-version": "node scripts/sync-version.mjs --check",
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "fake-indexeddb": "^6.0.0",
-    "jsdom": "^30.1.0"
+    "jsdom": "^30.1.0",
+    "playwright": "^1.65.1"
   }
 }
