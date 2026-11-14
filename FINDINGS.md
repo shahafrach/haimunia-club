@@ -11,7 +11,7 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 
 ## PRE-MERGE results (2026-11-14, Asia/Jerusalem)
 
-Verified against `fix/f-001` in both apps (`haimunia-club` `e9b0cf3`, `haimunia-app-demo` `f843af4`). Local stack: Supabase from `haimunia-app-demo` + Node transfer proxy (Deno edge runtime BOOT_ERROR on this host; same shared handlers + `transfer_put`/`transfer_take` RPCs).
+Verified against `fix/f-001` in both apps (`haimunia-club` `57436c1`, `haimunia-app-demo` `f843af4`). Local stack: Supabase from `haimunia-app-demo` + Node transfer proxy (Deno edge runtime BOOT_ERROR on this host; same shared handlers + `transfer_put`/`transfer_take` RPCs).
 
 | Check | Result | Notes |
 |-------|--------|-------|
@@ -21,7 +21,7 @@ Verified against `fix/f-001` in both apps (`haimunia-club` `e9b0cf3`, `haimunia-
 | C3-1 (F-003) | pass | `https://fix-f-001.haimunia.pages.dev`: `/docs/audit/CURSOR-CHECKS.md`, `/docs/`, `/FINDINGS.md`, `/STANDARD.md`, `/CLAUDE.md`, `/CHANGES.md` all returned **404**. F-003 marked fixed. |
 | C4-3 (F-001) | pass | Chromium + WebKit. Create code in old app and in new club tab; redeem each in standalone new app. Entity counts matched 100% (entries, wodEntries, customWods, customMovements, bodyweightEntries, measureTypes, measureEntries, sessionNotes). Prefs matched. Payload >1 MiB → HTTP 413 and Hebrew `היומן גדול מדי להעברה בקוד. אפשר להשתמש בקובץ גיבוי.` |
 
-**Re-verify (2026-11-14 ~22:00 Asia/Jerusalem):** fetched `origin/fix/f-001`; head still `e9b0cf3` (unchanged). Re-ran **C3-1** and **C4-3** only — both pass again (preview all 404; Chromium+WebKit create/redeem counts match; >1 MiB Hebrew 413). No merge blockers.
+**Re-verify (2026-11-14 ~22:10 Asia/Jerusalem):** fetched `origin/fix/f-001` at `57436c1` (merge of triage/grok). Re-ran **C3-1** and **C4-3** only — both pass (preview all 404; Chromium+WebKit create/redeem counts match; >1 MiB Hebrew 413). No merge blockers.
 
 **Merge blockers from this pass:** none for F-002 / F-003 / C4-3. Remaining Cursor checks not in this pass: C4-1 (banner/first-launch code review), C4-2 (real iPhone), C5/C6 as listed in `docs/audit/CURSOR-CHECKS.md`. F-004 (flaky waitfor helper) stays open, low.
 
