@@ -98,9 +98,9 @@ may belong in both; every PR says whether the sibling needs the same fix.
   main. Sessions cannot push tags, so put this in the PR for him:
 
   ```sh
-  gh api repos/haimuniya/haimunia-app/git/refs \
+  gh api repos/shahafrach/haimunia-club/git/refs \
     -f ref=refs/tags/rollback-<current version> \
-    -f sha=$(gh api repos/haimuniya/haimunia-app/commits/main --jq .sha)
+    -f sha=$(gh api repos/shahafrach/haimunia-club/commits/main --jq .sha)
   ```
 
 ## Session rules
