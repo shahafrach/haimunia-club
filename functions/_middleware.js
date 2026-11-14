@@ -18,6 +18,11 @@ const BLOCKED_PREFIXES = [
   "/.claude/",
   "/node_modules/",
   "/functions/",
+  // Audit notes, Cursor checks and Hebrew drafts. Never served. Lower case: normalizePath() folds case.
+  // The two .md files are already caught by BLOCKED_SUFFIXES; named here so removing that rule keeps them out.
+  "/docs/",
+  "/findings.md",
+  "/standard.md",
 ];
 
 // Exact top-level files: tooling for the test suites that the app never fetches. Exact paths, not a suffix
