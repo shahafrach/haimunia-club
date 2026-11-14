@@ -12,21 +12,30 @@
 //   AES-GCM   12-byte IV, AAD "haimunia-transfer:v1"; plaintext = gzip(JSON backup, optional "prefs")
 //   take      POST {supabaseUrl}/functions/v1/transfer-take {lookup} -> {iv, ciphertext} (base64), ONCE
 //
-// Installed app only: an iPhone's home-screen app has storage separate from Safari's, so a log
-// imported in a browser tab would be invisible to the installed app. The decrypted data stays in
-// memory while the dialog is open and is never written anywhere except through the import.
+// Taking a code: installed app only. An iPhone's home-screen app has storage separate from Safari's,
+// so a log imported in a browser tab would be invisible to the installed app. The decrypted data
+// stays in memory while the dialog is open and is never written anywhere except through the import.
+//
+// Creating a code (F-001, step 3b): ported as is from the old app (haimuniya/haimunia-app, app.js
+// createTransferCode), same bytes on the wire, so a member who logged in a Safari tab of this app
+// hands the log to the installed app. No new crypto: the same HKDF, AES-GCM, gzip and
+//   put       POST {supabaseUrl}/functions/v1/transfer-put {lookup, iv, ciphertext}
+// plaintext = gzip(JSON of buildBackupPayload() plus "prefs" from transferPrefs()). The server
+// accepts puts from haimunia.pages.dev since haimunia-app-demo F-001.
 //
 // Classic script, one IIFE, exports window.haimuniaTransfer. Reads esc, isStandalone, importBackupData,
-// downloadBackup, todayISO, render from the shared scope, only inside function bodies.
+// downloadBackup, todayISO, render, buildBackupPayload, transferPrefs, showToast from the shared
+// scope, only inside function bodies.
 (function () {
   var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
   var CODE_CHARS = 21, CODE_BYTES = 13;
   var AAD = "haimunia-transfer:v1";
   var INFO_LOOKUP = "haimunia-transfer:lookup:v1", INFO_KEY = "haimunia-transfer:key:v1";
   var MAX_PLAIN = 25 * 1024 * 1024; // the same cap as a backup file
+  var MAX_CIPHERTEXT = 5 * 1024 * 1024; // the server's cap (transfer-put), the same as the old app
   var TIMEOUT_MS = 20000;
 
-  var T = { view: "", busy: false, error: "", draft: "", payload: null, message: "" };
+  var T = { mode: "take", view: "", busy: false, error: "", draft: "", payload: null, message: "", code: "" };
   var opener = null;
 
   function el(id) { return document.getElementById(id); }
@@ -49,21 +58,69 @@
     }
     return out.length === CODE_BYTES ? new Uint8Array(out) : null;
   }
+  /** 13 bytes -> 21 Crockford base32 characters, 4-4-4-4-5. The old app's transferEncodeCode. */
+  function encodeCode(bytes) {
+    var out = "", acc = 0, bits = 0;
+    for (var i = 0; i < bytes.length; i++) {
+      acc = (acc << 8) | bytes[i]; bits += 8;
+      while (bits >= 5) { bits -= 5; out += ALPHABET.charAt((acc >> bits) & 31); acc &= (1 << bits) - 1; }
+    }
+    if (bits > 0) out += ALPHABET.charAt((acc << (5 - bits)) & 31);
+    return [out.slice(0, 4), out.slice(4, 8), out.slice(8, 12), out.slice(12, 16), out.slice(16)].join("-");
+  }
   function groupCode(text) {
     var s = String(text || "").toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, CODE_CHARS);
     return [s.slice(0, 4), s.slice(4, 8), s.slice(8, 12), s.slice(12, 16), s.slice(16)].filter(Boolean).join("-");
   }
   var enc = function (t) { return new TextEncoder().encode(t); };
   var hex = function (u8) { return Array.prototype.map.call(u8, function (b) { return ("0" + b.toString(16)).slice(-2); }).join(""); };
+  function toB64(u8) {
+    var s = "";
+    for (var i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
   function fromB64(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
 
-  async function derive(codeBytes) {
+  async function derive(codeBytes, usage) {
     var subtle = webCrypto().subtle;
     var base = await subtle.importKey("raw", codeBytes, "HKDF", false, ["deriveBits", "deriveKey"]);
     var salt = new Uint8Array(0);
     var lookup = new Uint8Array(await subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: salt, info: enc(INFO_LOOKUP) }, base, 256));
-    var key = await subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: salt, info: enc(INFO_KEY) }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    var key = await subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: salt, info: enc(INFO_KEY) }, base, { name: "AES-GCM", length: 256 }, false, [usage || "decrypt"]);
     return { lookup: hex(lookup), key: key };
+  }
+  async function gzip(bytes) {
+    var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  /** Build, encrypt and upload one transfer: the old app's createTransferCode. Resolves to the code; throws Error(<reason>). */
+  async function createCode() {
+    var c = cfg();
+    if (!c || !c.supabaseUrl || !c.supabasePublishableKey) throw new Error("not_configured");
+    if (!webCrypto() || typeof CompressionStream !== "function") throw new Error("no_crypto");
+    var codeBytes = webCrypto().getRandomValues(new Uint8Array(CODE_BYTES));
+    var d = await derive(codeBytes, "encrypt");
+    var payload = Object.assign(await buildBackupPayload(), { prefs: typeof transferPrefs === "function" ? transferPrefs() : {} });
+    var plain = await gzip(enc(JSON.stringify(payload)));
+    var iv = webCrypto().getRandomValues(new Uint8Array(12));
+    var ct = new Uint8Array(await webCrypto().subtle.encrypt({ name: "AES-GCM", iv: iv, additionalData: enc(AAD) }, d.key, plain));
+    if (ct.length > MAX_CIPHERTEXT) throw new Error("too_large_put");
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, TIMEOUT_MS);
+    var res;
+    try {
+      res = await fetch(c.supabaseUrl.replace(/\/+$/, "") + "/functions/v1/transfer-put", {
+        method: "POST", headers: { "Content-Type": "application/json", apikey: c.supabasePublishableKey },
+        body: JSON.stringify({ lookup: d.lookup, iv: toB64(iv), ciphertext: toB64(ct) }),
+        signal: ctl ? ctl.signal : undefined, credentials: "omit", cache: "no-store",
+      });
+    } catch (e) { throw new Error("network_put"); } finally { clearTimeout(timer); }
+    if (res.status === 429) throw new Error("rate_limited_put");
+    if (res.status === 503) throw new Error("full");
+    if (res.status === 413) throw new Error("too_large_put");
+    if (!res.ok) throw new Error("server");
+    return encodeCode(codeBytes);
   }
   async function gunzip(bytes) {
     var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
@@ -115,7 +172,7 @@
 
   var ERRORS = {
     bad_code: "הקוד לא נראה תקין. הוא באורך 21 תווים, למשל XXXX-XXXX-XXXX-XXXX-XXXXX.",
-    not_found: "הקוד לא נמצא. הוא תקף פעם אחת ו-24 שעות בלבד. אפשר ליצור קוד חדש באפליקציה הישנה.",
+    not_found: "הקוד לא נמצא. הוא תקף פעם אחת ו-24 שעות בלבד. אפשר ליצור קוד חדש במקום שבו נוצר.",
     rate_limited: "יותר מדי ניסיונות. אפשר לנסות שוב בעוד רבע שעה.",
     network: "אין חיבור כרגע. אפשר לנסות שוב כשהחיבור חוזר. הקוד לא נוצל.",
     server: "השרת לא ענה כמו שצריך. אפשר לנסות שוב בעוד רגע.",
@@ -124,7 +181,19 @@
     too_large: "ההעברה גדולה מדי (מעל 25MB). אפשר להשתמש בקובץ גיבוי.",
     no_crypto: "הדפדפן הזה לא תומך בהעברה מוצפנת. אפשר להשתמש בקובץ גיבוי.",
     not_configured: "ההעברה לא מוגדרת בגרסה הזאת.",
+    // Creating a code: the old app's messages (TRANSFER_ERRORS), same wording.
+    network_put: "אין חיבור כרגע. אפשר לנסות שוב כשהחיבור חוזר.",
+    rate_limited_put: "נוצרו היום יותר מדי קודים מהרשת הזאת. אפשר לנסות שוב מחר, או להשתמש בקובץ גיבוי.",
+    full: "השרת עמוס כרגע. אפשר לנסות שוב בעוד שעה, או להשתמש בקובץ גיבוי.",
+    too_large_put: "היומן גדול מדי להעברה בקוד. אפשר להשתמש בקובץ גיבוי.",
+    empty: "אין עדיין רישומים להעביר. אפשר להתקין ולהתחיל לרשום ישר באפליקציה המותקנת.",
   };
+  function hasData() {
+    var n = typeof totalLoggedEntries === "function" ? totalLoggedEntries() : 1;
+    var bw = typeof bodyweightEntries !== "undefined" && bodyweightEntries ? bodyweightEntries.length : 0;
+    var me = typeof measureEntries !== "undefined" && measureEntries ? measureEntries.length : 0;
+    return n + bw + me > 0;
+  }
 
   // ---- Flow --------------------------------------------------------------------------
   async function submit(form) {
@@ -151,6 +220,22 @@
     else { T.view = "keep"; }
     paint();
   }
+  async function runCreate() {
+    if (T.busy) return;
+    if (!hasData()) { T.error = ERRORS.empty; return paint(); }
+    T.busy = true; T.error = ""; paint();
+    try { T.code = await createCode(); }
+    catch (e) { T.error = ERRORS[e && e.message] || ERRORS.server; }
+    T.busy = false; paint();
+  }
+  function copyCode() {
+    var code = T.code;
+    if (!code) return;
+    var toast = function (t) { if (typeof showToast === "function") showToast(t); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function () { toast("הקוד הועתק"); }, function () { toast("לא הצלחנו להעתיק. אפשר לסמן ולהעתיק ידנית"); });
+    } else toast("אפשר לסמן את הקוד ולהעתיק ידנית");
+  }
   function saveFile() {
     if (!T.payload) return;
     var copy = Object.assign({}, T.payload); delete copy.prefs;
@@ -162,7 +247,22 @@
     return '<div style="text-align:center; margin-bottom:16px;"><div style="font-weight:800; font-size:17px; margin-bottom:4px;">' + esc(t) + "</div>" +
       (sub ? '<div style="color:var(--steel); font-size:13px; line-height:1.55;">' + esc(sub) + "</div>" : "") + "</div>";
   }
+  function createHtml() {
+    if (T.busy) return head("מצפין ושולח…", "ההצפנה קורית בטלפון הזה.");
+    if (T.code) {
+      return head("הקוד שלכם", "") +
+        '<div id="transferNewCode" class="mono" dir="ltr" style="font-size:20px; font-weight:700; letter-spacing:1px; text-align:center; color:var(--chalk); margin:0 0 12px; user-select:all; -webkit-user-select:all;">' + esc(T.code) + "</div>" +
+        '<button type="button" class="save-btn" data-transfer="copy" style="max-width:none; margin-bottom:12px;">העתקת הקוד</button>' +
+        '<div style="color:var(--steel); font-size:13px; line-height:1.55; margin-bottom:14px;">הקוד מוצג פעם אחת. הוא תקף פעם אחת ול-24 שעות. באפליקציה המותקנת במסך הבית: הגדרות ← הזנת קוד העברה, ומדביקים. היומן כאן לא נמחק.</div>' +
+        '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="close">סגירה</button></div>';
+    }
+    return head("העברה לאפליקציה המותקנת", "האפליקציה במסך הבית נפתחת ריקה. קוד העברה מעביר אליה את כל היומן: אימונים, תרגילים ואימונים שהוספתם, משקל גוף, מדידות, הערות והגדרות. הכול מוצפן כאן בטלפון לפני שליחה, והשרת לא יכול לקרוא אותו. הקוד תקף פעם אחת ול-24 שעות.") +
+      (T.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(T.error) + "</span></div>" : "") +
+      '<button type="button" class="save-btn" data-transfer="create" style="max-width:none; margin-bottom:10px;">יצירת קוד העברה</button>' +
+      '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="close">ביטול</button></div>';
+  }
   function viewHtml() {
+    if (T.mode === "create") return createHtml();
     if (T.busy) return head("רגע, מעבירים…", "הפענוח קורה בטלפון הזה.");
     if (T.view === "done") return head("ההעברה הושלמה", T.message) + '<button type="button" class="save-btn" data-transfer="close" style="max-width:none;">סגירה</button>';
     if (T.view === "keep") {
@@ -173,9 +273,10 @@
     }
     if (!installed()) {
       return head("קודם מתקינים", "ההעברה נעשית רק באפליקציה שהותקנה במסך הבית. קודם מוסיפים את האפליקציה למסך הבית, פותחים אותה מהאייקון, ואז מדביקים את הקוד כאן.") +
-        '<button type="button" class="save-btn" data-transfer="close" style="max-width:none;">הבנתי</button>';
+        '<button type="button" class="save-btn" data-transfer="close" style="max-width:none; margin-bottom:10px;">הבנתי</button>' +
+        '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="to-create">רוצים להעביר מכאן? יצירת קוד העברה</button></div>';
     }
-    return head("העברה מהאפליקציה הישנה", "באפליקציה הישנה מבקשים קוד העברה, ומדביקים אותו כאן. הוא תקף פעם אחת ו-24 שעות. הרישומים, כולל משקל הגוף, עוברים מוצפנים ומתווספים לנתונים שכבר יש כאן.") +
+    return head("הזנת קוד העברה", "יוצרים קוד העברה באפליקציה הישנה או בהאימוניה בדפדפן, ומדביקים אותו כאן. הוא תקף פעם אחת ו-24 שעות. הרישומים, כולל משקל הגוף, עוברים מוצפנים ומתווספים לנתונים שכבר יש כאן.") +
       (T.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(T.error) + "</span></div>" : "") +
       '<form data-transfer-form novalidate>' +
       '<label for="transferCode" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">קוד העברה</label>' +
@@ -191,10 +292,13 @@
     if (f && !T.busy) { try { f.focus(); } catch (e) {} }
   }
 
-  function open() {
+  /** open() or open("take"): enter a code. open("create"): make one here. */
+  function open(mode) {
     var o = el("transferOverlay");
     if (!o) return;
-    T = { view: "", busy: false, error: "", draft: "", payload: null, message: "" };
+    T = { mode: mode === "create" ? "create" : "take", view: "", busy: false, error: "", draft: "", payload: null, message: "", code: "" };
+    var title = el("transferTitle");
+    if (title) title.textContent = T.mode === "create" ? "יצירת קוד העברה" : "הזנת קוד העברה";
     opener = document.activeElement;
     document.body.style.overflow = "hidden";
     o.classList.add("open");
@@ -204,7 +308,7 @@
     var o = el("transferOverlay");
     if (!o) return;
     o.classList.remove("open");
-    T.payload = null; T.draft = "";
+    T.payload = null; T.draft = ""; T.code = ""; // a created code is shown once
     if (typeof releaseScrollLockIfLastDialog === "function") releaseScrollLockIfLastDialog(); else document.body.style.overflow = "";
     if (opener && typeof opener.focus === "function") { try { opener.focus(); } catch (e) {} }
     opener = null;
@@ -218,6 +322,9 @@
     if (a === "close") close();
     else if (a === "retry") runImport();
     else if (a === "file") saveFile();
+    else if (a === "to-create") { T.mode = "create"; T.error = ""; var h = el("transferTitle"); if (h) h.textContent = "יצירת קוד העברה"; paint(); }
+    else if (a === "create") runCreate();
+    else if (a === "copy") copyCode();
   }
   function onSubmit(e) {
     var f = e.target.closest && e.target.closest("[data-transfer-form]");
@@ -235,5 +342,6 @@
   document.addEventListener("submit", onSubmit);
   document.addEventListener("input", onInput);
 
-  window.haimuniaTransfer = { open: open, close: close, isOpen: isOpen, decodeCode: decodeCode, groupCode: groupCode, fetchAndDecrypt: fetchAndDecrypt };
+  window.haimuniaTransfer = { open: open, close: close, isOpen: isOpen, decodeCode: decodeCode, groupCode: groupCode, fetchAndDecrypt: fetchAndDecrypt,
+    encodeCode: encodeCode, createCode: createCode };
 })();

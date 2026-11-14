@@ -1,3 +1,20 @@
+# 3.8.0 — Safari to home screen without losing the log (F-001) — 2026-11-14
+
+- Transfer codes can be created in this app (Settings, "יצירת קוד העברה", and
+  the iOS install banner). Ported as is from the old app: same code, HKDF,
+  AES-GCM, gzip payload with `prefs`, and `transfer-put`. A code from either
+  app redeems in the installed app. Needs haimunia-app-demo `fix/f-001`
+  (`transfer-put` accepts `https://haimunia.pages.dev`) deployed first.
+- iOS install banner: shows on the first visit, before the first entry. Two
+  steps: back up first (transfer code or backup file), then add to the home
+  screen. It says the installed app opens empty until the import. The old
+  line "כדי שהנתונים לא יימחקו" is gone.
+- Installed app, first launch with an empty log: a sheet offers "יש לי קוד
+  העברה" and "יש לי קובץ גיבוי" before the welcome sheet. "מתחילים מאפס"
+  opens the welcome sheet and is remembered (`haimunia:firstImportAnswered`).
+- The transfer screen for entering a code is now "הזנת קוד העברה". No
+  IndexedDB change.
+
 # 3.7.2 — The installed app opens again — 2026-11-14
 
 Hotfix. Cloudflare Pages answers /index.html with a 308 to /. The 3.7.0 worker precached that answer

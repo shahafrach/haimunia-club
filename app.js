@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.7.2";
+const APP_VERSION = "3.8.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -2950,6 +2950,31 @@ function openWelcomeModal(editing) {
     boxInput.value = welcomeEditing ? (boxStartDate || "") : "";
   }
 }
+// F-001, step 2. The installed app on an iPhone has its own storage, apart from Safari's, so its
+// first launch is empty even for a member who has been logging in a browser tab. Before anything
+// else (the welcome sheet included), offer the two ways in: a transfer code or a backup file.
+// "Start fresh" is remembered; the other two are not, so a member who backs out with nothing
+// imported is offered it again next time.
+const FIRST_IMPORT_KEY = "haimunia:firstImportAnswered";
+function shouldOfferFirstImport() {
+  if (!isStandalone() || totalLoggedEntries() !== 0) return false;
+  try { return localStorage.getItem(FIRST_IMPORT_KEY) !== "1"; } catch (e) { return true; }
+}
+function maybeOfferFirstImport() {
+  if (!shouldOfferFirstImport()) return false;
+  const overlay = document.getElementById("firstImportOverlay");
+  if (!overlay) return false;
+  document.body.style.overflow = "hidden";
+  overlay.classList.add("open");
+  setTimeout(() => focusFirstAppDialogEl("firstImportOverlay"), 50);
+  return true;
+}
+function closeFirstImport(answered) {
+  const overlay = document.getElementById("firstImportOverlay");
+  if (overlay) overlay.classList.remove("open");
+  if (answered) { try { localStorage.setItem(FIRST_IMPORT_KEY, "1"); } catch (e) {} }
+  releaseScrollLockIfLastDialog();
+}
 function closeWelcomeModal() {
   document.body.style.overflow = "";
   nudgeViewportAfterModalClose();
@@ -3484,6 +3509,12 @@ async function applyTransferPrefs(prefs, freshDevice) {
     if (prefs.theme === "light" || prefs.theme === "dark" || prefs.theme === "auto") setThemePref(prefs.theme);
     if (prefs.textScale === "normal" || prefs.textScale === "large") setTextScalePref(prefs.textScale);
   } catch (e) { noteStorageError(e); }
+}
+
+// The device settings a transfer code created HERE carries (src/transfer.js createCode). The same
+// seven fields the old app sends (haimuniya/haimunia-app transferPrefs), read back by applyTransferPrefs.
+function transferPrefs() {
+  return { userName, boxStartDate, barWeight, pctIncrement, wodRxDefault, theme: themePref, textScale: textScalePref };
 }
 
 // Single source of truth for pulling state out of IndexedDB. Everything is
@@ -5998,7 +6029,8 @@ function renderSettingsBody() {
         <div class="backup-actions">
           <button class="backup-btn backup-btn-primary" data-action="export-data">ייצוא גיבוי</button>
           <button class="backup-btn backup-btn-secondary" data-action="import-data">ייבוא גיבוי</button>
-          <button class="backup-btn backup-btn-secondary" data-action="open-transfer">קוד העברה מהאפליקציה הישנה</button>
+          <button class="backup-btn backup-btn-secondary" data-action="open-transfer-create">יצירת קוד העברה</button>
+          <button class="backup-btn backup-btn-secondary" data-action="open-transfer">הזנת קוד העברה</button>
         </div>
         ${importMessage ? `<div class="footer-note" role="status" aria-live="polite" style="color:var(--brass); margin-bottom:8px;">${esc(importMessage)}</div>` : ""}
         <div class="footer-note" style="margin-bottom:0;">קובץ הגיבוי הוא טקסט פשוט (JSON) וכולל את יומן האימונים המלא, התרגילים והאימונים שהוספתם, משקל גוף ומדידות — בלי השם שלכם ובלי הגדרות. הוא יורד לתיקיית ההורדות של המכשיר ונשאר שם: במכשיר משותף כל מי שמשתמש בו יכול לפתוח אותו. שמרו אותו במקום בטוח, ומחקו אותו מההורדות אם אינכם צריכים אותו שם</div>
@@ -7240,6 +7272,7 @@ registerAppDialog("notifications", { overlayId: "notificationsOverlay", isOpen: 
 registerAppDialog("onboarding", { overlayId: "onboardingOverlay", isOpen: () => document.getElementById("onboardingOverlay").classList.contains("open"), close: closeOnboarding });
 registerAppDialog("connect", { overlayId: "connectOverlay", isOpen: () => !!(window.haimuniaConnect && window.haimuniaConnect.isOpen()), close: () => window.haimuniaConnect.close(), escapable: true });
 registerAppDialog("transfer", { overlayId: "transferOverlay", isOpen: () => !!(window.haimuniaTransfer && window.haimuniaTransfer.isOpen()), close: () => window.haimuniaTransfer.close(), escapable: true });
+registerAppDialog("firstImport", { overlayId: "firstImportOverlay", isOpen: () => document.getElementById("firstImportOverlay").classList.contains("open"), close: () => closeFirstImport(false), escapable: false });
 registerAppDialog("welcome", { overlayId: "welcomeOverlay", isOpen: () => document.getElementById("welcomeOverlay").classList.contains("open"), close: closeWelcomeModal, escapable: false });
 
 // Real-user report: on a phone, with an app dialog open (achievements was
@@ -7600,15 +7633,11 @@ function isIOSDevice() {
 function maybeShowIOSInstallBanner() {
   if (!isIOSDevice() || isStandalone()) return;
   try { if (localStorage.getItem(IOS_INSTALL_DISMISS_KEY)) return; } catch (e) {}
-  // §1.2 S6 applies here too, and more sharply. This banner's argument is
-  // "install it or iOS will evict your data" — an argument that is empty on
-  // day one, when there is no data to evict, and which lands on a member who
-  // has not yet seen the app do anything. Same two conditions as the
-  // Chrome/Android gate: something saved, and not on the first day. (The
-  // held-prompt condition has no analogue here; iOS never offers one, which
-  // is why this banner exists at all.)
-  if (totalLoggedEntries() < 1) return;
-  if (firstOpenDate && todayISO() === firstOpenDate) return;
+  // F-001 (2026-11-14). This used to wait for a first entry and a second day, and then said
+  // "so the data won't be deleted" - but the home-screen app has its own storage and opens
+  // empty, so by then the member's entries were stranded in Safari. It now shows on the first
+  // visit, before anything is logged, and says what really happens: move the data first
+  // (a transfer code or a backup file), then add to the home screen.
   const el = document.getElementById("iosInstallBanner");
   if (el) el.style.display = "block";
 }
@@ -7749,6 +7778,11 @@ document.addEventListener("click", (e) => {
   else if (action === "upgrade-backup-dismiss") { markEditionSeen(); render(); }
   else if (action === "import-data") { triggerImport(); }
   else if (action === "open-transfer") { closeSettings(); if (window.haimuniaTransfer) window.haimuniaTransfer.open(); }
+  else if (action === "open-transfer-create") { closeSettings(); if (window.haimuniaTransfer) window.haimuniaTransfer.open("create"); }
+  else if (action === "ios-install-backup") { exportData(); }
+  else if (action === "first-import-code") { closeFirstImport(); if (window.haimuniaTransfer) window.haimuniaTransfer.open(); }
+  else if (action === "first-import-file") { closeFirstImport(); triggerImport(); }
+  else if (action === "first-import-fresh") { closeFirstImport(true); if (userName === null) openWelcomeModal(); }
   else if (action === "close-transfer") {
     if (el.id === "transferOverlay" && e.target !== el) return;
     if (window.haimuniaTransfer) window.haimuniaTransfer.close();
@@ -8202,7 +8236,8 @@ async function init() {
   // boot too. isFreshInstall already excludes anyone with real data; a
   // grandfathered member can still set a name any time via Settings' edit
   // icon (openWelcomeModal(true)).
-  if (userName === null && isFreshInstall) openWelcomeModal();
+  if (maybeOfferFirstImport()) { /* F-001: the import comes first; "start fresh" opens the welcome sheet */ }
+  else if (userName === null && isFreshInstall) openWelcomeModal();
   else openNotifications({ onlyIfUnseen: true });
 
   setUpServiceWorker();
