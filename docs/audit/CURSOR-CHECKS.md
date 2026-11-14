@@ -1,19 +1,23 @@
 # Cursor checks
 
-One step per check. Each check names the finding it covers in FINDINGS.md. The C1-C6 task names are provisional.
+One step per check. Each check names the finding or triage item it covers in FINDINGS.md.
 
-## C1: Data and storage on the phone
+## C1: Deploy and browser QA
 
-- **C1-1 (F-001):** In `index.html` (`#iosInstallBanner`) and `app.js` `maybeShowIOSInstallBanner()`, check that the banner tells the member that entries logged in Safari do not move into the installed app, and points to backup export or transfer first. Fail if the banner only says "כדי שהנתונים לא יימחקו".
+## C2: Database security (RLS, SECURITY DEFINER, grants)
 
-## C2: Offline, service worker and deploy
+- **C2-1 (F-002):** In `shahafrach/haimunia-app-demo`, open `supabase/migrations/202611120001_haimunia_club.sql` and check that `remove_member`, `club_announcement_delete` and `club_announcement_set_pinned` each write a row to an audit table (`admin_actions` or a club equivalent) with actor, target and time. Fail if any of them does not.
 
-## C3: Security, headers and middleware
+## C3: Site and hosting security (headers, CSP, exposed files, secrets, transfer code)
 
-## C4: Privacy
+- **C3-1 (F-003):** On the `triage/grok` preview build, run `curl -s -o /dev/null -w '%{http_code} %{url}\n'` against `/docs/audit/CURSOR-CHECKS.md`, `/docs/`, `/FINDINGS.md`, `/STANDARD.md`, `/CLAUDE.md` and `/CHANGES.md`, and expect 404 for every one. Fail on any other code. Then mark F-003 fixed.
 
-## C5: Accessibility, RTL and UX
+## C4: Data integrity (backup, import, transfer)
 
-## C6: Backend (shahafrach/haimunia-app-demo, read-only)
+- **C4-1 (F-001):** In `index.html` (`#iosInstallBanner`) and `app.js` (`maybeShowIOSInstallBanner()` and first launch in standalone mode with an empty log), check two things. The banner must tell the member to back up or transfer before installing. The installed app must offer backup import and the transfer screen on first launch when the log is empty. Fail if the banner only says "כדי שהנתונים לא יימחקו" or if the first launch offers neither.
 
-- **C6-1 (F-002):** In the sibling repo, open `supabase/migrations/202611120001_haimunia_club.sql` and check that `remove_member`, `club_announcement_delete` and `club_announcement_set_pinned` each write a row to an audit table (`admin_actions` or a club equivalent) with actor, target and time. Fail if any of them does not.
+## C5: Offline and service worker updates
+
+- **C5-1 (U-1, U-2, U-3):** Fetch `https://bugs.webkit.org/show_bug.cgi?id=277615`, `https://bugs.webkit.org/show_bug.cgi?id=313800` and `https://openpwa.net/news/testing-home-screen-web-apps-on-ios-18-6-2`. For each, confirm or reject the claim in the FINDINGS.md triage log (status, dates, affected iOS versions). Then relabel the item there: U-1 becomes F-00x OFF-1 high if confirmed, U-2 becomes UX low, and U-3 confirms F-001.
+
+## C6: Accessibility and RTL

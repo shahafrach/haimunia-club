@@ -15,6 +15,7 @@ test("tooling, tests, notes and the dev manifest are blocked, in every spelling"
   for (const p of ["/test/connect.test.mjs", "/test/fixtures/old-app-backup-v1.json", "/scripts/browser-check/run-all.mjs",
     "/.github/workflows/x.yml", "/node_modules/x/index.js", "/functions/_middleware.js", "/package.json", "/package-lock.json",
     "/CLAUDE.md", "/CHANGES.md", "/notes.sql", "/x.mjs",
+    "/docs/audit/CURSOR-CHECKS.md", "/docs/privacy-policy.he.md", "/DOCS/x", "/%64ocs/x", "/FINDINGS.md", "/standard.md",
     "/%74est/connect.test.mjs", "/%2574est/x", "/TEST/x", "/test%2Fx", "//test/x", "/\\test\\x", "/%E0%A4%A", "/%"]) {
     assert.equal(isBlocked(p), true, p);
   }

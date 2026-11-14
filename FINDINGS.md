@@ -4,8 +4,17 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 
 | ID | Source | Code | Severity | Status | Finding | Evidence | Check |
 |----|--------|------|----------|--------|---------|----------|-------|
-| F-001 | grok-G3 | DATA | high | open | The iOS install banner appears only after the member has logged in a Safari tab and says "so the data won't be deleted", but the installed app has its own storage and opens empty. The entries stay behind in Safari, and the banner says nothing about export or transfer first. | `app.js:7600-7610` (shown only when `totalLoggedEntries() >= 1`), `index.html:3366-3367`, `src/transfer.js:15` (the repo's own premise: home-screen storage is separate from Safari's) | C1-1 |
-| F-002 | grok-G2 | OPS | low | open | Club staff actions (removing a member, deleting or pinning an announcement) leave no audit record. Announcements keep `author_id`, but a removal leaves nothing. The fix belongs in the sibling repo. | sibling `supabase/migrations/202611120001_haimunia_club.sql:305,420,432`; no `admin_actions` in that file | C6-1 |
+| F-001 | grok-G3 | DATA-1 | critical (blocks launch) | open | The iOS install banner appears only after the member has logged in a Safari tab and says "so the data won't be deleted", but the installed app has its own storage and opens empty. The entries stay behind in Safari, and the banner says nothing about export or transfer first. Fix plan below. | `app.js:7600-7610` (shown only when `totalLoggedEntries() >= 1`), `index.html:3366-3367`, `src/transfer.js:15` (the repo's own premise: home-screen storage is separate from Safari's) | C4-1 |
+| F-002 | grok-G2 | SEC-7 | low | open | Club staff actions (removing a member, deleting or pinning an announcement) leave no audit record. Announcements keep `author_id`, but a removal leaves nothing. The fix belongs in the sibling repo. | sibling `supabase/migrations/202611120001_haimunia_club.sql:305,420,432`; no `admin_actions` in that file | C2-1 |
+| F-003 | owner (triage) | SEC-5 | high | open | `docs/` and the root audit files were served from the site root. Blocked in `functions/_middleware.js` on `triage/grok`. Stays open until C3-1 passes on the preview build. Do not merge `triage/grok` before that. | `functions/_middleware.js` `BLOCKED_PREFIXES`; `test/middleware.test.mjs` | C3-1 |
+
+### F-001 fix plan
+
+1. **Banner before install** (`index.html` `#iosInstallBanner`, `app.js` `maybeShowIOSInstallBanner()`): replace "כדי שהנתונים לא יימחקו" with a two-step message. Step one: back up now (a button that runs the existing backup export). Step two: add to the home screen. Say plainly that the installed app starts empty until the backup is imported.
+2. **Installed app, first launch, empty log** (`isStandalone()` true and `totalLoggedEntries() === 0`): offer the import before anything else, with two choices. "יש לי קובץ גיבוי" runs the existing backup import. "יש לי קוד העברה" opens the existing transfer screen (`src/transfer.js`, installed-only already).
+3. **Constraint:** a transfer code can only be made by the old app. `transfer-put` accepts only `https://haimuniya.github.io` (sibling `supabase/functions/_shared/transfer.mjs:15`). So a member who logged in the club app's own Safari tab moves the data by backup file. To let that tab make a code too, the sibling must accept `haimunia.pages.dev` for put. That is a backend change and the owner's call.
+4. **Tests:** a jsdom test for each of steps 1 and 2. Import must stay lossless for old backups (`test/old-app-backup-imports.test.mjs`).
+5. **Release:** bump `APP_VERSION` and `SW_VERSION` and add a `CHANGES.md` entry (CLAUDE.md, Releases).
 
 ## Triage log
 
@@ -18,13 +27,13 @@ bugs.webkit.org and openpwa.net are blocked by this session's network policy, so
 | Item | Label | Evidence |
 |------|-------|----------|
 | WebKit 324094: wedged DB after a dedicated worker ends mid-transaction | not relevant | No Worker in app code (no `new Worker` outside `vendor/`); every transaction runs on the page. |
-| WebKit 277615: "Connection to Indexed Database server lost" until reload | unverified | Source not fetchable. Code gap confirmed: `src/db.js:53-78` caches one connection in `_dbPromise` with no `onclose` or reopen; `app.js:552-558` shows "השמירה במכשיר נכשלה" without telling the member to reload. Promote to DATA/high if the source checks out. |
+| WebKit 277615: "Connection to Indexed Database server lost" until reload | unverified (U-1, check C5-1) | Source not fetchable. Code gap confirmed: `src/db.js:53-78` caches one connection in `_dbPromise` with no `onclose` or reopen; `app.js:552-558` shows "השמירה במכשיר נכשלה" without telling the member to reload. Promote to OFF-1/high if the source checks out. |
 | WebKit 309251: iOS 26 jetsam with WASM and worker batch writes | not relevant | No WASM and no Worker. |
 | Storage eviction under pressure; 7-day rule | already handled | `app.js:8189` `navigator.storage.persist()`; `app.js:552-556` QuotaExceededError message; export reminder `app.js:3187` (`boxlog:lastExportAt`). Server as source of truth: not relevant (by design the private log stays on the phone, CLAUDE.md). |
-| Safari and Home Screen storage isolation | applies, F-001 | See F-001. The external source is unverified, but `src/transfer.js:15` states the same behaviour. |
+| Safari and Home Screen storage isolation | applies, F-001 | See F-001. The external source (OpenPWA, U-3, check C5-1) is unverified, but `src/transfer.js:15` states the same behaviour. |
 | WebKit 283793: `indexedDB` undefined in a push wakeup | not relevant | `sw.js` has no push or notificationclick handler (`sw.js:83,101,129`: install, activate, fetch only). |
 | WebKit 268797: notificationclick not firing; Web Push needs Home Screen | not relevant | No push in this app today (same evidence). Recheck when push with `app = 'club'` lands. |
-| WebKit 313800: `visualViewport` short by the status bar in standalone (26.3.1) | unverified | Source not fetchable. The app sizes overlays from `visualViewport.height` (`app.js:3841, 6950, 7349`) with `viewport-fit=cover` (`index.html:71`), so if true it would be UX/low. |
+| WebKit 313800: `visualViewport` short by the status bar in standalone (26.3.1) | unverified (U-2, check C5-1) | Source not fetchable. The app sizes overlays from `visualViewport.height` (`app.js:3841, 6950, 7349`) with `viewport-fit=cover` (`index.html:71`), so if true it would be UX/low (no UX code fits exactly; nearest A11Y-3). |
 | No beforeinstallprompt; Share then Add to Home Screen | already handled | `app.js:7588-7610` iOS-only instructions banner; `isStandalone()` `app.js:7494`. |
 | SW update lifecycle and stale caches | already handled | `sw.js:97,122` page-controlled SKIP_WAITING; `sw.js:108` old caches deleted on activate; `_headers:25-28` `no-cache` on `/sw.js`. |
 
