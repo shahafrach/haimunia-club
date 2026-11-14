@@ -17,6 +17,7 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-011 | cursor-C5 | UX | low | open | WebKit bug 313800 (NEW): `visualViewport` may be short by the status bar in standalone iOS 26.3.1. Overlays sized from `visualViewport.height` could sit under the status bar. | `app.js:3841, 6950, 7349`; `index.html:71` `viewport-fit=cover`; WebKit 313800 (was U-2) | C5-1 |
 | F-012 | cursor-C1 | OPS | medium | open | No `v3.8.0` git tag on `haimunia-club`; share-preview URL still reports `3.9.0` ahead of production `3.8.0`, so rollback and audit pointers are ambiguous. | `git ls-remote --tags origin v3.8.0` empty 2026-11-14; live `https://haimunia.pages.dev/` APP/SW 3.8.0 | C1 |
 | F-013 | cursor-C1 | UX | low | open | WebKit logs a console warning for `interactive-widget=resizes-content` in the viewport meta (harmless elsewhere; noisy in Safari Web Inspector during C1 runs). | `index.html:65,71`; C1 Chromium + WebKit console capture | C1 |
+| F-014 | cursor-C4 | OPS | medium | open | Sibling `haimunia-fixes` 3-year member export is not reachable from this audit session; C4 used `test/fixtures/old-app-backup-v1.json` instead of the longest real export. | fixture path + missing haimunia-fixes access 2026-11-14 | C4 |
 
 ## C3 audit (2026-11-14, UTC)
 
@@ -65,7 +66,7 @@ Live `https://haimunia.pages.dev/` (3.8.0): response headers match repo `_header
 
 ### C4 notes
 
-C4-1 (backup export/import lossless): **pass** via `test/old-app-backup-imports.test.mjs` and F-001 install/transfer jsdom tests on main. Transfer put-origin fix is on the sibling; club create-code UI still pending (F-001 step 3b). Repo branch `haimunia-fixes` referenced in audit docs was not present on origin when C4 was run.
+C4-1 (old-app backup export/import lossless): **pass** via `test/old-app-backup-imports.test.mjs` and F-001 install/transfer jsdom tests on main (`test/fixtures/old-app-backup-v1.json`). **F-014**: sibling `haimunia-fixes` 3-year export not reachable from this audit session; longest real export not replayed. C4-2 and C4-3 (real iPhone install and transfer flows) were not run here. Transfer put-origin fix is on the sibling; club create-code UI still pending (F-001 step 3b).
 
 ## Triage log
 
