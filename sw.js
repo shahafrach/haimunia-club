@@ -13,7 +13,7 @@
 //
 // SW_VERSION is written by scripts/sync-version.mjs from APP_VERSION in
 // app.js; the cache name carries it, so every release is a fresh cache.
-const SW_VERSION = "3.7.0";
+const SW_VERSION = "3.7.1";
 // The 2.x app's own prefix, kept: its caches are "haimunia-v2.34.0" and so
 // on, and the cleanup below removes them by this prefix.
 const CACHE_PREFIX = "haimunia-v";

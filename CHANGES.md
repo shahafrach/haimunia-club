@@ -1,3 +1,18 @@
+# 3.7.1 — Club tab visual fixes — 2026-11-14
+
+- The club tab is registered as a scene (`PAGE_SCENES.club`, only while the
+  member is in the club), so it gets the same chrome as the other tabs:
+  header over the photo, dark nav, no `#app` bottom padding. That padding
+  was the lighter navy band between the last card and the nav.
+- On every scene tab, html, body and the status-bar scrim take the colour
+  the sheet paints at its bottom edge instead of `--bg`, so rubber-band
+  overscroll, Safari's collapsing toolbar and content scrolled under the
+  status bar show no seam. The club keeps its opaque `--club-paper` sheet.
+- Members accordion: the app's chevron icon (rotated like the other
+  accordions) instead of ▲/▼.
+- "הודעות", "הפיד" and "כלי מאמן" use the app's `.section-label`.
+- Publish button: `--on-energy` ink (5.49:1) and `.chip-btn.primary`'s glow.
+
 # 3.7.0 — Quality fixes from the old app's 3.3.0 — 2026-11-12
 
 Ported from haimuniya/haimunia-app 3.3.0 (f4fa272), adapted to this app.

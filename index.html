@@ -2732,6 +2732,32 @@
   .log-row > .flex{ min-width:0; }
   .log-row > .flex:first-child span:last-child{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   body[data-scene] #app{padding-bottom:0;}
+  /* One continuous page colour under every scene tab, down to the nav.
+     html and body stayed var(--bg), a lighter navy in dark, which showed
+     as a band wherever the sheet did not reach: the iOS rubber-band at the
+     bottom, Safari's toolbar collapsing past the 100svh scene, and the
+     status bar scrim (body::before) content scrolls under in the installed
+     PWA. The ground is what the sheet itself paints at its bottom edge: the
+     glass sheet (body[data-scene] .scene-page > .scene-sheet, further down)
+     over the scrim's last stop, var(--club-navy). Club keeps its opaque
+     var(--club-paper) sheet (it had it before it was a scene; the glass
+     would show the red logo-wall photo through the feed), so its ground is
+     that. :has() on html keeps Settings and the solid screens on var(--bg). */
+  html:has(body[data-scene]), body[data-scene], body[data-scene]::before{
+    background:linear-gradient(var(--p-fffdf8-a88), var(--p-fffdf8-a88)) var(--club-navy);
+  }
+  :root[data-scheme="dark"]:has(body[data-scene]), :root[data-scheme="dark"] body[data-scene], :root[data-scheme="dark"] body[data-scene]::before{
+    background:linear-gradient(var(--p-141f3a-a80), var(--p-141f3a-a80)) var(--club-navy);
+  }
+  :root[data-scheme]:has(body[data-scene="scene-page--community"]), :root[data-scheme] body[data-scene="scene-page--community"], :root[data-scheme] body[data-scene="scene-page--community"]::before,
+  :root[data-scheme] body[data-scene] .scene-page.scene-page--community > .scene-sheet{ background:var(--club-paper); -webkit-backdrop-filter:none; backdrop-filter:none; }
+  /* The club's publish button is the app's primary .save-btn; only two
+     things are narrowed for it. Ink is the semantic --on-energy (5.49:1 on
+     --energy, higher on the gradient's lighter top) instead of the literal,
+     and the glow is .chip-btn.primary's, the other primary action inside a
+     sheet: the base .save-btn glow is sized for the fixed bottom CTA and
+     bled 26px into the cards around a button in the page flow. */
+  .scene-page--community [data-club-form="ann"] .save-btn{ color:var(--on-energy); box-shadow:0 8px 18px -10px color-mix(in srgb, var(--energy) 85%, transparent); }
 
   body[data-scene] .scene-page--history .cal-cell{aspect-ratio:auto; height:44px;}
   .scene-page--history .cal-month-stats{margin-bottom:20px;}

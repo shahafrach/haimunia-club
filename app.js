@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.7.0";
+const APP_VERSION = "3.7.1";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -154,6 +154,13 @@ const PAGE_SCENES = Object.freeze({
   calendar: { className: "scene-page--history" },
   history: { className: "scene-page--progress" },
   wod: { className: "scene-page--library" },
+  // The club tab's renderTab() (src/club.js) returns .scene-page markup
+  // whenever the member is in the club. Left out of this table, it got none
+  // of the scene chrome: #app kept its bottom padding (a lighter --bg band
+  // between the last card and the nav) and the ordinary header stayed in
+  // flow above the photo. render() only stamps it while the club is
+  // available, the same condition renderTab() draws the scene under.
+  club: { className: "scene-page--community" },
 });
 // A plain top-level `const` does NOT become a window property the way a
 // `var`/function declaration does - cloud.js (its own IIFE) reaches this
@@ -6362,7 +6369,7 @@ function render() {
   // #app-scoped attribute could never reach the bottom bar's own styling.
   // Removed entirely on a non-scene tab (Settings/Manage/dialogs keep the
   // ordinary light chrome).
-  const scene = PAGE_SCENES[tab];
+  const scene = tab === "club" && !(window.haimuniaClub && window.haimuniaClub.available()) ? null : PAGE_SCENES[tab];
   if (scene) document.body.dataset.scene = scene.className; else delete document.body.dataset.scene;
   if (tab !== lastCountedScreen) { lastCountedScreen = tab; countUsage("screen_open", tab); }
   // Captured BEFORE the swap, restored after - see focusFieldIdentity.

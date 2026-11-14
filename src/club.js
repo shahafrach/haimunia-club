@@ -225,7 +225,7 @@
     var body = a.error ? '<div style="color:var(--steel); font-size:13px; margin-bottom:12px;">לא הצלחנו לטעון הודעות.</div>'
       : (a.loaded && !rows ? "" : rows);
     if (!form && !body) return "";
-    return '<h2 class="settings-block-title" style="margin:6px 0 8px;">הודעות</h2>' + form + body;
+    return '<h2 class="section-label" style="margin-top:6px;">הודעות</h2>' + form + body;
   }
 
   function reactionsHtml(r) {
@@ -248,7 +248,7 @@
   }
   function feedHtml(staff) {
     var f = C.feed;
-    var head = '<h2 class="settings-block-title" style="margin:14px 0 8px;">הפיד</h2>';
+    var head = '<h2 class="section-label" style="margin-top:16px;">הפיד</h2>';
     if (f.error) return head + '<div class="card" style="text-align:center;"><div style="margin-bottom:10px;">לא הצלחנו לטעון את הפיד.</div><button class="chip-btn" data-club="retry">ניסיון חוזר</button></div>';
     if (!f.loaded) return head + '<div style="color:var(--steel); text-align:center; padding:16px;" role="status">טוענים…</div>';
     if (!f.rows.length) return head + '<div class="card" style="text-align:center; color:var(--steel);">עוד אין פוסטים במועדון.</div>';
@@ -256,10 +256,17 @@
       (f.done ? "" : '<div style="text-align:center;"><button class="chip-btn" data-club="more"' + (f.loading ? " disabled" : "") + ">עוד פוסטים</button></div>");
   }
 
+  // The app's own accordion chevron (ICONS.chevron, the nav icon set), turned the way every other
+  // expandable row in app.js turns it: 180deg points it left (closed, the RTL "forward"), 90deg down (open).
+  function chevron(open) {
+    var icon = typeof ICONS === "object" && ICONS.chevron ? ICONS.chevron : "";
+    return '<span aria-hidden="true" style="display:inline-flex; flex-shrink:0; transition:transform .2s; transform:rotate(' + (open ? "90deg" : "180deg") + ');">' + icon + "</span>";
+  }
+
   function membersHtml(i) {
     var m = C.members;
     var toggle = '<button class="exercise-row" data-club="members" aria-expanded="' + m.open + '" style="margin-top:14px;"><span style="font-weight:700; font-size:13.5px;">חברי המועדון' +
-      (m.loaded ? " (" + m.rows.length + ")" : "") + '</span><span style="color:var(--steel);">' + (m.open ? "▲" : "▼") + "</span></button>";
+      (m.loaded ? " (" + m.rows.length + ")" : "") + "</span>" + chevron(m.open) + "</button>";
     if (!m.open) return toggle;
     if (m.error) return toggle + '<div class="card" style="text-align:center;"><div style="margin-bottom:10px;">לא הצלחנו לטעון את החברים.</div><button class="chip-btn" data-club="members-retry">ניסיון חוזר</button></div>';
     if (!m.loaded) return toggle + '<div style="color:var(--steel); text-align:center; padding:12px;" role="status">טוענים…</div>';
@@ -278,7 +285,7 @@
         '<div dir="ltr" style="word-break:break-all; font-family:ui-monospace,monospace; font-size:12px; user-select:all; margin-bottom:8px;">' + esc(C.newLink) + "</div>" +
         '<button class="chip-btn" data-club="copy-link">' + (C.linkCopied ? "הועתק" : "העתקה") + '</button> <button class="link-btn link-btn--tap" data-club="hide-link">סגירה</button></div>'
       : "";
-    return '<h2 class="settings-block-title" style="margin:14px 0 8px;">כלי מאמן</h2>' + out +
+    return '<h2 class="section-label" style="margin-top:16px;">כלי מאמן</h2>' + out +
       '<button class="exercise-row" data-club="rotate"><div style="text-align:right;"><div style="font-weight:700; font-size:13.5px;">קישור הצטרפות חדש</div>' +
       '<div style="color:var(--steel); font-size:12px; margin-top:2px;">מחליף את הקישור הקבוע. הישן מפסיק לעבוד.</div></div></button>';
   }

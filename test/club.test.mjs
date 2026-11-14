@@ -328,3 +328,28 @@ test("undo of a deleted PR entry brings its PR card back, under a new key", asyn
   assert.equal(shares[1][1].note, "שיא אישי בדדליפט: +4%");
   assert.equal(await window.haimuniaClub.restorePr("never-shared"), false, "nothing to restore for an entry that had no PR card");
 });
+
+test("the club tab is a scene like the other tabs: scene chrome, app chevron, shared section headers", async () => {
+  const { window } = await boot({ role: "coach" });
+  await openClub(window);
+  // Registered in PAGE_SCENES: body[data-scene] gives it the scene header, the dark nav and
+  // #app's zero bottom padding (without it a lighter band sat between the last card and the nav).
+  assert.equal(window.document.body.dataset.scene, "scene-page--community");
+  // Members accordion: the app's ICONS.chevron, turned like every other accordion (180deg closed, 90deg open).
+  const toggle = () => $(window, "[data-club='members']");
+  const turn = () => toggle().querySelector("span[aria-hidden='true']").getAttribute("style");
+  assert.doesNotMatch(toggle().textContent, /[▲▼]/);
+  assert.ok(toggle().querySelector("svg"), "chevron icon");
+  assert.match(turn(), /rotate\(180deg\)/);
+  toggle().click();
+  await until(() => toggle().getAttribute("aria-expanded") === "true", "members open");
+  assert.match(turn(), /rotate\(90deg\)/);
+  // Section headers use the app's .section-label, coach tools included.
+  assert.deepEqual($$(window, "#content h2.section-label").map((h) => h.textContent), ["הודעות", "הפיד", "כלי מאמן"]);
+  assert.equal($(window, "#content .settings-block-title"), null);
+  // Publish is the app's primary button.
+  assert.ok($(window, "[data-club-form='ann'] button[type='submit'].save-btn"));
+  // Another tab stamps its own scene again.
+  $(window, "[data-action='switch-tab'][data-tab='add']").click();
+  await until(() => window.document.body.dataset.scene === "scene-page--add", "add scene");
+});
