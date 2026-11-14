@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.8.1";
+const APP_VERSION = "3.9.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -1403,6 +1403,7 @@ function showCelebration(prLabel, badges, opts) {
 function closeCelebration() {
   document.body.style.overflow = "";
   document.getElementById("celebrationOverlay").classList.remove("open", "arrival-card");
+  if (pendingClubShare) { const p = pendingClubShare; pendingClubShare = null; setTimeout(() => askClubShare(...p), 0); }
   if (celebrationOpenerEl && typeof celebrationOpenerEl.focus === "function") celebrationOpenerEl.focus();
   celebrationOpenerEl = null;
   // THE moment S5 has been waiting for: not "the overlay stopped being
@@ -2101,8 +2102,10 @@ function clubWodLine(e) {
 function clubDaySummary(day) {
   if (!day) return null;
   const lines = [];
-  for (const e of entries) if (e.date === day) { const l = clubStrengthLine(e); if (l) lines.push(l); }
-  for (const e of wodEntries) if (e.date === day) { const l = clubWodLine(e); if (l) lines.push(l); }
+  // Only the workouts the member chose to share (askClubShare): no answer, or "not this time", stays out.
+  const shared = (e) => !!(window.haimuniaClub && window.haimuniaClub.isShared(e.id));
+  for (const e of entries) if (e.date === day && shared(e)) { const l = clubStrengthLine(e); if (l) lines.push(l); }
+  for (const e of wodEntries) if (e.date === day && shared(e)) { const l = clubWodLine(e); if (l) lines.push(l); }
   return { day, lines };
 }
 // A PR as a percent improvement (club default: PRs as percent, never kilograms). Computed here, from
@@ -2130,6 +2133,32 @@ function removeRecordFromClub(entryId) {
 }
 function shareDayToClub(day) {
   try { if (day && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postDay(day); } catch (e) { /* never in the way of the log */ }
+}
+// Owner decision (2026-11-14): every new workout asks once whether it goes to the club. Yes posts the
+// day (and its PR card, if any); "not this time", Escape or a tap outside keeps it on the phone. An
+// edit keeps the answer it already had.
+let pendingClubShare = null;
+function askClubShare(entry, label, prDetail) {
+  try {
+    if (!entry || !window.haimuniaClub || !window.haimuniaClub.available()) return;
+    // A PR or first-entry card is showing: ask when it closes, not on top of it.
+    const cel = document.getElementById("celebrationOverlay");
+    if (cel && cel.classList.contains("open")) { pendingClubShare = [entry, label, prDetail]; return; }
+    askAppConfirm({
+      title: "לשתף במועדון?",
+      message: `${label}. בפיד יופיעו שם האימון והתוצאה, בלי משקלים.`,
+      confirmLabel: "לשתף", cancelLabel: "לא הפעם",
+      action: "club-share-entry",
+      payload: { entry, prDetail: prDetail || null },
+      onCancel: () => { try { window.haimuniaClub.setShared(entry.id, false); } catch (e) { /* never in the way */ } },
+    });
+  } catch (e) { /* never in the way of the log */ }
+}
+function confirmClubShare(p) {
+  if (!p || !p.entry || !window.haimuniaClub) return;
+  window.haimuniaClub.setShared(p.entry.id, true);
+  shareDayToClub(p.entry.date);
+  if (p.prDetail) shareRecordToClub(p.entry, p.prDetail);
 }
 
 async function saveSet(sanityConfirmed) {
@@ -2300,8 +2329,13 @@ async function saveSet(sanityConfirmed) {
   }
   // A new entry is a workout logged; correcting an old one is not.
   if (!existing) countUsage("workout_logged");
-  shareDayToClub(entry && entry.date);
-  if (celebratePR && entry) shareRecordToClub(entry, prDetail);
+  if (!existing && entry) {
+    const shareMov = movementById(entry.exerciseId);
+    askClubShare(entry, shareMov ? `${shareMov.name} — ${celebrationLabel}` : celebrationLabel, celebratePR ? prDetail : null);
+  } else {
+    shareDayToClub(entry && entry.date);
+    if (celebratePR && entry) shareRecordToClub(entry, prDetail);
+  }
   } finally { savingSet = false; }
 }
 // A ladder (working-set session: same exercise/day, different weight+reps
@@ -2464,6 +2498,7 @@ function runAppConfirm() {
   else if (c.action === "delete-measurement-entry") deleteMeasurementEntry(c.payload.id);
   else if (c.action === "delete-custom-wod") deleteCustomWod(c.payload.id);
   else if (c.action === "club-action") window.haimuniaClub.runConfirmed(c.payload);
+  else if (c.action === "club-share-entry") { render(); confirmClubShare(c.payload); }
   else if (c.action === "save-set") saveSet(true);
   else if (c.action === "save-wod") saveWod(true);
   else if (c.action === "import-backup") { render(); c.payload.resolve(true); }
@@ -4254,7 +4289,8 @@ async function saveWod(sanityConfirmed) {
   }
   // Same rule as saveSet(): a new result counts, an edit does not.
   if (!existing) countUsage("workout_logged");
-  shareDayToClub(entry && entry.date);
+  if (!existing && entry) askClubShare(entry, `${w.name} — ${formatWodEntry(entry)}`, null);
+  else shareDayToClub(entry && entry.date);
   } finally { savingWod = false; }
 }
 // Live bug hunt (2026-09-11): same two-tab staleness fix as startEditEntry()

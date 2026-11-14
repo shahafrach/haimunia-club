@@ -304,9 +304,9 @@
   }
 
   // ---- Sharing workouts to the club ----------------------------------------------------
-  // Owner decision (2026-11-11): connected mode has a feed and reactions. In a club every logged
-  // workout is posted by default, with no kilograms (circle_share_defaults('club'), 202611120001).
-  // The member's own setting always wins (circle_members.share_defaults, set_share_defaults). The unit
+  // Owner decision (2026-11-11): connected mode has a feed and reactions. Owner decision (2026-11-14):
+  // the member chooses per workout. After each new lift or WOD the app asks "share to the club?"; only
+  // the ones answered yes reach the day's post. The answer is kept on this phone (CHOICE_KEY). The unit
   // is a training DAY, the same as BOX-LOG: one post per member per day, upserted on
   // (author_id, club_id, source_type, source_record_id) so a second lift that day updates it.
   // What is sent: the movement or WOD names and the results without weights, nothing else. Body weight
@@ -315,9 +315,19 @@
   var CLUB_DEFAULTS = { share_workouts: true, show_weights: false };
   function shareDefaults() { return Object.assign({}, CLUB_DEFAULTS, info().shareDefaults || {}); }
   function sharingOn() { return shareDefaults().share_workouts === true; }
+  // { "<club>|<log id>": true | false }: what the member answered for each workout. No answer = not shared.
+  var CHOICE_KEY = "haimunia:clubShareChoice";
+  function choices() { try { var v = JSON.parse(localStorage.getItem(CHOICE_KEY) || "{}"); return v && typeof v === "object" ? v : {}; } catch (e) { return {}; } }
+  function isShared(id) { return !!id && choices()[cid() + "|" + id] === true; }
+  function setShared(id, yes) {
+    if (!id) return;
+    var v = choices(); v[cid() + "|" + id] = !!yes;
+    try { localStorage.setItem(CHOICE_KEY, JSON.stringify(v)); } catch (e) { /* this answer is lost, the log is not */ }
+  }
   /** The row for one day, or null when nothing is sent. Pure: summary is clubDaySummary(day). */
   function dayPostRow(summary, clubId, userId, defaults) {
-    if (!summary || !summary.day || !clubId || !userId || !defaults || defaults.share_workouts !== true) return null;
+    // The per-workout answer is the consent: summary.lines holds only the workouts answered yes.
+    if (!summary || !summary.day || !clubId || !userId || !defaults) return null;
     var lines = (summary.lines || []).filter(function (l) { return l && l.title; });
     if (!lines.length) return null;
     var text = lines.map(function (l) {
@@ -365,7 +375,7 @@
     var defaults = shareDefaults();
     var row = dayPostRow(summary, i.clubId, i.userId, defaults);
     var empty = !summary || !(summary.lines || []).length;
-    if (!row && !(empty && defaults.share_workouts === true)) return false;
+    if (!row && !empty) return false;
     posting[day] = true;
     try {
       var c = await client();
@@ -409,7 +419,7 @@
   /** A personal record as a percent improvement, never kilograms (club default share_prs, percent only). */
   async function postPr(entryId, movementName, pct) {
     var d = shareDefaults();
-    if (!available() || !entryId || !(pct > 0) || d.share_workouts !== true || d.share_prs === false) return false;
+    if (!available() || !entryId || !(pct > 0) || !isShared(entryId) || d.share_prs === false) return false;
     var prev = prRec(entryId);
     savePr(entryId, { name: String(movementName || "").slice(0, 80), pct: pct, n: prev && prev.n ? prev.n : 0 });
     try {
@@ -443,27 +453,10 @@
     if (!r || !r.n) return false;
     return postPr(entryId, r.name, r.pct);
   }
-  async function setSharing(on) {
-    if (!available() || C.busy.share) return;
-    C.busy.share = true; again();
-    try {
-      var c = await client();
-      var r = await c.rpc("set_share_defaults", { p_club_id: cid(), p_defaults: { share_workouts: !!on, show_weights: false } });
-      if (r.error) throw r.error;
-      connect().setShareDefaults({ share_workouts: !!on, show_weights: false });
-      toast(on ? "האימונים שלכם ישותפו במועדון" : "האימונים שלכם לא ישותפו במועדון");
-    } catch (e) { toast(errText(e, "השינוי לא נשמר, נסו שוב")); }
-    delete C.busy.share; again();
-  }
   function sharingHtml() {
-    var on = sharingOn();
     return '<div class="card" style="margin-bottom:12px;">' +
       '<div style="font-weight:700; font-size:14px; color:var(--chalk); margin-bottom:4px;">שיתוף האימונים שלי</div>' +
-      '<div style="color:var(--steel); font-size:12.5px; margin-bottom:10px;">' +
-      (on ? "כל אימון שנרשם מופיע בפיד של המועדון: שם התרגיל או האימון והתוצאה, בלי משקלים. משקל גוף לא נשלח אף פעם."
-          : "האימונים שלכם נשארים בטלפון בלבד. אפשר לראות את הפיד ולהגיב.") + "</div>" +
-      '<button class="chip-btn" data-club="share" data-on="' + (on ? "0" : "1") + '" style="width:100%; min-height:44px;"' + (C.busy.share ? " disabled" : "") + ">" +
-      (on ? "להפסיק לשתף" : "לשתף את האימונים שלי") + "</button></div>";
+      '<div style="color:var(--steel); font-size:12.5px;">אחרי כל אימון שנרשם תישאלו אם לשתף אותו. בפיד מופיעים שם התרגיל או האימון והתוצאה, בלי משקלים. משקל גוף לא נשלח אף פעם.</div></div>';
   }
 
   // ---- Events -----------------------------------------------------------------------
@@ -472,7 +465,6 @@
     if (!t) return;
     var a = t.getAttribute("data-club"), id = t.getAttribute("data-id");
     if (a === "react") react(id, t.getAttribute("data-kind"));
-    else if (a === "share") setSharing(t.getAttribute("data-on") === "1");
     else if (a === "more") loadFeed(true);
     else if (a === "retry") { C.feed.error = false; C.ann.error = false; again(); }
     else if (a === "pin") setPinned(id, t.getAttribute("data-pinned") === "1");
@@ -508,5 +500,6 @@
   }
 
   window.haimuniaClub = { init: init, available: available, renderTab: renderTab, runConfirmed: runConfirmed, refresh: refresh,
-    postDay: postDay, postPr: postPr, removePr: removePr, restorePr: restorePr, dayPostRow: dayPostRow, sharingOn: sharingOn };
+    postDay: postDay, postPr: postPr, removePr: removePr, restorePr: restorePr, dayPostRow: dayPostRow, sharingOn: sharingOn,
+    isShared: isShared, setShared: setShared };
 })();
