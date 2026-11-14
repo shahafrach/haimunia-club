@@ -1,3 +1,15 @@
+# 3.7.2 — The installed app opens again — 2026-11-14
+
+Hotfix. Cloudflare Pages answers /index.html with a 308 to /. The 3.7.0 worker precached that answer
+with cache.add(), which keeps its "redirected" flag, and Safari refuses a navigation answered by a
+redirected response from a service worker ("Response served by service worker has redirections").
+The app would not open after 3.7.1 went live.
+
+- Every precached response is stored as a plain copy (fetch, then a new Response when it was redirected).
+- A navigation served from the cache is unwrapped the same way.
+- This worker calls skipWaiting() on install: a broken 3.7.x worker leaves no page to press the update
+  banner, so the fixed one takes over by itself.
+
 # 3.7.1 — Club tab visual fixes — 2026-11-14
 
 - The club tab is registered as a scene (`PAGE_SCENES.club`, only while the
