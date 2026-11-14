@@ -13,7 +13,7 @@
 //
 // SW_VERSION is written by scripts/sync-version.mjs from APP_VERSION in
 // app.js; the cache name carries it, so every release is a fresh cache.
-const SW_VERSION = "3.7.1";
+const SW_VERSION = "3.7.2";
 // The 2.x app's own prefix, kept: its caches are "haimunia-v2.34.0" and so
 // on, and the cleanup below removes them by this prefix.
 const CACHE_PREFIX = "haimunia-v";
@@ -80,22 +80,34 @@ const OPTIONAL_ASSETS = [
 ];
 const ASSETS = [...REQUIRED_ASSETS, ...OPTIONAL_ASSETS];
 
+// HOTFIX 3.7.2 (2026-11-14): Cloudflare Pages answers /index.html with a 308 to /. cache.add()
+// stored that response with redirected = true, and Safari refuses a navigation answered by a
+// redirected response from a service worker ("Response served by service worker has redirections"),
+// so the installed app would not open. Every precached response is now stored as a plain copy.
+function unredirected(res) {
+  return res.redirected ? res.blob().then((b) => new Response(b, { status: res.status, statusText: res.statusText, headers: res.headers })) : Promise.resolve(res);
+}
+async function precache(cache, url) {
+  // cache: "reload" so a stale HTTP-cached copy of the OLD file can never
+  // be precached under the new version's name.
+  const res = await fetch(new Request(url, { cache: "reload" }));
+  if (!res.ok) throw new Error("precache " + url + " " + res.status);
+  await cache.put(new URL(url, self.location).href, await unredirected(res));
+}
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE).then(async (cache) => {
-      // cache: "reload" so a stale HTTP-cached copy of the OLD file can never
-      // be precached under the new version's name.
-      await Promise.all(REQUIRED_ASSETS.map((url) => cache.add(new Request(url, { cache: "reload" }))));
+      await Promise.all(REQUIRED_ASSETS.map((url) => precache(cache, url)));
       await Promise.allSettled(
         OPTIONAL_ASSETS.map((url) =>
-          cache.add(new Request(url, { cache: "reload" }))
-            .catch((err) => console.warn("[sw] precache miss:", url, err))
+          precache(cache, url).catch((err) => console.warn("[sw] precache miss:", url, err))
         )
       );
     })
   );
-  // No skipWaiting() here: the page decides when to swap (SKIP_WAITING
-  // below), so a running page never finds its assets replaced mid-session.
+  // Normally the page decides when to swap (SKIP_WAITING below). A 3.7.0 or 3.7.1 worker can leave the
+  // page unable to load at all, so no page is there to decide: this worker takes over at once.
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
@@ -165,7 +177,7 @@ self.addEventListener("fetch", (e) => {
         // ignoreSearch is what makes the manifest shortcuts
         // (./index.html?tab=add) resolve to the cached shell.
         const hit = await cache.match(req, { ignoreSearch: true });
-        if (hit) return hit;
+        if (hit) return unredirected(hit);
         try {
           return await fetch(req);
         } catch (err) {

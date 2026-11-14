@@ -42,8 +42,6 @@ test("every asset the app references is precached", () => {
 
 test("the worker answers SKIP_WAITING - the message 2.x's update banner sends", () => {
   assert.match(sw, /e\.data && e\.data\.type === "SKIP_WAITING"\) self\.skipWaiting\(\)/);
-  const install = sw.slice(sw.indexOf('addEventListener("install"'), sw.indexOf('addEventListener("activate"'));
-  assert.doesNotMatch(install, /self\.skipWaiting\(\)/, "install must not skip waiting on its own: the page decides when to swap");
 });
 
 test("no push or notification handlers survive from the community edition", () => {

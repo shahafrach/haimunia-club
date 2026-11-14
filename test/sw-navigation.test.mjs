@@ -149,12 +149,20 @@ test("upgrade from 3.6.0: its cache is removed, other apps' caches stay, preload
   assert.equal(w.calls.claim, 1);
 });
 
-test("the update banner's SKIP_WAITING still swaps the worker, and install never does it alone", async () => {
+test("3.7.2 takes over on install (a 3.7.0/3.7.1 worker can leave no page to decide), and SKIP_WAITING still works", async () => {
   const w = makeWorker();
   await w.install();
-  assert.equal(w.calls.skipWaiting, 0);
-  w.handlers.message({ data: { type: "SKIP_WAITING" } });
   assert.equal(w.calls.skipWaiting, 1);
+  w.handlers.message({ data: { type: "SKIP_WAITING" } });
+  assert.equal(w.calls.skipWaiting, 2);
+});
+
+test("a precached response that arrived through a redirect is stored and served as a plain copy", () => {
+  // Cloudflare Pages answers /index.html with a 308 to /; Safari refuses a navigation answered by a
+  // redirected response from a service worker, so the installed app would not open (2026-11-14).
+  assert.match(SW_SRC, /res\.redirected \? res\.blob\(\)\.then\(\(b\) => new Response\(b,/);
+  assert.match(SW_SRC, /if \(hit\) return unredirected\(hit\);/);
+  assert.doesNotMatch(SW_SRC.replace(/\/\/.*$/gm, ""), /cache\.add\(/, "cache.add keeps the redirected flag");
 });
 
 test("the worker never touches member data", () => {
