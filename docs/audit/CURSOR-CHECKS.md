@@ -15,6 +15,7 @@ One step per check. Each check names the finding or triage item it covers in FIN
 ## C4: Data integrity (backup, import, transfer)
 
 - **C4-1 (F-001):** In `index.html` (`#iosInstallBanner`) and `app.js` (`maybeShowIOSInstallBanner()` and first launch in standalone mode with an empty log), check two things. The banner must tell the member to back up or transfer before installing. The installed app must offer backup import and the transfer screen on first launch when the log is empty. Fail if the banner only says "כדי שהנתונים לא יימחקו" or if the first launch offers neither.
+- **C4-2 (F-001):** On an iPhone, in Safari on `haimunia.pages.dev`, log a workout and create a transfer code. Add the app to the home screen, redeem the code in the installed app, and confirm that every record arrived (entries, WODs, body weight, measurements, notes, settings). Repeat once with an expired code (older than 24 hours) and once with a code that was already used. Both must fail cleanly: a clear Hebrew message, nothing imported, and the log left unchanged.
 
 ## C5: Offline and service worker updates
 
