@@ -1,3 +1,13 @@
+# 3.7.3 — Service worker kill switch (emergency, not released) — 2026-11-14
+
+Branch emergency/sw-kill. Ship only per docs/OPS-2-sw-kill.md.
+
+- sw.js has no caching and no fetch handler. On activate it deletes every
+  cache, unregisters itself and reloads open clients once (?swk=1 guards
+  against a reload loop).
+- app.js no longer registers a worker and unregisters any it finds.
+- No change to IndexedDB, localStorage or the stored record format.
+
 # 3.7.2 — The installed app opens again — 2026-11-14
 
 Hotfix. Cloudflare Pages answers /index.html with a 308 to /. The 3.7.0 worker precached that answer

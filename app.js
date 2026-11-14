@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.7.2";
+const APP_VERSION = "3.7.3";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -8211,6 +8211,13 @@ async function init() {
 // Registered on every boot, including one that stopped at a storage error:
 // that member most needs the next release to reach them.
 function setUpServiceWorker() {
+  // EMERGENCY (OPS-2, 3.7.3): no registration. The kill-switch worker removes
+  // itself; registering again here would reinstall it on every boot.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+  }
+  return;
+  // eslint-disable-next-line no-unreachable
   if ("serviceWorker" in navigator) {
     // The SW no longer calls skipWaiting() on install, so a new version parks
     // in "waiting" until offerUpdate() applies it (see the update handshake
