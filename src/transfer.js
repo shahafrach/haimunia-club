@@ -34,7 +34,7 @@
   var AAD = "haimunia-transfer:v1";
   var INFO_LOOKUP = "haimunia-transfer:lookup:v1", INFO_KEY = "haimunia-transfer:key:v1";
   var MAX_PLAIN = 25 * 1024 * 1024; // the same cap as a backup file
-  var MAX_CIPHERTEXT = 5 * 1024 * 1024; // the server's cap (transfer-put), the same as the old app
+  var MAX_CIPHERTEXT = 1024 * 1024; // the server's cap (transfer-put, haimunia-app-demo 202611140002; the old app checks 5 MiB and gets a 413)
   var TIMEOUT_MS = 20000;
 
   var T = { mode: "take", view: "", busy: false, error: "", draft: "", payload: null, message: "", code: "" };

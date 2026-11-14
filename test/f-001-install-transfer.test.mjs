@@ -144,6 +144,7 @@ test("creating a code with nothing logged says so and sends nothing; a server li
 
 test("the create path reuses the protocol: same alphabet, AAD and HKDF labels, put to transfer-put", () => {
   const src = readFileSync(path.join(root, "src/transfer.js"), "utf8");
+  assert.match(src, /var MAX_CIPHERTEXT = 1024 \* 1024;/, "the client refuses what the server would refuse (1 MiB)");
   for (const s of ['"0123456789ABCDEFGHJKMNPQRSTVWXYZ"', '"haimunia-transfer:v1"', '"haimunia-transfer:lookup:v1"', '"haimunia-transfer:key:v1"', '"/functions/v1/transfer-put"', 'new CompressionStream("gzip")']) {
     assert.ok(src.includes(s), `src/transfer.js uses ${s}`);
   }
