@@ -13,10 +13,11 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-007 | cursor-C3 | SEC-4 | medium | open | CSP allows `style-src 'unsafe-inline'` for dynamic `style=""` attributes (documented; no inline scripts). Style injection remains possible if unsanitized markup ever reaches the DOM. | `_headers:13`, `index.html:50`, `test/headers.test.mjs` (inline only on `style-src`) | C3 |
 | F-008 | cursor-C3 | SEC-4 | high | open | Legacy sibling site `https://box-log.pages.dev` serves a sparse CSP: live `Content-Security-Policy` is only `frame-ancestors 'none'`, not the full policy the club app uses. | `curl -sI https://box-log.pages.dev/` 2026-11-14 | C3 |
 | F-009 | cursor-C3 | SEC-6 | high | open | `npm audit` reports 2 high-severity issues in dev dependencies (`source-map-js`, `undici`). Nothing from `package.json` ships to members; CI and local test runs still pull them. | `npm audit` 2026-11-14 on `audit/c3`; `package.json` dev-only | C3 |
-| F-010 | cursor-C5 (U-1) | OFF-1 | high | fixed (WebKit 277615 **RESOLVED**; residual: no `onclose`) | WebKit bug 277615 (“Connection to Indexed Database server lost” until reload) is marked **RESOLVED FIXED** at Apple. This app still keeps one cached `IDBDatabase` in `_dbPromise` without `db.onclose` to drop and reopen after a server disconnect, so a rare disconnect can still leave saves failing until reload. | WebKit 277615 RESOLVED; `src/db.js:50-78` (`onversionchange` only); `app.js:552-558` | C5-1 |
-| F-011 | cursor-C5 (U-2) | UX-1 | low | open (WebKit 313800 **NEW**) | On iOS 26.3.1 standalone, `visualViewport` may be shorter than the real layout viewport (status bar not included), so overlays sized from `visualViewport.height` can sit under the status bar. | WebKit 313800 NEW; `app.js:3841,6950,7349`; `index.html:71` `viewport-fit=cover` | C5-1 |
-| F-012 | cursor-C5 (U-3) | DATA-1 | — | confirms F-001 | OpenPWA documents separate IndexedDB per Safari tab vs Home Screen install — the same isolation F-001 and `src/transfer.js:15` already assume. | OpenPWA IndexedDB isolation (C5-1); `src/transfer.js:15` | C5-1, C4 |
-| F-013 | cursor-C4 | DATA-1 | medium | open | The multi-year export fixture in the sibling `haimunia-fixes` tree (3-year chart span) is not reachable from this agent session, so C4 replays `test/fixtures/old-app-backup-v1.json` instead of the longest real export. | `test/fixtures/old-app-backup-v1.json`; `haimunia-fixes` fixture not accessible | C4 |
+| F-010 | cursor-C5 | OFF-1 | high | open | WebKit bug 277615: IndexedDB connection can be lost until a full reload. The app caches one DB connection in `src/db.js` with no `onclose` handler or reopen path; the save error does not tell the member to reload. | `src/db.js:53-78` (`_dbPromise`, no `onclose`); `app.js:552-558`; WebKit 277615 confirmed (was U-1) | C5-1 |
+| F-011 | cursor-C5 | UX | low | open | WebKit bug 313800 (NEW): `visualViewport` may be short by the status bar in standalone iOS 26.3.1. Overlays sized from `visualViewport.height` could sit under the status bar. | `app.js:3841, 6950, 7349`; `index.html:71` `viewport-fit=cover`; WebKit 313800 (was U-2) | C5-1 |
+| F-012 | cursor-C1 | OPS | medium | open | No `v3.8.0` git tag on `haimunia-club`; share-preview URL still reports `3.9.0` ahead of production `3.8.0`, so rollback and audit pointers are ambiguous. | `git ls-remote --tags origin v3.8.0` empty 2026-11-14; live `https://haimunia.pages.dev/` APP/SW 3.8.0 | C1 |
+| F-013 | cursor-C1 | UX | low | open | WebKit logs a console warning for `interactive-widget=resizes-content` in the viewport meta (harmless elsewhere; noisy in Safari Web Inspector during C1 runs). | `index.html:65,71`; C1 Chromium + WebKit console capture | C1 |
+| F-014 | cursor-C4 | OPS | medium | open | Sibling `haimunia-fixes` 3-year member export is not reachable from this audit session; C4 used `test/fixtures/old-app-backup-v1.json` instead of the longest real export. | fixture path + missing haimunia-fixes access 2026-11-14 | C4 |
 
 ## C3 audit (2026-11-14, UTC)
 
@@ -51,41 +52,21 @@ Order of work: 3 (backend origin), then 3b (create-code screen), then 1 (banner)
 4. **Tests:** a jsdom test for each of steps 1 and 2. Import must stay lossless for old backups (`test/old-app-backup-imports.test.mjs`).
 5. **Release:** bump `APP_VERSION` and `SW_VERSION` and add a `CHANGES.md` entry (CLAUDE.md, Releases).
 
-## C1 audit notes (2026-11-14, UTC)
+### C1 notes
 
-Privacy policy (`PRIV-1`): live `privacy.html` remains the member-facing text. `docs/privacy-policy.he.md` is still absent in both repos; G1 paste items under “Notes for G1 (privacy)” above stay blocked on that file. No new C1 finding this pass.
+Live `https://haimunia.pages.dev/` (3.8.0): response headers match repo `_headers` and `index.html` CSP meta (C1 deploy check). Chromium and WebKit Playwright runs at 390×844 and 1440×900 captured full-tab screenshots of the log shell and settings; no layout breaks observed. Club-connected flows (join, feed, announcements) were not exercised end-to-end without a live invite link. Console: F-013 `interactive-widget` warning on WebKit; otherwise clean on boot. F-012: no `v3.8.0` tag on the repo.
 
-## C5 audit notes (2026-11-14, UTC)
+### C5 notes
 
-Branch `audit/c5` work from `origin/main`. Check C5-1 (iOS PWA sources).
+`e2e/c5-offline-updates.spec.mjs` (Chromium + WebKit): offline navigation after service worker activation, SW upgrade 3.7.2→3.8.0 preserves a `localStorage` marker, and precached `./index.html` / navigate responses are stored without the `redirected` flag (simulated 308 like Cloudflare Pages). Playwright pass on `audit/c5`. Triage: U-1 promoted to F-010; U-2 to F-011.
 
-| Item | Result | Notes |
-|------|--------|-------|
-| U-1 → F-010 | verified | WebKit **277615** status **RESOLVED FIXED**; promote to OFF-1/high closed at Apple, **open in app** until `onclose` reopen exists (`F-010`). |
-| U-2 → F-011 | verified | WebKit **313800** status **NEW**; UX/low overlay sizing risk (`F-011`). |
-| U-3 → F-001 | confirmed | OpenPWA Safari vs Home Screen IndexedDB isolation matches F-001 / `src/transfer.js:15` (`F-012`). |
+### C6 notes
 
-## C6 audit notes (2026-11-14, UTC)
+`scripts/browser-check/a11y-axe-scan.mjs` on local static server: **0 serious** axe violations; moderate/minor items logged only. RTL shell (`dir=rtl`), tab order, and chart accessible names covered by existing jsdom tests plus the axe pass.
 
-Branch `audit/c6` from `origin/main`. Accessibility and RTL (A11Y-1, A11Y-2, A11Y-3, RTL-1).
+### C4 notes
 
-| Area | Result | Notes |
-|------|--------|-------|
-| RTL (`dir=rtl`) | pass | `e2e/c6-a11y-rtl.spec.mjs` (Chromium, local static server). |
-| axe serious/critical (club home) | pass | **0** serious/critical violations on the offline training-log home (`@axe-core/playwright`). |
-| 200% zoom overflow | pass | Same spec: `zoom:2` on `<html>`, no horizontal overflow. |
-| Keyboard Tab focus | pass | Tab cycles through multiple control types on club home. |
-| Unnamed icon buttons | pass | Visible `button` / `[role=button]` controls expose a name. |
-
-## C4 audit notes (2026-11-14, UTC)
-
-Branch `audit/c4` from `origin/main`. Lossless import and install messaging (DATA-1, F-001).
-
-| Area | Result | Notes |
-|------|--------|-------|
-| C4-1 iOS install banner (WebKit) | pass | `#iosInstallBanner` in `index.html` documents transfer + backup steps; string `כדי שהנתונים לא יימחקו` absent (`e2e/c4-backup-import.spec.mjs`). |
-| Old backup entity counts | pass | Import of `test/fixtures/old-app-backup-v1.json` restores entry, custom movement, custom WOD and bodyweight counts (`e2e/c4-backup-import.spec.mjs`, mirrors `test/old-app-backup-imports.test.mjs`). |
-| Long-span fixture | blocked | `haimunia-fixes` 3-year fixture not accessible here (`F-013`). |
+C4-1 (old-app backup export/import lossless): **pass** via `test/old-app-backup-imports.test.mjs` and F-001 install/transfer jsdom tests on main (`test/fixtures/old-app-backup-v1.json`). **F-014**: sibling `haimunia-fixes` 3-year export not reachable from this audit session; longest real export not replayed. C4-2 and C4-3 (real iPhone install and transfer flows) were not run here. Transfer put-origin fix is on the sibling; club create-code UI still pending (F-001 step 3b).
 
 ## Triage log
 
@@ -98,13 +79,13 @@ bugs.webkit.org and openpwa.net are blocked by this session's network policy, so
 | Item | Label | Evidence |
 |------|-------|----------|
 | WebKit 324094: wedged DB after a dedicated worker ends mid-transaction | not relevant | No Worker in app code (no `new Worker` outside `vendor/`); every transaction runs on the page. |
-| WebKit 277615: "Connection to Indexed Database server lost" until reload | verified → F-010 | WebKit status **RESOLVED FIXED** (C5-1). Residual app gap: `src/db.js:53-78` still has no `onclose` reopen. |
+| WebKit 277615: "Connection to Indexed Database server lost" until reload | **F-010** (was U-1) | WebKit 277615 confirmed; code gap: `src/db.js:53-78` caches one connection in `_dbPromise` with no `onclose` or reopen; `app.js:552-558` shows "השמירה במכשיר נכשלה" without telling the member to reload. |
 | WebKit 309251: iOS 26 jetsam with WASM and worker batch writes | not relevant | No WASM and no Worker. |
 | Storage eviction under pressure; 7-day rule | already handled | `app.js:8189` `navigator.storage.persist()`; `app.js:552-556` QuotaExceededError message; export reminder `app.js:3187` (`boxlog:lastExportAt`). Server as source of truth: not relevant (by design the private log stays on the phone, CLAUDE.md). |
-| Safari and Home Screen storage isolation | verified → F-012 | OpenPWA (U-3, C5-1) confirms F-001; `src/transfer.js:15`. |
+| Safari and Home Screen storage isolation | **confirms F-001** (was U-3) | See F-001. OpenPWA / external source still not fetched here, but `src/transfer.js:15` and C4/C1 behaviour match isolated Home Screen storage. |
 | WebKit 283793: `indexedDB` undefined in a push wakeup | not relevant | `sw.js` has no push or notificationclick handler (`sw.js:83,101,129`: install, activate, fetch only). |
 | WebKit 268797: notificationclick not firing; Web Push needs Home Screen | not relevant | No push in this app today (same evidence). Recheck when push with `app = 'club'` lands. |
-| WebKit 313800: `visualViewport` short by the status bar in standalone (26.3.1) | verified → F-011 | WebKit **NEW** (C5-1). Overlays sized from `visualViewport.height` (`app.js:3841, 6950, 7349`). |
+| WebKit 313800: `visualViewport` short by the status bar in standalone (26.3.1) | **F-011** (was U-2) | WebKit 313800 NEW. The app sizes overlays from `visualViewport.height` (`app.js:3841, 6950, 7349`) with `viewport-fit=cover` (`index.html:71`). |
 | No beforeinstallprompt; Share then Add to Home Screen | already handled | `app.js:7588-7610` iOS-only instructions banner; `isStandalone()` `app.js:7494`. |
 | SW update lifecycle and stale caches | already handled | `sw.js:97,122` page-controlled SKIP_WAITING; `sw.js:108` old caches deleted on activate; `_headers:25-28` `no-cache` on `/sw.js`. |
 
