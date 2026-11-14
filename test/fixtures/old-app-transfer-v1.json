@@ -1,0 +1,119 @@
+{
+  "_comment": "Made by the old app's own transfer functions (haimuniya/haimunia-app app.js: transferEncodeCode, transferDerive, transferGzip, transferB64, TRANSFER_AAD), extracted verbatim, on 2026-11-14. Frozen: never regenerate to make a test pass.",
+  "code": "GTN3-E2WY-F4M8-7MA5-BTJEP",
+  "lookup": "5c6036cfaae7eac8d9eae2340171fad1a54e9b46d70134f52e7f15d6967eebc8",
+  "put": {
+    "lookup": "5c6036cfaae7eac8d9eae2340171fad1a54e9b46d70134f52e7f15d6967eebc8",
+    "iv": "S1b3VPW5GlyJ4fYF",
+    "ciphertext": "CsjPQkWSfHZKSPGndYAKulNcwysca++fvm3NvCw38UPgg+4WW6F0C/HVVqrtf9V5MxRpTedckEKfh90Wm9wk5tzjr1ZBWF9Wn59rL4rMzFG9PkOIHUmE/NOZOcXLkmu2fBKn7B39nRT14YBKKcJg9kMOxo6uq5dfYD7usYZ2Pz+d6S+T8PIVM4Q3hzAOr38yygh6/oRykDuTfHWayMNHVBNTuH8r+B8YtCJq3KWLeDZfTg1g7GBlmdAZqQYFSS5llfm9UVvFUDSu7eTcmzRbIcB6pHaheDy3c5RCAqJZgYLofxyTeDmDPs6hVLQmNOGqrSBKZWkGDSbqTtuvYiz8PM0q7vKqV62QIFlEN94fURCUhvr162K1MGYXKf3Ipt/YBaVVU0PtXwoQpq/a2jxS4lWSr6LpKFt07r+e5UE3rXX8TyRqEACd7UBJoVGO66GQy+uky0AhCLtcnEtjUHcDmkAcWl2MYvpnQPmbDxtRp+ur0atHSf1QSUr3AQVTCvXc2OAcpmp7UprSfFibvShkMpmB+MsXoNcJXAU+J78MGAsQQvkrxQGrXXrS1wZlsGAYqPOadaYn9FQZ1EfIqXpbis/msCG5uMaTtRyXtNdt4whMDUKP78IW9Fost4FQYlMVFFjXjVHoT5EjCdAqwj5dLBEHIJstOGSiThm62xY7yjJ4w/PmqehJCIHyRkY2wvjupO/+y5WOi+ButLscuFwg8w4R6OmzZ2Ggep9XGWUvb72qsAeWHCiBOA+1/vJxs5fDfZB+MjXLhG5sdlEX4fgDCIqKkY2Eh6YHTiZxfpgK8jHGKwK2JqprZwCXUGvbeEi0rnXiIIHHbNI+4YFRPqpO71D2hbspvZPV7o2NUYiI8aRvlJC6c52JboHID5ut3A=="
+  },
+  "payload": {
+    "app": "box-log",
+    "version": 1,
+    "exportedAt": "2026-09-16T11:39:23.690Z",
+    "entries": [
+      {
+        "id": "set-old-1",
+        "exerciseId": "deadlift",
+        "date": "2026-09-07",
+        "type": "reps",
+        "weight": 100,
+        "reps": 1,
+        "sets": 1,
+        "durationSeconds": 0,
+        "ts": 1788799694463,
+        "isPR": true,
+        "groupId": null,
+        "blockLabel": null,
+        "est1RM": 100
+      },
+      {
+        "id": "set-old-2",
+        "exerciseId": "snatch",
+        "date": "2026-09-01",
+        "type": "reps",
+        "weight": 50,
+        "reps": 1,
+        "sets": 1,
+        "durationSeconds": 0,
+        "ts": 1788364163442,
+        "isPR": true,
+        "groupId": "ladder-old-1",
+        "blockLabel": "D",
+        "est1RM": 50
+      },
+      {
+        "id": "set-old-3",
+        "exerciseId": "snatch",
+        "date": "2026-09-01",
+        "type": "reps",
+        "weight": 40,
+        "reps": 2,
+        "sets": 1,
+        "durationSeconds": 0,
+        "ts": 1788364147484,
+        "isPR": true,
+        "groupId": "ladder-old-1",
+        "blockLabel": "C",
+        "est1RM": 42.7
+      },
+      {
+        "id": "set-old-4",
+        "exerciseId": "custom-old-hold",
+        "date": "2026-08-26",
+        "type": "duration",
+        "weight": 0,
+        "reps": 0,
+        "sets": 4,
+        "durationSeconds": 20,
+        "ts": 1787728795346,
+        "isPR": true,
+        "groupId": null,
+        "blockLabel": null,
+        "est1RM": 0
+      }
+    ],
+    "customMovements": [
+      {
+        "id": "custom-old-row",
+        "name": "Ring Row",
+        "category": "Pull"
+      },
+      {
+        "id": "custom-old-hold",
+        "name": "Ring Hold",
+        "category": "Pull"
+      }
+    ],
+    "wodEntries": [],
+    "customWods": [
+      {
+        "id": "customwod-old-1",
+        "name": "01/09",
+        "category": "Custom",
+        "scoreType": "time",
+        "desc": "80 Box Step-Ups, 40 Sit-Ups, 30 Push-Ups, 20 Truster @ 40kg, 800 Run (Meters)",
+        "timeCapSeconds": 900
+      }
+    ],
+    "bodyweightEntries": [
+      {
+        "id": "bw-old1",
+        "date": "2026-11-02",
+        "weight": 77.2,
+        "ts": 1793100000000
+      }
+    ],
+    "measureTypes": [],
+    "measureEntries": [],
+    "prefs": {
+      "userName": "דנה",
+      "boxStartDate": "2025-01-05",
+      "barWeight": 15,
+      "pctIncrement": 1,
+      "wodRxDefault": "plus",
+      "theme": "light",
+      "textScale": "large"
+    }
+  }
+}

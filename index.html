@@ -3363,9 +3363,22 @@
           <img src="./assets/mark.png" alt="" style="width:30px; height:auto;" />
         </div>
         <div>
-          <div style="font-weight:800; font-size:15px; color:var(--chalk);">כדי שהנתונים לא יימחקו</div>
-          <div style="font-weight:600; font-size:14px; color:var(--steel);">הוסיפו למסך הבית: שיתוף ← הוספה למסך הבית</div>
+          <div style="font-weight:800; font-size:15px; color:var(--chalk);">מתקינים במסך הבית, בשני שלבים</div>
+          <div style="font-weight:600; font-size:13px; color:var(--steel);">האפליקציה במסך הבית נפתחת ריקה עד שמייבאים אליה את הנתונים.</div>
         </div>
+      </div>
+      <!-- F-001: the two steps, in order. Step one moves whatever is logged in this tab; step two
+           installs. The installed app offers the import on its first launch (app.js
+           maybeOfferFirstImport). -->
+      <div id="iosInstallSteps" style="font-size:13.5px; color:var(--chalk); line-height:1.55; margin-bottom:12px;">
+        <div style="font-weight:700;">1. קודם מגבים</div>
+        <div style="color:var(--steel); margin-bottom:8px;">כבר רשמתם כאן משהו? יוצרים קוד העברה או שומרים קובץ גיבוי.</div>
+        <div class="flex items-center gap-10" style="margin-bottom:12px;">
+          <button data-action="open-transfer-create" class="chip-btn" style="flex:1; min-height:44px;">העבר לאפליקציה המותקנת</button>
+          <button data-action="ios-install-backup" class="chip-btn" style="flex:1; min-height:44px;">שמירת קובץ גיבוי</button>
+        </div>
+        <div style="font-weight:700;">2. מוסיפים למסך הבית</div>
+        <div style="color:var(--steel);">שיתוף ← הוספה למסך הבית. פותחים מהאייקון, ומדביקים את הקוד או מייבאים את הקובץ.</div>
       </div>
       <!-- ONE LINE, and only here. This banner is the app's only install hint
            on iOS, and maybeShowIOSInstallBanner() (app.js) already shows it
@@ -3607,11 +3620,27 @@
   </div>
 </div>
 
+<!-- F-001, step 2: the installed app's first launch with an empty log offers the import before
+     anything else (app.js maybeOfferFirstImport). Same sheet parts as the transfer dialog. -->
+<div class="modal-overlay" id="firstImportOverlay" role="dialog" aria-modal="true" aria-labelledby="firstImportTitle">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h2 class="modal-title" id="firstImportTitle">יש לכם כבר נתונים?</h2>
+    </div>
+    <div class="modal-list" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);">
+      <div style="color:var(--steel); font-size:13px; line-height:1.55; text-align:center; margin-bottom:16px;">האפליקציה במסך הבית מתחילה ריקה. רשמתם אימונים בדפדפן או באפליקציה הישנה? מייבאים אותם עכשיו.</div>
+      <button type="button" class="save-btn" data-action="first-import-code" style="max-width:none; margin-bottom:10px;">יש לי קוד העברה</button>
+      <button type="button" class="chip-btn" data-action="first-import-file" style="width:100%; min-height:44px; margin-bottom:10px;">יש לי קובץ גיבוי</button>
+      <div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-action="first-import-fresh">מתחילים מאפס</button></div>
+    </div>
+  </div>
+</div>
+
 <!-- Transfer code (src/transfer.js): same sheet parts as the connect and support dialogs. -->
 <div class="modal-overlay" id="transferOverlay" role="dialog" aria-modal="true" aria-labelledby="transferTitle">
   <div class="modal-sheet">
     <div class="modal-head">
-      <h2 class="modal-title" id="transferTitle">העברה מהאפליקציה הישנה</h2>
+      <h2 class="modal-title" id="transferTitle">הזנת קוד העברה</h2>
       <button data-action="close-transfer" class="icon-btn" aria-label="סגירה" style="color:var(--steel);">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
