@@ -54,7 +54,11 @@ test("THE ORDERING THAT MAKES A LATE POLL SAFE: check() runs before the deadline
   const start = Date.now();
   const result = await waitFor(() => flag, 50, 200);
   assert.equal(result, true, "a poll arriving after the deadline still resolves a true condition");
-  assert.ok(Date.now() - start >= 200, "and this really did poll after the deadline, not before it");
+  // The second poll is due at ~200ms, four times the 50ms deadline. Node may
+  // fire a timer a millisecond early against Date.now(), so ">= 200" failed
+  // about once a run under load. ">= 150" still proves the poll came well
+  // after the deadline, without betting on clock granularity.
+  assert.ok(Date.now() - start >= 150, "and this really did poll after the deadline, not before it");
 });
 
 test("a condition that never comes true still rejects", async () => {
