@@ -3516,6 +3516,20 @@ async function applyTransferPrefs(prefs, freshDevice) {
 function transferPrefs() {
   return { userName, boxStartDate, barWeight, pctIncrement, wodRxDefault, theme: themePref, textScale: textScalePref };
 }
+// A random id for this phone, sent with each transfer-put so the server can hold it to 3 codes a day
+// (haimunia-app-demo 202611140002). Its own key, apart from the usage-count id, so the two never link;
+// the server keeps only an HMAC of it. Made once; if storage is unavailable, a fresh one per call.
+const TRANSFER_DEVICE_KEY = "haimunia:transferDeviceId";
+function transferDeviceId() {
+  const make = () => (window.crypto && typeof window.crypto.randomUUID === "function")
+    ? window.crypto.randomUUID()
+    : Array.from(window.crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+  try {
+    let id = localStorage.getItem(TRANSFER_DEVICE_KEY);
+    if (!id || !/^[A-Za-z0-9-]{16,64}$/.test(id)) { id = make(); localStorage.setItem(TRANSFER_DEVICE_KEY, id); }
+    return id;
+  } catch (e) { return make(); }
+}
 
 // Single source of truth for pulling state out of IndexedDB. Everything is
 // re-sanitized on the way in, so records written by an older build of the app

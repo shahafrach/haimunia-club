@@ -82,7 +82,7 @@ test("a code made by the old app's own functions redeems in the new installed ap
   assert.equal(await window.dbGetSetting("haimunia:barWeight"), 15);
 });
 
-test("a code created in the Safari tab redeems in the installed app; only ciphertext and the lookup go out", async () => {
+test("a code created in the Safari tab redeems in the installed app; only ciphertext, the lookup and a random device id go out", async () => {
   const server = makeServer();
   const tab = (await boot({ installed: false, iphone: true, server })).window;
   assert.equal(await tab.importBackupData(Object.assign({}, backup, { bodyweightEntries: [{ id: "bw-s1", date: "2026-11-03", weight: 70.5, ts: 1793200000000 }] })), true);
@@ -96,16 +96,24 @@ test("a code created in the Safari tab redeems in the installed app; only cipher
   assert.match($(tab, "#transferBody").textContent, /פעם אחת ול-24 שעות/);
   assert.equal(server.puts.length, 1);
   const put = server.puts[0];
-  assert.deepEqual(Object.keys(put.body).sort(), ["ciphertext", "iv", "lookup"]);
+  assert.deepEqual(Object.keys(put.body).sort(), ["ciphertext", "device", "iv", "lookup"]);
   assert.match(put.body.lookup, /^[0-9a-f]{64}$/);
+  assert.match(put.body.device, /^[A-Za-z0-9-]{16,64}$/, "the shape transfer-put accepts");
+  assert.equal(put.body.device, tab.localStorage.getItem("haimunia:transferDeviceId"), "kept in localStorage");
+  assert.notEqual(put.body.device, tab.localStorage.getItem("haimunia:usageDeviceId"), "not the usage-count id");
   assert.equal(put.init.credentials, "omit");
   assert.equal(put.init.headers.apikey, tab.HAIMUNIA_CONFIG.cloud.supabasePublishableKey);
   const wire = JSON.stringify(put.body) + JSON.stringify(put.init.headers);
   for (const leak of [code.replace(/-/g, ""), "bodyweightEntries", "70.5", "entries"]) assert.ok(!wire.includes(leak), `no ${leak} on the wire`);
-  // Closing drops the shown code; reopening starts at the create button.
+  // Closing drops the shown code; reopening starts at the create button. A second code reuses the device id.
   $(tab, "[data-transfer='close']").click();
   tab.haimuniaTransfer.open("create");
   assert.equal($(tab, "#transferNewCode"), null);
+  $(tab, "[data-transfer='create']").click();
+  await until(() => $(tab, "#transferNewCode"), "second code shown");
+  assert.equal(server.puts.length, 2);
+  assert.equal(server.puts[1].body.device, put.body.device, "the same phone sends the same device id");
+  $(tab, "[data-transfer='close']").click();
 
   const home = (await boot({ installed: true, server })).window;
   home.haimuniaTransfer.open();
@@ -113,7 +121,7 @@ test("a code created in the Safari tab redeems in the installed app; only cipher
   await until(() => /הלוג עבר/.test($(home, "#transferBody").textContent), "imported in the installed app");
   assert.equal((await home.dbLoadAll()).length, backup.entries.length);
   assert.ok((await home.dbLoadBodyweight()).some((b) => b.weight === 70.5));
-  assert.equal(server.blobs.size, 0, "single use: the blob is gone after the take");
+  assert.equal(server.blobs.size, 1, "single use: the taken blob is gone, only the second code's remains");
 });
 
 test("creating a code with nothing logged says so and sends nothing; a server limit shows the old app's message", async () => {

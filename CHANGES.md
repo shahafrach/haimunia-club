@@ -12,6 +12,10 @@
 - Installed app, first launch with an empty log: a sheet offers "יש לי קוד
   העברה" and "יש לי קובץ גיבוי" before the welcome sheet. "מתחילים מאפס"
   opens the welcome sheet and is remembered (`haimunia:firstImportAnswered`).
+- Each code sent from here carries a random device id
+  (`haimunia:transferDeviceId`, apart from the usage-count id). The server
+  keeps only an HMAC of it and allows 3 codes per device and 30 per IP a day
+  (haimunia-app-demo 202611140002).
 - The transfer screen for entering a code is now "הזנת קוד העברה". No
   IndexedDB change.
 

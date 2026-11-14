@@ -19,12 +19,14 @@
 // Creating a code (F-001, step 3b): ported as is from the old app (haimuniya/haimunia-app, app.js
 // createTransferCode), same bytes on the wire, so a member who logged in a Safari tab of this app
 // hands the log to the installed app. No new crypto: the same HKDF, AES-GCM, gzip and
-//   put       POST {supabaseUrl}/functions/v1/transfer-put {lookup, iv, ciphertext}
+//   put       POST {supabaseUrl}/functions/v1/transfer-put {lookup, iv, ciphertext, device}
+// device: transferDeviceId() (app.js), a random id for this phone; the server limits 3 puts per
+// device a day and keeps only an HMAC. The old app sends no device; the format is otherwise the same.
 // plaintext = gzip(JSON of buildBackupPayload() plus "prefs" from transferPrefs()). The server
 // accepts puts from haimunia.pages.dev since haimunia-app-demo F-001.
 //
 // Classic script, one IIFE, exports window.haimuniaTransfer. Reads esc, isStandalone, importBackupData,
-// downloadBackup, todayISO, render, buildBackupPayload, transferPrefs, showToast from the shared
+// downloadBackup, todayISO, render, buildBackupPayload, transferPrefs, transferDeviceId, showToast from the shared
 // scope, only inside function bodies.
 (function () {
   var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -112,7 +114,7 @@
     try {
       res = await fetch(c.supabaseUrl.replace(/\/+$/, "") + "/functions/v1/transfer-put", {
         method: "POST", headers: { "Content-Type": "application/json", apikey: c.supabasePublishableKey },
-        body: JSON.stringify({ lookup: d.lookup, iv: toB64(iv), ciphertext: toB64(ct) }),
+        body: JSON.stringify({ lookup: d.lookup, iv: toB64(iv), ciphertext: toB64(ct), device: transferDeviceId() }),
         signal: ctl ? ctl.signal : undefined, credentials: "omit", cache: "no-store",
       });
     } catch (e) { throw new Error("network_put"); } finally { clearTimeout(timer); }
@@ -183,7 +185,7 @@
     not_configured: "ההעברה לא מוגדרת בגרסה הזאת.",
     // Creating a code: the old app's messages (TRANSFER_ERRORS), same wording.
     network_put: "אין חיבור כרגע. אפשר לנסות שוב כשהחיבור חוזר.",
-    rate_limited_put: "נוצרו היום יותר מדי קודים מהרשת הזאת. אפשר לנסות שוב מחר, או להשתמש בקובץ גיבוי.",
+    rate_limited_put: "נוצרו היום יותר מדי קודים מהטלפון הזה או מהרשת הזאת. אפשר לנסות שוב מחר, או להשתמש בקובץ גיבוי.",
     full: "השרת עמוס כרגע. אפשר לנסות שוב בעוד שעה, או להשתמש בקובץ גיבוי.",
     too_large_put: "היומן גדול מדי להעברה בקוד. אפשר להשתמש בקובץ גיבוי.",
     empty: "אין עדיין רישומים להעביר. אפשר להתקין ולהתחיל לרשום ישר באפליקציה המותקנת.",

@@ -8,6 +8,13 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-002 | grok-G2 | SEC-7 | low | fixed: https://github.com/shahafrach/haimunia-app-demo/pull/170 (`club_staff_actions`, 202611140001; C2-1 still for Cursor) | Club staff actions (removing a member, deleting or pinning an announcement) leave no audit record. Announcements keep `author_id`, but a removal leaves nothing. The fix belongs in the sibling repo. | sibling `supabase/migrations/202611120001_haimunia_club.sql:305,420,432`; no `admin_actions` in that file | C2-1 |
 | F-003 | owner (triage) | SEC-5 | high | open | `docs/` and the root audit files were served from the site root. Blocked in `functions/_middleware.js` on `triage/grok`. Stays open until C3-1 passes on the preview build. Do not merge `triage/grok` before that. 2026-11-14: the preview build was not reachable from the fix session, so C3-1 is not run; `test/middleware.test.mjs` covers every C3-1 path. | `functions/_middleware.js` `BLOCKED_PREFIXES`; `test/middleware.test.mjs` | C3-1 |
 
+### Notes for G1 (privacy)
+
+No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 paste (owner decisions 2026-11-14). The live policy is `privacy.html`.
+
+- Club staff audit log (`club_staff_actions`, F-002): who did what as club staff, ids and time only, kept 12 months, then purged daily.
+- Transfer codes (F-001): each code created in the club app sends a random device id, stored on the server only as an HMAC in the rate-limit table, for at most 2 days (`transfer_purge`). Limits: 3 codes per device and 30 per IP a day.
+
 ### F-001 fix plan
 
 Order of work: 3 (backend origin), then 3b (create-code screen), then 1 (banner). Steps 2, 4 and 5 are unchanged.
