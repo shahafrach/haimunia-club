@@ -1,2 +1,4 @@
 node_modules/
 audit/
+audit.env
+.env.audit

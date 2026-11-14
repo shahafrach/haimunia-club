@@ -1,0 +1,31 @@
+---
+description: Authorized security/privacy audit rules for Haimunia apps
+alwaysApply: true
+---
+
+# Audit review rules
+
+Context: authorized review of the owner's own apps.
+Repos: `shahafrach/haimunia-club` (Haimunia club, live at https://haimunia.pages.dev) and `shahafrach/haimunia-app-demo` (BOX-LOG and the shared Supabase backend, project box-log). Old club app, read only: `haimuniya/haimunia-app`.
+
+## Branch and production safety
+
+- Work on a new branch `audit/<task-id>`. Never push to `main`.
+- Never change production data or settings.
+- Run tests and data checks only against the local stack (`supabase start`) and the test accounts in `~/dev/audit.env`.
+
+## Findings only — do not fix app code
+
+- Do not fix app code during review tasks.
+- Record each issue in `FINDINGS.md` with: ID, severity (`critical` / `high` / `medium` / `low`), app, file or URL, steps to reproduce, expected vs actual, suggested fix, `status=open`.
+
+## Test discipline
+
+- Run only the tests related to the current step.
+- One full run at the end, in the foreground.
+- No background watchers, sleep loops or polling.
+- Do not re-run a suite that passed.
+
+## End of task report
+
+End with a short English report: what you checked, counts by severity, top 3 issues, what you could not check and why.
