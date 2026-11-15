@@ -2563,10 +2563,18 @@ function settleToast(ran) {
   if (t && !ran && typeof t.onExpire === "function") t.onExpire();
   return t;
 }
+// F-018 (real Chromium, 3.9.0). showToast() used to only STORE the toast; render() paints it. A caller in an
+// async path with nothing rendering after it (the club's "השינוי נשמר בטלפון. המועדון לא התעדכן הפעם." after
+// a failed upsert, the PR share failure) left the toast to expire unseen. The paint is now owed by
+// showToast() itself: a microtask renders unless a render painted the toast dock first, so a caller that
+// renders right after (most of app.js) still gets exactly one render.
+let toastPaintOwed = false;
 function showToast(label, action, onExpire) {
   settleToast(false);
   pendingToast = { label, action: action || null, onExpire: onExpire || null };
   toastTimeout = setTimeout(() => { settleToast(false); render(); }, TOAST_WINDOW_MS);
+  toastPaintOwed = true;
+  queueMicrotask(() => { if (toastPaintOwed) render(); });
 }
 function offerUndo(label, restore, onExpire) {
   showToast(label, { label: "בטלו", run: restore }, onExpire);
@@ -6486,6 +6494,7 @@ function render() {
   // Guarded because several unit tests build a #content in isolation.
   const toastDock = document.getElementById("appToastDock");
   if (toastDock) toastDock.innerHTML = renderToastBar();
+  toastPaintOwed = false;
   const contentPanel = document.getElementById("content");
   const activeNavItem = getNavItems().find((i) => i.tab === tab);
   if (activeNavItem && document.getElementById(activeNavItem.rowId)) contentPanel.setAttribute("aria-labelledby", activeNavItem.rowId);

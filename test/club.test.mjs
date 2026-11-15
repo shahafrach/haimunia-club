@@ -439,3 +439,22 @@ test("F-015: answering yes still works after the card's own popstate", async () 
   const id = (await window.buildBackupPayload()).entries[0].id;
   assert.equal(window.haimuniaClub.isShared(id), true);
 });
+
+// F-018 (real Chromium, 3.9.0): toast() only queued the toast; nothing rendered after the async failure, so
+// the member never saw it. The toast must be in the DOM with no further action: these tests only wait.
+const dockText = (window) => (window.document.getElementById("appToastDock") || { textContent: "" }).textContent;
+test("F-018: the upsert fails after 'לשתף', and its toast is painted with no further action", async () => {
+  const { window } = await boot({ upsertFail: "network" });
+  await until(() => window.haimuniaClub.available(), "in club");
+  await logLift(window, 60, 8, true);
+  await until(() => /השינוי נשמר בטלפון\. המועדון לא התעדכן הפעם\./.test(dockText(window)), "the failure toast in the dock");
+});
+
+test("F-018: a PR share that fails paints its toast too", async () => {
+  const { window, calls } = await boot({ rpcFail: { pr_share: "network" } });
+  await until(() => window.haimuniaClub.available(), "in club");
+  window.haimuniaClub.setShared("e1", true);
+  assert.equal(await window.haimuniaClub.postPr("e1", "סקוואט", 5), false, "the share failed");
+  assert.equal(rpcs(calls, "pr_share").length, 1);
+  await until(() => /השיא נשמר בטלפון\. השיתוף במועדון לא הצליח הפעם\./.test(dockText(window)), "the PR failure toast in the dock");
+});
