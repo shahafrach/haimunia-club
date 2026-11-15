@@ -93,6 +93,20 @@ async function openClub(window) {
   await until(() => $$(window, "#content article").length > 0, "feed");
 }
 const rpcs = (calls, name) => calls.filter(([n]) => n === name);
+// Every new workout asks "share to the club?" (owner decision 2026-11-14). A first entry's or a PR's
+// card shows first, and the question waits for it to close.
+async function answerShare(window, yes) {
+  if (window.document.getElementById("celebrationOverlay").classList.contains("open")) window.closeCelebration();
+  await until(() => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']"), "share question");
+  $(window, yes ? "[data-action='app-confirm-yes']" : "[data-action='app-confirm-no']").click();
+}
+async function logLift(window, weight, reps, share = true) {
+  window.choosePickedMovement("back-squat");
+  window.applyFieldValue("step", "weight", weight);
+  window.applyFieldValue("step", "reps", reps);
+  await window.saveSet();
+  if (share !== null) await answerShare(window, share);
+}
 
 test("offline, or not in the club: there is no club tab", async () => {
   const { window } = await boot({ connected: false });
@@ -201,14 +215,17 @@ test("the club source never touches the private log or any other table", async (
   assert.doesNotMatch(src, /\.from\("workout_posts"\)\.(delete|update|insert)/, "workout_posts is upserted or read; removal goes through post_delete");
 });
 
-// ---- Sharing workouts (owner decision 2026-11-11: feed and reactions; club default: every workout, no weights) ----
-test("a logged lift posts the day to the club: names and results, never kilograms or body weight", async () => {
+// ---- Sharing workouts (owner decisions 2026-11-11: feed and reactions; 2026-11-14: the member chooses per workout) ----
+test("a lift the member chose to share posts the day: names and results, never kilograms or body weight", async () => {
   const { window, calls } = await boot();
   await until(() => window.haimuniaClub.available(), "in club");
   window.choosePickedMovement("back-squat");
   window.applyFieldValue("step", "weight", 100);
   window.applyFieldValue("step", "reps", 5);
   await window.saveSet();
+  await wait(60);
+  assert.equal(calls.filter(([n]) => n === "upsert:workout_posts").length, 0, "nothing is sent before the member answers");
+  await answerShare(window, true);
   await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "upsert");
   const [, row, opts] = calls.find(([n]) => n === "upsert:workout_posts");
   assert.equal(opts.onConflict, "author_id,club_id,source_type,source_record_id");
@@ -219,41 +236,55 @@ test("a logged lift posts the day to the club: names and results, never kilogram
   assert.match(row.result_text, /5 × /);
 });
 
-test("a member who turned sharing off posts nothing, and the switch is saved through set_share_defaults", async () => {
-  const off = await boot({ shareDefaults: { share_workouts: false } });
-  await until(() => off.window.haimuniaClub.available(), "in club");
-  off.window.choosePickedMovement("back-squat");
-  off.window.applyFieldValue("step", "weight", 80);
-  off.window.applyFieldValue("step", "reps", 3);
-  await off.window.saveSet();
+test("not this time: the workout stays on the phone, and the next one asks again", async () => {
+  const { window, calls } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await logLift(window, 80, 3, false);
   await wait(80);
-  assert.equal(off.calls.filter(([n]) => n === "upsert:workout_posts").length, 0);
+  assert.equal(calls.filter(([n]) => n === "upsert:workout_posts").length, 0, "declined: nothing posted");
+  const id = (await window.buildBackupPayload()).entries[0].id;
+  assert.equal(window.haimuniaClub.isShared(id), false);
+  await logLift(window, 85, 3, true);
+  await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "second one shared");
+  const row = calls.find(([n]) => n === "upsert:workout_posts")[1];
+  assert.doesNotMatch(row.title, /ועוד/, "only the shared lift is in the day post");
+  assert.doesNotMatch(row.result_text, /·/, "one line, not two");
+});
 
-  const on = await boot();
-  await openClub(on.window);
-  $(on.window, "[data-club='share']").click();
-  await until(() => rpcs(on.calls, "set_share_defaults").length === 1, "rpc");
-  assert.deepEqual(rpcs(on.calls, "set_share_defaults")[0][1], { p_club_id: "c1", p_defaults: { share_workouts: false, show_weights: false } });
-  assert.equal(on.window.haimuniaClub.sharingOn(), false);
+test("the club tab has no all-or-nothing switch any more; it explains the per-workout question", async () => {
+  const { window } = await boot();
+  await openClub(window);
+  assert.equal($(window, "[data-club='share']"), null);
+  assert.match($(window, "#content").textContent, /אחרי כל אימון שנרשם תישאלו אם לשתף אותו/);
+});
+
+test("an edit keeps the answer the workout already had: no second question", async () => {
+  const { window, calls } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await logLift(window, 100, 5, true);
+  await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "shared");
+  const id = (await window.buildBackupPayload()).entries[0].id;
+  const before = calls.filter(([n]) => n === "upsert:workout_posts").length;
+  await window.startEditEntry(id);
+  window.applyFieldValue("step", "reps", 6);
+  await window.saveSet();
+  await until(() => calls.filter(([n]) => n === "upsert:workout_posts").length > before, "day updated");
+  assert.equal($(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']"), null, "no question on an edit");
 });
 
 test("a failed share never touches the log", async () => {
   const { window } = await boot({ upsertFail: "network" });
   await until(() => window.haimuniaClub.available(), "in club");
-  window.choosePickedMovement("back-squat");
-  window.applyFieldValue("step", "weight", 60);
-  window.applyFieldValue("step", "reps", 8);
-  await window.saveSet();
+  await logLift(window, 60, 8, true);
   await wait(80);
   const backup = await window.buildBackupPayload();
   assert.equal(backup.entries.length, 1, "the lift is saved on the phone");
 });
 
-test("dayPostRow: nothing without consent or without lines; weights only when the member chose them", () => {
+test("dayPostRow: nothing without lines; weights only when the member chose them", () => {
   return boot({ connected: false }).then(({ window }) => {
     const f = window.haimuniaClub.dayPostRow;
     const sum = { day: "2026-11-12", lines: [{ title: "סקוואט", text: "100 ק״ג × 5 × 1", textNoWeight: "5 × 1", rx: null }] };
-    assert.equal(f(sum, "c1", ME, { share_workouts: false }), null);
     assert.equal(f({ day: "2026-11-12", lines: [] }, "c1", ME, { share_workouts: true }), null);
     assert.equal(f(sum, "c1", ME, { share_workouts: true, show_weights: false }).result_text, "סקוואט 5 × 1");
     assert.equal(f(sum, "c1", ME, { share_workouts: true, show_weights: true }).result_text, "סקוואט 100 ק״ג × 5 × 1");
@@ -263,10 +294,7 @@ test("dayPostRow: nothing without consent or without lines; weights only when th
 test("deleting the day's last entry removes the day's post; logging again that day starts a new one", async () => {
   const { window, calls, state } = await boot();
   await until(() => window.haimuniaClub.available(), "in club");
-  window.choosePickedMovement("back-squat");
-  window.applyFieldValue("step", "weight", 100);
-  window.applyFieldValue("step", "reps", 5);
-  await window.saveSet();
+  await logLift(window, 100, 5, true);
   await until(() => state.posts.length === 1, "posted");
   const day = state.posts[0].source_record_id;
   const id = (await window.buildBackupPayload()).entries[0].id;
@@ -274,10 +302,7 @@ test("deleting the day's last entry removes the day's post; logging again that d
   await until(() => rpcs(calls, "post_delete").length === 1, "post_delete");
   assert.equal(rpcs(calls, "post_delete")[0][1].post_id, "wp1");
   assert.equal(state.posts.length, 0);
-  window.choosePickedMovement("back-squat");
-  window.applyFieldValue("step", "weight", 90);
-  window.applyFieldValue("step", "reps", 5);
-  await window.saveSet();
+  await logLift(window, 90, 5, true);
   await until(() => state.posts.length === 1, "posted again");
   assert.equal(state.posts[0].source_record_id, day + ":2", "a new key, not the removed one");
 });
@@ -287,10 +312,7 @@ test("a day whose post the coach removed is written under the next key", async (
   await until(() => window.haimuniaClub.available(), "in club");
   const today = window.todayISO();
   state.removed.push("day:" + today);
-  window.choosePickedMovement("back-squat");
-  window.applyFieldValue("step", "weight", 70);
-  window.applyFieldValue("step", "reps", 5);
-  await window.saveSet();
+  await logLift(window, 70, 5, true);
   await until(() => state.posts.length === 1, "posted");
   assert.equal(state.posts[0].source_record_id, "day:" + today + ":2");
 });
@@ -301,6 +323,8 @@ test("a PR goes to the club as a percent, never kilograms; its post goes when th
   assert.equal(window.clubPrPercent({ type: "reps" }, { repRecordPR: true, weight: 105, prevRepRecord: 100 }), 5);
   assert.equal(window.clubPrPercent({ type: "reps" }, { repRecordPR: false, est1rmPR: true, est: 110, prevEst1RM: 100 }), 10);
   assert.equal(window.clubPrPercent({ type: "reps" }, { repRecordPR: true, weight: 100, prevRepRecord: 0 }), null, "no history, no percent");
+  assert.equal(await window.haimuniaClub.postPr("e1", "סקוואט", 5), false, "a workout not answered yes sends no PR card");
+  window.haimuniaClub.setShared("e1", true);
   await window.haimuniaClub.postPr("e1", "סקוואט", 5);
   const [, args] = rpcs(calls, "pr_share")[0];
   assert.equal(args.p_club_id, "c1"); assert.equal(args.record_id, "pr:e1");
@@ -309,14 +333,14 @@ test("a PR goes to the club as a percent, never kilograms; its post goes when th
   state.posts.push({ id: "wp-pr", source_record_id: "pr:e1" });
   await window.haimuniaClub.removePr("e1");
   assert.equal(rpcs(calls, "post_delete").at(-1)[1].post_id, "wp-pr");
-  const off = await boot({ shareDefaults: { share_workouts: false } });
-  await until(() => off.window.haimuniaClub.available(), "in club");
-  assert.equal(await off.window.haimuniaClub.postPr("e2", "סקוואט", 5), false, "sharing off: no PR either");
+  window.haimuniaClub.setShared("e2", false);
+  assert.equal(await window.haimuniaClub.postPr("e2", "סקוואט", 5), false, "not this time: no PR card either");
 });
 
 test("undo of a deleted PR entry brings its PR card back, under a new key", async () => {
   const { window, calls, state } = await boot();
   await until(() => window.haimuniaClub.available(), "in club");
+  window.haimuniaClub.setShared("e9", true);
   await window.haimuniaClub.postPr("e9", "דדליפט", 4);
   state.posts.push({ id: "wp-pr9", source_record_id: "pr:e9" });
   await window.haimuniaClub.removePr("e9");
@@ -352,4 +376,66 @@ test("the club tab is a scene like the other tabs: scene chrome, app chevron, sh
   // Another tab stamps its own scene again.
   $(window, "[data-action='switch-tab'][data-tab='add']").click();
   await until(() => window.document.body.dataset.scene === "scene-page--add", "add scene");
+});
+
+// The welcome sheet is still open after boot in these tests; with it open behind the card, closing the
+// card pops nothing. Answer it first, as a member does, so the card is the only dialog.
+async function passWelcome(window) {
+  const w = window.document.getElementById("welcomeOverlay");
+  if (!w.classList.contains("open")) return;
+  window.document.getElementById("welcomeNameInput").value = "דנה";
+  $(window, "[data-action='save-user-name']").click();
+  await until(() => !w.classList.contains("open"), "welcome closed");
+  await wait(60);
+}
+
+// F-015 (3.9.0 verification, real Chromium): closing the first-entry card calls history.back() in the dialog
+// history layer; its popstate can land after "לשתף במועדון?" has opened and pushed its own entry. That pop
+// is the app's own, not the member's, so it must not close the question (and must not record "not shared").
+// jsdom's own back() timing never shows the race, so back() is held here and its popstate fired by hand
+// after the question is open, which is the order the real-Chromium trace showed.
+test("F-015: the popstate from the card's own history.back() leaves the share question open; a real back still closes it", async () => {
+  const { window } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await passWelcome(window);
+  let backs = 0;
+  window.history.back = () => { backs++; };
+  const pop = () => window.dispatchEvent(new window.PopStateEvent("popstate", { state: window.history.state }));
+  const question = () => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']");
+  const choice = (id) => JSON.parse(window.localStorage.getItem("haimunia:clubShareChoice") || "{}")["c1|" + id];
+
+  logLift(window, 80, 3, null);
+  await until(() => window.document.getElementById("celebrationOverlay").classList.contains("open"), "first-entry card");
+  window.closeCelebration();
+  await until(question, "share question");
+  assert.equal(backs, 1, "closing the card consumed its history entry with history.back()");
+  const id = (await window.buildBackupPayload()).entries[0].id;
+
+  pop(); // the card's own back() lands now
+  await wait(60);
+  assert.ok(question(), "the question is still open");
+  assert.equal(choice(id), undefined, "and nothing was recorded for the workout");
+  assert.ok(window.history.state && window.history.state.appDialog, "the question still holds a reserved history entry");
+
+  pop(); // the member presses back
+  await wait(60);
+  assert.equal(question(), null, "a real back-press closes the question");
+  assert.equal(choice(id), false, "and counts as not this time");
+});
+
+test("F-015: answering yes still works after the card's own popstate", async () => {
+  const { window, calls } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await passWelcome(window);
+  window.history.back = () => {};
+  logLift(window, 80, 3, null);
+  await until(() => window.document.getElementById("celebrationOverlay").classList.contains("open"), "first-entry card");
+  window.closeCelebration();
+  await until(() => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']"), "share question");
+  window.dispatchEvent(new window.PopStateEvent("popstate", { state: window.history.state }));
+  await wait(60);
+  $(window, "[data-action='app-confirm-yes']").click();
+  await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "shared");
+  const id = (await window.buildBackupPayload()).entries[0].id;
+  assert.equal(window.haimuniaClub.isShared(id), true);
 });

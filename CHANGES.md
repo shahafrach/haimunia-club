@@ -1,3 +1,17 @@
+# 3.9.0 — Each workout asks whether to share it to the club — 2026-11-15
+
+Owner decision (2026-11-14): the member chooses per workout, not once for all.
+
+- After every new lift or WOD, connected members get one question: "לשתף במועדון?" with "לשתף" and
+  "לא הפעם". Only the workouts answered yes go into the day's post, and a PR card goes out only for a
+  shared workout. Escape or a tap outside counts as "not this time".
+- A PR or first-entry card shows first; the question waits until it closes.
+- An edit keeps the answer the workout already had and asks nothing.
+- The club tab's all-or-nothing switch ("לשתף את האימונים שלי" / "להפסיק לשתף") is gone. The card now
+  explains the per-workout question. The answers are kept on the phone only.
+- Workouts logged before this version have no answer, so they count as not shared. A day already posted
+  under the old switch keeps its post until that day changes; then only answered-yes workouts remain.
+
 # 3.8.1 — A lost IndexedDB connection is reopened (F-010) — 2026-11-15
 
 iOS Safari (WebKit bug 277615) can drop the IndexedDB connection in the middle of a session; saves then
