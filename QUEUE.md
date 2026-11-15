@@ -25,6 +25,9 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-12 | release | todo | – | CI/CD security sweep after the wfx-loot campaign report (owner request 2026-11-15) | – | Advisor already checked haimunia-club and haimunia-app-demo: no PR or branch matching "docs: dependency audit notes" or wfx, no workflow-run number gaps in the last 100 runs, no pull_request_target, actions pinned by SHA, claude-review skips forks. Still to do: see section below. |
 
 ## Owner decisions (from Shahaf)
+- 2026-11-15 (later): **Launch is postponed. No date.** Quality first, launch after. The 22.11 launch and the 20.11 freeze are cancelled. Every "before launch only if verified by 20.11" condition is dropped: everything planned ships when it passes verification.
+  Launch happens only when all gates are green: C4-2 on a real iPhone, G4 approved, the Cursor final pass (or release's full real-Chromium pass), Q-12 clean, and no open critical, high or medium finding. release keeps this gate list current in FINDINGS.md.
+  After 3.12.0 and 3.13.0, release plans the next quality work from FINDINGS.md and the post-launch list (monthly summary, weekly streak, % chart, F-019, F-005 renumbered, template repo) and adds the rows itself.
 - 2026-11-15: **Run to the end without waiting for "continue".** After finishing a task, take the next available row at once. Do not end the turn while you own an available row.
   When every row you own is waiting on the other session, schedule one check-in to yourself with send_later in 30 minutes ("continue the queue"), then end the turn. On that check-in, pull coord and continue. No sleep loops or polling inside a turn.
   Stop for good only when the queue has no row you can act on before launch, or a row needs Shahaf (merge, tag, iPhone check, decision). Then write what he must do in one short list at the top of your report, and schedule no further check-in until he answers.
