@@ -4793,6 +4793,102 @@ function renderTourCard() {
 }
 
 
+// ---------- Log screen layout prototype (?layout=a | ?layout=b) ----------
+// PROTOTYPE for the layout choice (step 1 of the redesign). Without the query parameter nothing below
+// changes the screen: renderLogTab() emits the same markup plus <!--seg:*--> comments, and
+// arrangeLogLayout() returns it untouched. With ?layout=a the blocks are reordered (controls first,
+// short photo band); with ?layout=b the controls move into a dock pinned above the save button.
+// Both: weight and reps prefilled from the last session when an exercise is picked, the last
+// performance on screen, a one-tap "same set again", and 56 px stepper buttons.
+const LOG_LAYOUT = (() => {
+  try { const v = new URLSearchParams(location.search).get("layout"); return v === "a" || v === "b" ? v : ""; }
+  catch (e) { return ""; }
+})();
+if (LOG_LAYOUT && document.body) document.body.dataset.logLayout = LOG_LAYOUT;
+function logTypeMatches(e) { return (e.type === "duration") === (logEntryType === "duration"); }
+// The most recent earlier day this exercise was logged (in the current mode): its rows, newest first.
+function lastSessionRows() {
+  const today = todayISO();
+  const prior = entriesFor(selectedId).filter((e) => logTypeMatches(e) && e.date < today);
+  if (!prior.length) return [];
+  const day = prior[0].date;
+  return prior.filter((e) => e.date === day);
+}
+// "100×5" for a reps set, the hold time for a duration set; weight first, as on the steppers.
+function setShape(e) { return e.type === "duration" ? `${e.weight ? e.weight + "×" : ""}${formatDuration(e.durationSeconds)}` : `${e.weight}×${e.reps}`; }
+// "3 סטים של 100×5", counting a row with sets:3 as three sets.
+function setsPhrase(n, shape) { return `${n === 1 ? "סט אחד" : `${n} סטים`} של <bdi class="mono">${esc(shape)}</bdi>`; }
+function renderLastPerformance() {
+  const rows = lastSessionRows();
+  if (!rows.length) return `<div class="log-last log-last--none">אין עדיין אימון קודם בתרגיל הזה</div>`;
+  const groups = [];
+  rows.slice().reverse().forEach((e) => {
+    const k = setShape(e);
+    const g = groups.find((x) => x.k === k);
+    if (g) g.n += e.sets || 1; else groups.push({ k, n: e.sets || 1 });
+  });
+  const text = groups.map((g) => setsPhrase(g.n, g.k)).join(" · ");
+  return `<div class="log-last"><span class="log-last-label">פעם קודמת · <bdi>${esc(fmtDate(rows[0].date))}</bdi></span><span class="log-last-value">${text}</span></div>`;
+}
+// Today's latest row for this exercise in the current mode: the set "same again" repeats.
+function todaysLastSet() {
+  const today = todayISO();
+  return entries.find((e) => e.exerciseId === selectedId && e.date === today && logTypeMatches(e)) || null;
+}
+function renderRepeatSet() {
+  const t = todaysLastSet();
+  if (!t || editingEntryId || ladderMode) return "";
+  return `<button class="chip-btn primary log-repeat" data-action="repeat-last-set" aria-label="${esc(`רישום סט זהה — ${setShape(t)}`)}">${ICONS.repeat}<span>עוד סט זהה · <bdi class="mono">${esc(setShape(t))}</bdi></span></button>`;
+}
+function repeatLastSet() {
+  const t = todaysLastSet();
+  if (!t) return;
+  weight = t.weight; sets = t.sets;
+  if (t.type === "duration") durationSeconds = t.durationSeconds; else reps = t.reps;
+  saveSet(); // the same path as the save button: sanity confirm, PR detection, share prompt
+}
+function prefillOnPick() {
+  if (!LOG_LAYOUT || editingEntryId) return;
+  const rows = lastSessionRows();
+  const last = rows[0] || entriesFor(selectedId).find(logTypeMatches);
+  if (!last) return;
+  weight = last.weight; sets = last.sets;
+  if (last.type === "duration") durationSeconds = last.durationSeconds; else reps = last.reps;
+}
+function splitLogSegments(html) {
+  const parts = html.split(/<!--seg:([a-zA-Z]+)-->/);
+  const seg = { head: parts[0] };
+  for (let i = 1; i < parts.length; i += 2) seg[parts[i]] = parts[i + 1];
+  return seg;
+}
+function arrangeLogLayout(html) {
+  if (!LOG_LAYOUT || !movementExplicitlyChosen) return html;
+  const g = splitLogSegments(html);
+  const more = `<details class="log-more"><summary class="link-btn link-btn--tap">עוד אפשרויות: סוג רישום, תאריך, 1RM, אחוזים, סולם</summary>${g.typeToggle || ""}${g.dateRow || ""}${g.stats || ""}${g.pct || ""}${g.recent || ""}${g.barWeight || ""}${g.ladder || ""}</details>`;
+  if (LOG_LAYOUT === "a") {
+    return g.head + g.exercise + `<div class="log-controls">` + renderLastPerformance() + renderRepeatSet() + g.barWrap + g.steppers + g.estLine + `</div>` + more + g.daySummary + g.cards + g.end;
+  }
+  // b: the controls live in the dock (renderLogDock); the page keeps the context.
+  return g.head + g.exercise + g.daySummary + g.barWrap + more + g.cards + g.end;
+}
+function renderLogDock() {
+  if (LOG_LAYOUT !== "b" || tab !== "add" || !movementExplicitlyChosen) return "";
+  const isDuration = logEntryType === "duration";
+  const selected = movementById(selectedId);
+  return `<div class="log-dock" role="group" aria-label="רישום סט">
+      <div class="log-dock-head">
+        <button class="log-dock-exercise" data-action="open-picker"><span class="dot" style="background:${esc(catColor(selected.category))}"></span><span>${bidiText(selected.name)}</span><span class="log-dock-change">שינוי</span></button>
+        ${renderLastPerformance()}
+      </div>
+      <div class="steppers">
+        ${renderStepper("weight", "משקל (ק\"ג)", weight, 2.5, isDuration || !isBarbellMovement(selectedId) ? 0 : barWeight)}
+        ${isDuration ? renderStepper("durationSeconds", "משך (שניות)", durationSeconds, 5, 1) : renderStepper("reps", "חזרות", reps, 1, 1)}
+        ${renderStepper("sets", "סטים", sets, 1, 1)}
+      </div>
+      ${renderRepeatSet()}
+    </div>`;
+}
+
 function renderLogTab() {
   const selected = movementById(selectedId);
   const isDuration = logEntryType === "duration";
@@ -4811,7 +4907,7 @@ function renderLogTab() {
   // "green completion mark, short subtitle" in the photo zone) - computed
   // here rather than duplicated, since dayEntries is already built above.
   const hasLoggedToday = dayEntries.length > 0;
-  return `
+  return arrangeLogLayout(`
     <section class="scene-page ${PAGE_SCENES.add.className}" aria-labelledby="pageTitle-add">
       <div class="scene-page__media" aria-hidden="true"></div>
       <div class="scene-page__scrim" aria-hidden="true"></div>
@@ -4830,7 +4926,7 @@ function renderLogTab() {
     </div>` : ""}
 
     <div class="scene-summary-meta"><bdi>${esc(fmtDate(logDate))}</bdi></div>
-
+<!--seg:daySummary-->
     ${dayEntries.length === 0 ? `
     <div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כאן מתעדים את האימון שהושלם." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>` : `
     <h2 class="section-label">${isToday ? "סיכום האימון" : `סיכום ${esc(dayLabel)}`}</h2>
@@ -4840,6 +4936,7 @@ function renderLogTab() {
       <span class="flex items-center gap-6">לוח השנה${ICONS.chevronsLeft}</span>
     </button>`}
 
+<!--seg:exercise-->
     <!-- .pick-hero only while nothing is chosen - see index.html for why the
          chosen state deliberately stays a calm row. The chosen branch's
          markup is untouched: several checks read the exercise name off
@@ -4858,6 +4955,7 @@ function renderLogTab() {
 
 
 
+<!--seg:cards-->
     ${renderUpgradeBackupCard()}
     ${renderTourCard()}
 
@@ -4878,17 +4976,20 @@ function renderLogTab() {
       <div class="log-empty-when">מיד אחרי הבחירה יופיעו כאן גם השיא שלכם, האימון האחרון וההיסטוריה בתרגיל.</div>
     </div>` : `
 
+<!--seg:typeToggle-->
     <h2 class="sr-only">רישום סט</h2>
     <div class="rx-toggle" role="radiogroup" aria-label="סוג רישום">
       <button class="rx-btn ${!isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="reps" role="radio" aria-checked="${!isDuration}">משקל וחזרות</button>
       <button class="rx-btn ${isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="duration" role="radio" aria-checked="${isDuration}"><span style="display:inline-flex; width:16px; height:16px; vertical-align:-3px; margin-left:4px;">${ICONS.stopwatchIcon}</span>החזקה בזמן</button>
     </div>
 
+<!--seg:dateRow-->
     <div class="flex items-center gap-8" style="margin-bottom:12px;">
       <input type="date" id="logDateInput" value="${esc(logDate)}" max="${todayISO()}" aria-label="תאריך רישום הסט" style="flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--chalk); font-size:14px; font-weight:700; font-family:inherit;" />
       ${logDate !== todayISO() ? `<button data-action="reset-log-date" class="reset-date-btn">היום</button>` : ""}
     </div>
 
+<!--seg:stats-->
     ${(est || bestHold || last) ? `
     <div class="stat-row">
       ${est ? `<div class="stat-card stat-hero"><div class="stat-label">1RM משוער</div><div class="stat-value mono" style="color:var(--brass);">${est} ק״ג</div></div>` : ""}
@@ -4902,8 +5003,10 @@ function renderLogTab() {
       </button>` : ""}
     </div>` : ""}
 
+<!--seg:pct-->
     ${est && !isDuration ? `${strengthPercentagesOn() ? renderStrengthPctChips(est) : renderPctTable(est)}` : ""}
 
+<!--seg:recent-->
     ${(() => {
       const recent = recentEntriesFor(selectedId);
       if (recent.length === 0) return "";
@@ -4936,23 +5039,28 @@ function renderLogTab() {
       </div>`;
     })()}
 
+<!--seg:barWeight-->
     ${isDuration || !isBarbell ? "" : renderBarWeightRow()}
 
+<!--seg:barWrap-->
     <div class="bar-wrap" id="barWrap">
       <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא חדש!</span></div>
       ${isDuration || !isBarbell ? "" : `<div id="barbellVisual">${renderBarbell(weight)}</div>`}
     </div>
 
+<!--seg:steppers-->
     <div class="steppers">
       ${renderStepper("weight", "משקל (ק\"ג)", weight, 2.5, isDuration || !isBarbell ? 0 : barWeight)}
       ${isDuration ? renderStepper("durationSeconds", "משך (שניות)", durationSeconds, 5, 1) : renderStepper("reps", "חזרות", reps, 1, 1)}
       ${renderStepper("sets", "סטים", sets, 1, 1)}
     </div>
 
+<!--seg:estLine-->
     ${isDuration
       ? `<div class="est-line">‹ משך ההחזקה: <b id="durationLineValue">${formatDuration(durationSeconds)}</b></div>`
       : `<div class="est-line">‹ הסט הזה מעריך 1RM של <b id="estLineValue">${estimate1RM(weight, reps)} ק״ג</b></div>`}
 
+<!--seg:ladder-->
     ${(() => {
       const rounds = ladderMode ? currentLadderRounds() : [];
       const nextNum = rounds.length + 1;
@@ -5004,12 +5112,12 @@ function renderLogTab() {
       </div>`;
     })()}
     `}
-
+<!--seg:end-->
 
 
       </div>
     </section>
-  `;
+  `);
 }
 
 function renderStepper(field, label, value, step, min, action) {
@@ -6518,6 +6626,12 @@ function render() {
   // renderToastBar()). Written on every render, including the one the
   // expiry timer fires, so clearing pendingToast still clears the bar.
   // Guarded because several unit tests build a #content in isolation.
+  const logDockEl = document.getElementById("logDock");
+  if (logDockEl) {
+    const dockHtml = renderLogDock();
+    logDockEl.innerHTML = dockHtml;
+    document.body.toggleAttribute("data-log-dock", !!dockHtml);
+  }
   const toastDock = document.getElementById("appToastDock");
   if (toastDock) toastDock.innerHTML = renderToastBar();
   toastPaintOwed = false;
@@ -7097,6 +7211,7 @@ function choosePickedMovement(id) {
   movementExplicitlyChosen = true; // COMM-360
   syncLogEntryTypeToSelection();
   endLadder();
+  prefillOnPick(); // layout prototype only (?layout=a|b)
 }
 
 // The log form's starting values for an EMOM: each station's own target -
@@ -7952,6 +8067,7 @@ document.addEventListener("click", (e) => {
   else if (action === "ladder-switch-exercise") { switchLadderExercise(el.dataset.id); }
   else if (action === "set-ladder-block-label") { setLadderBlockLabel(el.dataset.label); }
   else if (action === "prefill-last") { prefillFromLast(); }
+  else if (action === "repeat-last-set") { repeatLastSet(); }
   else if (action === "cancel-edit-entry") { cancelEditEntry(); }
   else if (action === "edit-entry") { startEditEntry(el.dataset.id); }
   else if (action === "view-log-wod-date-calendar") {
