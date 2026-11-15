@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.8.0";
+const APP_VERSION = "3.8.1";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -552,9 +552,14 @@ let storageErrMsg = "";
 function noteStorageError(e) {
   storageOK = false;
   const quota = e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED");
+  // F-010: the connection was lost and reopening it failed too (src/db.js withReopen). Only a
+  // fresh start of the app brings the storage back.
+  const lost = e && e.dbConnectionLost === true;
   storageErrMsg = quota
     ? "אין מקום אחסון פנוי — ייצאו גיבוי ומחקו נתונים ישנים"
-    : "השמירה במכשיר נכשלה — הנתונים האחרונים אולי לא נשמרו";
+    : lost
+      ? "החיבור לאחסון במכשיר נותק. סגרו את האפליקציה לגמרי ופתחו אותה מחדש, ואז שמרו שוב."
+      : "השמירה במכשיר נכשלה — הנתונים האחרונים אולי לא נשמרו";
   console.error("storage write failed:", e);
 }
 

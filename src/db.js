@@ -71,6 +71,10 @@ function openDB() {
       // future reload of this same tab after a deploy) instead of holding
       // this connection open and blocking it indefinitely.
       db.onversionchange = () => { db.close(); _dbPromise = null; };
+      // The browser closed it (F-010: WebKit 277615, storage cleared, device pressure): the next
+      // call opens a fresh connection instead of reusing a dead one.
+      const mine = _dbPromise;
+      db.onclose = () => { if (_dbPromise === mine) _dbPromise = null; };
       resolve(db);
     };
     req.onerror = () => { _dbPromise = null; reject(req.error); };
@@ -474,3 +478,53 @@ async function dbImportAll(batch) {
     }
   });
 }
+
+// A LOST CONNECTION IS REOPENED, ONCE (F-010, WebKit bug 277615). iOS Safari can drop an
+// IndexedDB connection mid-session ("Connection to Indexed Database server lost"); every later
+// transaction on the cached connection then throws InvalidStateError until a full reload, so
+// saves kept failing for the rest of the session. Now a closed connection forgets itself
+// (onclose, set in openDB), and every db* call that fails with a lost-connection error drops
+// the cached connection, opens a fresh one and tries exactly once more. Retrying is safe: a
+// transaction that could not start or was aborted with its connection committed nothing.
+// A second failure reaches the caller marked dbConnectionLost, and the member is told to close
+// and reopen the app (noteStorageError in app.js).
+function isLostConnectionError(e) {
+  if (!e) return false;
+  if (e.name === "InvalidStateError") return true;
+  const msg = String(e.message || "");
+  return /Connection to Indexed Database server lost|database connection is closing|connection is closed/i.test(msg);
+}
+function forgetDBConnection() {
+  const p = _dbPromise;
+  _dbPromise = null;
+  if (p) p.then((db) => { try { db.close(); } catch (e) { /* already closed */ } }, () => {});
+}
+function withReopen(fn) {
+  return async function () {
+    try {
+      return await fn.apply(this, arguments);
+    } catch (e) {
+      if (!isLostConnectionError(e)) throw e;
+      forgetDBConnection();
+      try {
+        return await fn.apply(this, arguments);
+      } catch (e2) {
+        if (isLostConnectionError(e2)) { try { e2.dbConnectionLost = true; } catch (x) { /* frozen error */ } }
+        throw e2;
+      }
+    }
+  };
+}
+dbGetSetting = withReopen(dbGetSetting); dbSetSetting = withReopen(dbSetSetting); dbClearSettings = withReopen(dbClearSettings);
+dbGetAllSettings = withReopen(dbGetAllSettings); dbLoadMovements = withReopen(dbLoadMovements); dbAddMovement = withReopen(dbAddMovement);
+dbClearMovements = withReopen(dbClearMovements); dbLoadWodMovementTags = withReopen(dbLoadWodMovementTags);
+dbAddWodMovementTag = withReopen(dbAddWodMovementTag); dbClearWodMovementTags = withReopen(dbClearWodMovementTags);
+dbLoadWodEntries = withReopen(dbLoadWodEntries); dbPutWodEntry = withReopen(dbPutWodEntry); dbDeleteWodEntry = withReopen(dbDeleteWodEntry);
+dbClearWodEntries = withReopen(dbClearWodEntries); dbLoadCustomWods = withReopen(dbLoadCustomWods); dbAddCustomWod = withReopen(dbAddCustomWod);
+dbClearCustomWods = withReopen(dbClearCustomWods); dbLoadBodyweight = withReopen(dbLoadBodyweight); dbPutBodyweight = withReopen(dbPutBodyweight);
+dbDeleteBodyweight = withReopen(dbDeleteBodyweight); dbClearBodyweight = withReopen(dbClearBodyweight); dbLoadMeasureTypes = withReopen(dbLoadMeasureTypes);
+dbAddMeasureType = withReopen(dbAddMeasureType); dbDeleteMeasureType = withReopen(dbDeleteMeasureType); dbClearMeasureTypes = withReopen(dbClearMeasureTypes);
+dbLoadMeasurements = withReopen(dbLoadMeasurements); dbPutMeasurement = withReopen(dbPutMeasurement); dbDeleteMeasurement = withReopen(dbDeleteMeasurement);
+dbClearMeasurements = withReopen(dbClearMeasurements); dbLoadAll = withReopen(dbLoadAll); dbPut = withReopen(dbPut); dbDelete = withReopen(dbDelete);
+dbClear = withReopen(dbClear); dbDeleteMovementRecord = withReopen(dbDeleteMovementRecord); dbDeleteCustomWod = withReopen(dbDeleteCustomWod);
+dbImportAll = withReopen(dbImportAll);
