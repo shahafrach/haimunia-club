@@ -1,3 +1,18 @@
+# 3.13.0 — The log screen: controls first, one tap for the same set — 2026-11-15
+
+Layout A, the owner's choice from PR #21 step 1.
+
+- Once an exercise is chosen, the photo is a short band and the controls come first: the last session
+  ("פעם קודמת · 3 סטים של 100×5"), "עוד סט זהה", the plate visualizer and the steppers (56 px). The type,
+  the date, the 1RM card, the percentages, the bar choice and the ladder are under "עוד אפשרויות"; a past
+  date and an active ladder stay with the controls. Measured: no scroll at 390×844 and 360×780.
+- Picking an exercise fills weight, reps and sets from its last session.
+- "עוד סט זהה" logs the same set again in one tap, through the same save as the button (the sanity
+  confirm, PR detection and the club share question apply). Three identical sets: 5 taps, no scroll
+  (was 6 taps and a swipe, or about 37 taps from the defaults).
+- On the log screen the save is confirmed in the last-session line instead of a toast over the steppers.
+- No change to stored data.
+
 # 3.12.0 — Anonymous error reports and the feedback box — 2026-11-15
 
 Needs haimunia-app-demo #178 (`client_error_report()`, `feedback_submit()`, 202611150003) deployed first.
