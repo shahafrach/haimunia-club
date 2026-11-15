@@ -10,13 +10,20 @@ const wait = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, label) { for (let i = 0; i < 100; i++) { if (fn()) return; await wait(10); } assert.fail("timed out: " + label); }
 
 function fakeBackend(opts = {}) {
-  const log = { rpc: [], signOut: [] };
-  const state = { user: { id: "u1", is_anonymous: false }, member: true, profile: { display_name: "דנה", emoji: "💪" }, rpcError: null, ...opts };
+  const log = { rpc: [], signOut: [], getUser: 0 };
+  // getUser: what the server answers after a lost answer. "exists" (default), "gone" or "unreachable".
+  const state = { user: { id: "u1", is_anonymous: false }, member: true, profile: { display_name: "דנה", emoji: "💪" }, rpcError: null, getUser: "exists", ...opts };
   const client = {
     auth: {
       getSession: async () => ({ data: { session: state.user ? { user: state.user } : null } }),
       refreshSession: async () => ({ data: { session: { user: state.user } } }),
       signOut: async (o) => { log.signOut.push(o || null); state.user = null; },
+      getUser: async () => {
+        log.getUser++;
+        if (state.getUser === "gone") return { data: { user: null }, error: { status: 403, code: "user_not_found", message: "User from sub claim in JWT does not exist" } };
+        if (state.getUser === "unreachable") throw new TypeError("Failed to fetch");
+        return { data: { user: state.user }, error: null };
+      },
     },
     functions: { invoke: async () => ({ data: null, error: { message: "unexpected" } }) },
     rpc: async (n, a) => {
@@ -108,10 +115,44 @@ test("a refused call deletes nothing on the phone: still connected, with the rea
   assert.ok($(window, "#connectBody [data-connect='delete-account']"), "the member can try again");
 });
 
-test("an offline call says the account was not deleted", async () => {
-  const { window } = await bootConnected({ rpcError: { message: "Failed to fetch" } });
+test("an offline call asks the server first, and says not deleted only when the account is still there", async () => {
+  const { window, log } = await bootConnected({ rpcError: { message: "Failed to fetch" } });
   await openConfirm(window);
   click(window, "delete-account");
   await until(() => /החשבון לא נמחק/.test(body(window)), "the offline text");
+  assert.equal(log.getUser, 1, "getUser was asked before saying not deleted");
   assert.equal(await window.dbGetSetting("haimunia:connectChoice"), "connected");
+});
+
+test("the answer was lost but the server deleted the account: treated as success", async () => {
+  const { window, log } = await bootConnected({ rpcError: { message: "Failed to fetch" }, getUser: "gone" });
+  await openConfirm(window);
+  click(window, "delete-account");
+  await until(() => !$(window, "#connectOverlay").classList.contains("open"), "the overlay closes");
+  assert.equal(log.getUser, 1);
+  assert.deepEqual(log.signOut, [{ scope: "local" }]);
+  assert.equal(window.localStorage.getItem("haimunia:auth"), null);
+  await wait();
+  assert.equal(await window.dbGetSetting("haimunia:connectChoice"), "offline");
+  assert.doesNotMatch(window.document.body.textContent, /החשבון לא נמחק/);
+  assert.match(window.document.body.textContent, /החשבון נמחק\. האימונים נשארים בטלפון\./);
+});
+
+test("the server cannot be reached to tell: no claim either way, the device stays connected", async () => {
+  const { window, log } = await bootConnected({ rpcError: { message: "Failed to fetch" }, getUser: "unreachable" });
+  await openConfirm(window);
+  click(window, "delete-account");
+  await until(() => /לא ברור אם החשבון נמחק/.test(body(window)), "the unknown text");
+  assert.doesNotMatch(body(window), /החשבון לא נמחק/);
+  assert.equal(log.getUser, 1);
+  assert.deepEqual(log.signOut, []);
+  assert.equal(await window.dbGetSetting("haimunia:connectChoice"), "connected");
+});
+
+test("a refused call (not a network error) does not need getUser", async () => {
+  const { window, log } = await bootConnected({ rpcError: { message: "rate_limited" } });
+  await openConfirm(window);
+  click(window, "delete-account");
+  await until(() => /יותר מדי פעמים/.test(body(window)), "the rate-limit text");
+  assert.equal(log.getUser, 0);
 });

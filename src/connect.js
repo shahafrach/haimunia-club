@@ -345,8 +345,25 @@
   var DELETE_TEXT = {
     rate_limited: "ניסיתם יותר מדי פעמים בשעה האחרונה. אפשר לנסות שוב בעוד שעה.",
     offline: "אין חיבור כרגע. החשבון לא נמחק. אפשר לנסות שוב כשהחיבור חוזר.",
+    unknown: "אין חיבור כרגע, ולא ברור אם החשבון נמחק. כשהחיבור חוזר, פותחים שוב את המסך הזה.",
     error: "מחיקת החשבון לא הושלמה. החשבון לא נמחק. אפשר לנסות שוב.",
   };
+  // "deleted" when the server says this session's user no longer exists, "offline" when it still does
+  // (the delete did not happen), "unknown" when the server cannot be reached to tell.
+  function userGone(err) {
+    if (!err) return false;
+    return err.code === "user_not_found" || err.status === 404 ||
+      /user from sub claim in jwt does not exist|user not found|user does not exist/i.test(String(err.message || ""));
+  }
+  async function accountStateAfterLostAnswer() {
+    try {
+      var c = await getClient();
+      var r = await c.auth.getUser();
+      if (r && r.data && r.data.user && !r.error) return "offline";
+      if (r && userGone(r.error)) return "deleted";
+      return "unknown";
+    } catch (e) { return "unknown"; }
+  }
   async function doDeleteAccount() {
     if (S.busy) return;
     S.busy = true; S.error = ""; S.view = "delete"; paint();
@@ -358,6 +375,9 @@
       else if (/rate_limited/.test(String(r.error.message || ""))) status = "rate_limited";
       else if (isNetwork(r.error)) status = "offline";
     } catch (e) { status = "offline"; }
+    // A network error does not say the call failed: the answer may be what was lost, after the server
+    // deleted the account. Ask the server who we are before saying "not deleted".
+    if (status === "offline") status = await accountStateAfterLostAnswer();
     if (status !== "deleted") { S.busy = false; S.error = DELETE_TEXT[status] || DELETE_TEXT.error; paint(); return; }
     try { var c2 = await getClient(); await c2.auth.signOut({ scope: "local" }); } catch (e) {}
     try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
