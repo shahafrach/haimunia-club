@@ -1,3 +1,14 @@
+# 3.8.1 — A lost IndexedDB connection is reopened (F-010) — 2026-11-15
+
+iOS Safari (WebKit bug 277615) can drop the IndexedDB connection in the middle of a session; saves then
+failed until the app was closed and reopened. No change to the database (box-log-db stays at v7) or to
+the stored record format.
+
+- A connection the browser closed forgets itself (`onclose` in `src/db.js`), so the next call opens a new one.
+- Every db* call that fails with a lost-connection error opens a fresh connection and tries once more.
+  A second failure tells the member, in Hebrew, to close the app completely and reopen it.
+- Dev dependencies: `npm audit fix` (lockfile only, F-009). Nothing from `package.json` ships.
+
 # 3.8.0 — Safari to home screen without losing the log (F-001) — 2026-11-14
 
 - Transfer codes can be created in this app (Settings, "יצירת קוד העברה", and
