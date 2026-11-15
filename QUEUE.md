@@ -20,6 +20,11 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-07 | release | done | – | Triage stale PRs: #162, #167, dependabot | – | #162: superseded (`docs/club/research.md` is on main; the branch conflicts): Shahaf closes it. #167: Q-06. Dependabot #153, #155, #174, #175, #176, #177: held until after launch (Q-08). |
 | Q-08 | release | blocked | launch | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. |
 
+## Owner decisions (from Shahaf)
+- 2026-11-15: Log screen layout **A** (controls first). release: add the step 2 row for fixes (implement A, plus the browser check that the steppers and save are visible without scrolling at 390x844 and 360x780) and verify it as 3.13.0. If it cannot be verified by 20.11, it ships after launch.
+- 2026-11-15: Close haimunia-app-demo #162 (superseded). Shahaf closes it.
+- 2026-11-15: Shahaf wants a finished product. Keep going through the queue without waiting for him, and stop only for merges, tags, iPhone checks and real decisions.
+
 ## Q-01: fix F-020 on PR #20
 ```
 Lead here. PR #20 (3.11.0 check for update, ac7bab1) fails F-020 (FINDINGS.md on branch claude/adoring-dijkstra-yteqeb, PR #19). Fix it before the 3.12.0 work.
