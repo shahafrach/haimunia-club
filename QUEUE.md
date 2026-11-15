@@ -2,6 +2,9 @@
 
 Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds only this file.
 
+## Waiting for Shahaf
+(release keeps this list current, newest first; one line each)
+
 ## How it works
 - **Owner** of a row: `fixes` (the haimunia-fixes session) or `release` (the lead session, which plans, sets versions and verifies). Shahaf only merges, tags, makes decisions and does the iPhone checks.
 - **Status:** `todo` → `doing` → `done` → `verified` or `blocked` (with the reason in Notes).
@@ -40,7 +43,8 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
   After 3.12.0 and 3.13.0, release plans the next quality work from FINDINGS.md and the post-launch list (monthly summary, weekly streak, % chart, F-019, F-005 renumbered, template repo) and adds the rows itself.
 - 2026-11-15: **Run to the end without waiting for "continue".** After finishing a task, take the next available row at once. Do not end the turn while you own an available row.
   When every row you own is waiting on the other session, schedule one check-in to yourself with send_later in 30 minutes ("continue the queue"), then end the turn. On that check-in, pull coord and continue. No sleep loops or polling inside a turn.
-  Stop for good only when the queue has no row you can act on before launch, or a row needs Shahaf (merge, tag, iPhone check, decision). Then write what he must do in one short list at the top of your report, and schedule no further check-in until he answers.
+  A row that needs Shahaf (merge, tag, iPhone check, decision) never stops you: list it once under "Waiting for Shahaf" at the top of QUEUE.md, then keep working on every other row you can act on, and keep scheduling the 30-minute check-in. Stop for good only when no row anywhere is actionable by you.
+  Do not wait for merges to start the next task: branch the next work from the PR branch it depends on, and rebase after the merge. The advisor runs backup-database before migration merges and tells Shahaf when to merge.
   Launch freeze from 20.11: after that, only verification and fixes for blockers.
 - 2026-11-15: Log screen layout **A** (controls first). release: add the step 2 row for fixes (implement A, plus the browser check that the steppers and save are visible without scrolling at 390x844 and 360x780) and verify it as 3.13.0. If it cannot be verified by 20.11, it ships after launch.
 - 2026-11-15: Close haimunia-app-demo #162 (superseded). Shahaf closes it.
