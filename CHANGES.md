@@ -1,3 +1,16 @@
+# 3.12.0 — Anonymous error reports and the feedback box — 2026-11-15
+
+Needs haimunia-app-demo #178 (`client_error_report()`, `feedback_submit()`, 202611150003) deployed first.
+
+- Error reports (`src/errors.js`): an uncaught error, an unhandled rejection or a failed save sends its kind,
+  a short technical message with anything a member could have typed taken out, the screen, the version and the
+  file/line. No id, no name, no log data. At most 5 a page load, one per kind of error a day, 8 waiting offline.
+  They follow the usage-counting switch: off means none.
+- The feedback box (`src/feedback.js`): "שליחת משוב" in Settings, and a small link under the storage error and
+  the club share-failure toasts, opens "מה לא עובד טוב?". It sends the typed text, the screen, the version and
+  the device type; no name and no username. Offline, it waits (5 at most) and goes when the app is online.
+- privacy.html: sections 6 (דיווח שגיאות אוטומטי) and 7 (משוב); the sections after them are renumbered.
+
 # 3.11.0 — בדיקת עדכון: a new version on demand, never during a save — 2026-11-15
 
 - Settings, by the version line: a "בדיקת עדכון" button. It answers up to date (with the installed version), a

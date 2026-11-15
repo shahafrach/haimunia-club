@@ -21,8 +21,16 @@ const list = (name) => {
 const REQUIRED = list("REQUIRED_ASSETS");
 const OPTIONAL = list("OPTIONAL_ASSETS");
 
-test("every script index.html loads is a REQUIRED asset", () => {
-  for (const f of SCRIPT_FILES) assert.ok(REQUIRED.includes(f), `${f} is loaded but not in REQUIRED_ASSETS`);
+// 3.12.0: the error reports and the feedback box are OPTIONAL on purpose (queue Q-03): the app runs without
+// them, every call into them goes through window.HaimuniaErrors / window.HaimuniaFeedback with a guard, so a
+// failed precache must not fail the install. Exactly these two, and they must be optional, not missing.
+const OPTIONAL_SCRIPTS = ["src/errors.js", "src/feedback.js"];
+test("every script index.html loads is a REQUIRED asset (the two optional ones are precached as OPTIONAL)", () => {
+  for (const f of SCRIPT_FILES) {
+    if (OPTIONAL_SCRIPTS.includes(f)) { assert.ok(OPTIONAL.includes(f), `${f} is loaded but not in OPTIONAL_ASSETS`); continue; }
+    assert.ok(REQUIRED.includes(f), `${f} is loaded but not in REQUIRED_ASSETS`);
+  }
+  for (const f of OPTIONAL_SCRIPTS) assert.ok(SCRIPT_FILES.includes(f), `${f} is listed as an optional script but index.html does not load it`);
   for (const f of ["index.html", "theme-init.js", "frame-guard.js"]) assert.ok(REQUIRED.includes(f), f);
 });
 

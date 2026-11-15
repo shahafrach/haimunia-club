@@ -42,6 +42,12 @@
   }
   function again() { if (typeof render === "function" && typeof tab !== "undefined" && tab === "club") render(); }
   function toast(t) { if (typeof showToast === "function") showToast(t); }
+  // A share that failed: the toast offers "שליחת משוב", which opens the feedback sheet on the club screen.
+  function failToast(t) {
+    if (typeof showToast !== "function") return;
+    if (window.HaimuniaFeedback) showToast(t, { label: "שליחת משוב", run: function () { window.HaimuniaFeedback.open("club"); } });
+    else showToast(t);
+  }
 
   // ---- Loading ----------------------------------------------------------------------
   async function loadFeed(more) {
@@ -397,7 +403,7 @@
       C.feed.loaded = false;
       return true;
     } catch (e) {
-      toast("השינוי נשמר בטלפון. המועדון לא התעדכן הפעם.");
+      failToast("השינוי נשמר בטלפון. המועדון לא התעדכן הפעם.");
       return false;
     } finally {
       var redo = posting[day] === "again";
@@ -430,7 +436,7 @@
       if (r.error) throw r.error;
       C.feed.loaded = false;
       return true;
-    } catch (e) { toast("השיא נשמר בטלפון. השיתוף במועדון לא הצליח הפעם."); return false; }
+    } catch (e) { failToast("השיא נשמר בטלפון. השיתוף במועדון לא הצליח הפעם."); return false; }
   }
   /** The PR post of a deleted entry is removed with it. What it said is kept, for an undo. */
   async function removePr(entryId) {
