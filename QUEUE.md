@@ -23,6 +23,10 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-10 | release | todo | Q-09 | Verify 3.13.0 (layout A) | [club #21](https://github.com/shahafrach/haimunia-club/pull/21) | Real Chromium at 390×844 and 360×780; the PR, share, sanity and plate flows; jsdom; data-shape check. |
 
 ## Owner decisions (from Shahaf)
+- 2026-11-15: **Run to the end without waiting for "continue".** After finishing a task, take the next available row at once. Do not end the turn while you own an available row.
+  When every row you own is waiting on the other session, schedule one check-in to yourself with send_later in 30 minutes ("continue the queue"), then end the turn. On that check-in, pull coord and continue. No sleep loops or polling inside a turn.
+  Stop for good only when the queue has no row you can act on before launch, or a row needs Shahaf (merge, tag, iPhone check, decision). Then write what he must do in one short list at the top of your report, and schedule no further check-in until he answers.
+  Launch freeze from 20.11: after that, only verification and fixes for blockers.
 - 2026-11-15: Log screen layout **A** (controls first). release: add the step 2 row for fixes (implement A, plus the browser check that the steppers and save are visible without scrolling at 390x844 and 360x780) and verify it as 3.13.0. If it cannot be verified by 20.11, it ships after launch.
 - 2026-11-15: Close haimunia-app-demo #162 (superseded). Shahaf closes it.
 - 2026-11-15: Shahaf wants a finished product. Keep going through the queue without waiting for him, and stop only for merges, tags, iPhone checks and real decisions.
