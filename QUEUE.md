@@ -15,10 +15,12 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-02 | release | todo | Q-01 | Verify 3.11.0 (PR #20) | [club #20](https://github.com/shahafrach/haimunia-club/pull/20) | Re-run update.mjs (up to date, update, offline, error, set kept, no controller at boot plus a slow save, at most one reload), the db tests, and the F-010 checks. |
 | Q-03 | fixes | todo | Q-02 | 3.12.0: anonymous client error reports and the feedback box (backend migration `202611150003`, then the club app) | – | One migration for both, the only open migration branch apart from the held #172. Before launch only if verified by 20.11. |
 | Q-04 | release | todo | Q-03 | Verify 3.12.0 (both PRs; pgTAP in CI; real Chromium) | – | – |
-| Q-05 | fixes | done | – | Log screen redesign, step 1: 2 or 3 layout options for Shahaf to choose from | [club #21](https://github.com/shahafrach/haimunia-club/pull/21) | Draft PR, head `5a627ca`, branch `claude/log-layout-07dvsw`. Options A (controls first) and B (pinned dock), prototype behind `?layout=a\|b`, screenshots at 390×844 and 360×780 in the PR. Both fit with no scroll; 3 identical sets: 6 taps + 1 swipe today, 5 taps + 0 swipes in A and B. Related jsdom: 82 pass, 0 fail; full run comes with step 2. Waiting for Shahaf's choice (A or B). |
-| Q-06 | release | todo | – | Verify haimunia-app-demo #167 (club-admin: the username never reaches the public log) | [demo #167](https://github.com/shahafrach/haimunia-app-demo/pull/167) | Merges cleanly into main. Workflow-only. Needed before launch day (club-admin runs with usernames then). |
-| Q-07 | release | done | – | Triage stale PRs: #162, #167, dependabot | – | #162: superseded (`docs/club/research.md` is on main; the branch conflicts): Shahaf closes it. #167: Q-06. Dependabot #153, #155, #174, #175, #176, #177: held until after launch (Q-08). |
+| Q-05 | fixes | verified | – | Log screen redesign, step 1: 2 or 3 layout options for Shahaf to choose from | [club #21](https://github.com/shahafrach/haimunia-club/pull/21) | Draft PR, head `5a627ca`, branch `claude/log-layout-07dvsw`. Options A (controls first) and B (pinned dock), prototype behind `?layout=a\ **release 2026-11-15:** verified as step 1. The prototype acts only with `?layout=a|b`; without it the screen is unchanged; `src/db.js` untouched; draft PR. Shahaf chose **A**, so step 2 is Q-09. |b`, screenshots at 390×844 and 360×780 in the PR. Both fit with no scroll; 3 identical sets: 6 taps + 1 swipe today, 5 taps + 0 swipes in A and B. Related jsdom: 82 pass, 0 fail; full run comes with step 2. Waiting for Shahaf's choice (A or B). |
+| Q-06 | release | verified | – | Verify haimunia-app-demo #167 (club-admin: the username never reaches the public log) | [demo #167](https://github.com/shahafrach/haimunia-app-demo/pull/167) | Merges cleanly into main. Workflow-only. Needed before launch day (club-admin runs with usernames then). **release 2026-11-15:** the diff is sound. The username is read from the event file and masked before use; no `env:` holds `inputs.who`. The merge with main (af491fe) passes `test/club-workflows.test.mjs` 10/10. CI on c6fd6eb was all green, but on an old base. Shahaf: press Update branch, wait for green, merge, and delete the logs of run 43255246472. |
+| Q-07 | release | done | – | Triage stale PRs: #162, #167, dependabot | – | #162: superseded (`docs/club/research.md` is on main; the branch conflicts): Shahaf closes it. #167: Q-06. Dependabot #153, #155, #174, #175, #176, #177: held until after launch (Q-08). Shahaf closes #162 (decided 2026-11-15). |
 | Q-08 | release | blocked | launch | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. |
+| Q-09 | fixes | todo | Q-01 | 3.13.0: log screen layout A, step 2 (implement for real, on PR #21) | [club #21](https://github.com/shahafrach/haimunia-club/pull/21) | Owner chose A (2026-11-15). Before launch only if verified by 20.11, else first after launch. fixes may start it while Q-02 waits. It ships after 3.12.0; if 3.12.0 slips past 20.11, release renumbers it to 3.12.0. |
+| Q-10 | release | todo | Q-09 | Verify 3.13.0 (layout A) | [club #21](https://github.com/shahafrach/haimunia-club/pull/21) | Real Chromium at 390×844 and 360×780; the PR, share, sanity and plate flows; jsdom; data-shape check. |
 
 ## Owner decisions (from Shahaf)
 - 2026-11-15: Log screen layout **A** (controls first). release: add the step 2 row for fixes (implement A, plus the browser check that the steppers and save are visible without scrolling at 390x844 and 360x780) and verify it as 3.13.0. If it cannot be verified by 20.11, it ships after launch.
@@ -99,3 +101,21 @@ Run only the related tests. No full suite is needed for a draft that changes no 
 
 ## Q-06: verify haimunia-app-demo #167 (release)
 Read the workflow diff, then update the branch from main and check that CI is green. Check that no step's `env:` holds `inputs.who`, and that the mask runs before the username is used. If it passes, set `verified`. Shahaf then merges it and deletes the logs of run 43255246472, the one that leaked a username.
+
+## Q-09: 3.13.0, log screen layout A, step 2
+```
+Lead here. Shahaf chose option A (controls first) from PR #21. Step 2: implement A for real on the same branch (claude/log-layout-07dvsw), and take PR #21 out of draft when it is ready.
+- Build A in renderLogTab() in DOM order. Remove the ?layout prototype, arrangeLogLayout(), #logDock, option B and the <!--seg:*--> comments. Put the innerHTML-sink pin back to what main needs.
+- Keep what both options added:
+  - prefill from the last session of that exercise in the current mode, with "פעם קודמת · …" shown;
+  - "עוד סט זהה" through saveSet(), so the sanity confirm, PR detection, the club share prompt (3.9.0) and the F-020 save guard (3.11.0) all apply;
+  - 56 px steppers and a 52 px repeat button;
+  - everything else under "עוד אפשרויות".
+- The "נשמר" toast must not cover a control the member needs right after a save: it overlapped the sets stepper in step 1. Move it or shorten it.
+- No IndexedDB or stored-data change; src/db.js untouched. Tokens only (test/design-tokens.test.mjs), RTL, no horizontal scroll.
+- Do not add the screenshots under docs/layout-redesign/ to main: remove them from the branch and put them in the PR description as attachments or links to the step-1 commit.
+- A new browser check, scripts/browser-check/log-layout-fits.mjs, at 390×844 and 360×780: after picking an exercise, the steppers, the repeat button (after a save) and save are on screen and are what elementFromPoint hits, with no scroll. Also: a PR still shows its card, then the share question (connected mode, fake client), and the plate visualizer is visible.
+- Rebase on main after 3.12.0 merges. Version 3.13.0 (npm run sync-version), a CHANGES.md entry, and the rollback command for the then-current version in the PR. If release renumbers the row, use that number.
+- Run the related tests and the new browser check, then one full npm test in the foreground. Put the counts in Notes and set done. Do not merge.
+```
+
