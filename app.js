@@ -2163,6 +2163,7 @@ function confirmClubShare(p) {
 
 async function saveSet(sanityConfirmed) {
   if (savingSet) return;
+  if (updateHoldsWrites()) return; // F-020: the draft stays in the steppers
   savingSet = true;
   try {
   // COMM-360: refuse to save against the placeholder movement nobody
@@ -2704,6 +2705,7 @@ function askDeleteEntry(id) {
   });
 }
 async function deleteEntry(id) {
+  if (updateHoldsWrites()) return; // F-020
   const removed = entries.find((e) => e.id === id);
   entries = entries.filter((e) => e.id !== id);
   if (editingEntryId === id) { editingEntryId = null; logDate = todayISO(); logDateExplicitlyChosen = false; }
@@ -2742,6 +2744,7 @@ async function restoreEntry(entry) {
 // in-memory state (same reasoning as saveSet()'s own fix above): a failed
 // write must have no visible side effect.
 async function saveBodyweight() {
+  if (updateHoldsWrites()) return; // F-020
   // A bodyweight of zero is not a reading. Live bug hunt, fresh round 4
   // (2026-09-15) - sibling drift, the shape this round went looking for.
   //
@@ -2815,6 +2818,7 @@ function askDeleteMeasureType(id) {
   });
 }
 async function deleteMeasureType(id) {
+  if (updateHoldsWrites()) return; // F-020
   const type = measureTypes.find((t) => t.id === id);
   const removedEntries = measureEntriesFor(id);
   measureTypes = measureTypes.filter((t) => t.id !== id);
@@ -2847,6 +2851,7 @@ async function restoreMeasureType(type, removedEntries) {
 // re-read the on-disk store for today's row before deciding
 // update-vs-insert, and write before mutating in-memory state.
 async function saveMeasurement(typeId) {
+  if (updateHoldsWrites()) return; // F-020
   const value = measureValues[typeId];
   if (typeof value !== "number" || !isFinite(value) || value <= 0) return;
   const today = todayISO();
@@ -2882,6 +2887,7 @@ function askDeleteMeasurementEntry(id) {
   });
 }
 async function deleteMeasurementEntry(id) {
+  if (updateHoldsWrites()) return; // F-020
   const removed = measureEntries.find((e) => e.id === id);
   measureEntries = measureEntries.filter((e) => e.id !== id);
   try { await dbDeleteMeasurement(id); } catch (e) { noteStorageError(e); }
@@ -3887,6 +3893,7 @@ function askDeleteCustomWod(id) {
   });
 }
 async function deleteCustomWod(id) {
+  if (updateHoldsWrites()) return false; // F-020
   const wod = customWods.find((item) => item.id === id);
   if (!wod || wod.category !== "Custom" || wodEntriesFor(id).length) return false;
   customWods = customWods.filter((item) => item.id !== id);
@@ -4158,6 +4165,7 @@ function builderMovementsToDesc(movements) {
 let savingWod = false;
 async function saveWod(sanityConfirmed) {
   if (savingWod) return;
+  if (updateHoldsWrites()) return; // F-020
   savingWod = true;
   try {
   const w = wodById(selectedWodId);
@@ -4367,6 +4375,7 @@ function askDeleteWodEntry(id) {
   });
 }
 async function deleteWodEntry(id) {
+  if (updateHoldsWrites()) return; // F-020
   const removed = wodEntries.find((e) => e.id === id);
   wodEntries = wodEntries.filter((e) => e.id !== id);
   if (editingWodEntryId === id) { editingWodEntryId = null; wodLogDate = todayISO(); wodLogDateExplicitlyChosen = false; }
@@ -7584,10 +7593,32 @@ let updateBannerShowing = false;
 // Every update path reloads through here, so a page reloads at most once however many of them fire
 // (the banner, the controllerchange listener, the Settings check and its backstop).
 let appReloadStarted = false;
-function reloadOnce() {
+// F-020. True from "מעדכנים…" until the page reloads (or gives up): new saves and deletes are held back
+// (updateHoldsWrites) so nothing can start between the check for running saves and the reload.
+let updateInProgress = false;
+function hardReload() { location.reload(); } // the one real reload; a seam the tests replace
+// Every update path ends here: the banner, the controllerchange listener, the Settings check and its
+// backstop. It reloads at most once, and never while a save or any IndexedDB call is running. On a page
+// with no controller at boot the reload comes from controllerchange or the backstop, well after
+// checkForUpdate() looked; so the wait is here, not only there. If saves are still running after the
+// limit, it does not reload: the new worker is already in place and the update applies on the next start.
+async function reloadOnce() {
   if (appReloadStarted) return;
   appReloadStarted = true;
-  location.reload();
+  updateInProgress = true;
+  if (typeof waitForSavesToFinish === "function" && !(await waitForSavesToFinish())) {
+    updateInProgress = false;
+    if (typeof setUpdateCheck === "function") setUpdateCheck(false, UPDATE_CHECK_TEXT.busySave, "warn");
+    return;
+  }
+  hardReload();
+}
+// The guard at the top of every save and delete. True (and a short toast) while an update is applying;
+// the caller returns before touching anything, so the member's draft stays as it is.
+function updateHoldsWrites() {
+  if (!updateInProgress) return false;
+  showToast("רגע, האפליקציה מתעדכנת");
+  return true;
 }
 function applyUpdate() {
   const worker = pendingWorker;
@@ -7706,10 +7737,11 @@ async function checkForUpdate() {
   try { await waitForWorkerInstalled(worker); }
   catch (e) { setUpdateCheck(false, UPDATE_CHECK_TEXT.error, "warn"); return; }
   const version = await askWorkerVersion(worker);
+  updateInProgress = true; // from here on, new saves and deletes wait (updateHoldsWrites)
   setUpdateCheck(true, version ? `יש גרסה חדשה ${version}. מעדכנים…` : "יש גרסה חדשה. מעדכנים…", "ok");
   // A delete still inside its undo window is written now, not dropped by the reload.
   if (settleToast(false)) render();
-  if (!(await waitForSavesToFinish())) { setUpdateCheck(false, UPDATE_CHECK_TEXT.busySave, "warn"); return; }
+  if (!(await waitForSavesToFinish())) { updateInProgress = false; setUpdateCheck(false, UPDATE_CHECK_TEXT.busySave, "warn"); return; }
   pendingWorker = worker;
   updateBannerShowing = false;
   applyUpdate();

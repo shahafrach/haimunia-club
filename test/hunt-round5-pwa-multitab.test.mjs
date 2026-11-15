@@ -43,8 +43,10 @@ test("a banner in a tab whose controller already swapped reloads instead of hang
   // Every update path reloads through reloadOnce() (one reload per page, update check included).
   assert.match(body, /if \(controllerAlreadySwapped\) \{ reloadOnce\(\); return; \}/,
     "there is nothing left to hand-shake with, so it reloads directly");
+  // reloadOnce() waits for running saves (F-020), then reloads through hardReload().
   const ro = appJs.slice(appJs.indexOf("function reloadOnce()"), appJs.indexOf("\n}", appJs.indexOf("function reloadOnce()")));
-  assert.match(ro, /location\.reload\(\)/, "reloadOnce() is a real reload");
+  assert.match(ro, /hardReload\(\)/, "reloadOnce() ends in the real reload");
+  assert.match(appJs, /function hardReload\(\) \{ location\.reload\(\); \}/, "hardReload() is location.reload()");
   const swapAt = body.indexOf("controllerAlreadySwapped");
   const postAt = body.indexOf('postMessage({ type: "SKIP_WAITING" })');
   assert.ok(swapAt > -1 && postAt > -1 && swapAt < postAt,

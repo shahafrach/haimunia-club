@@ -2,8 +2,8 @@
 // through the app's own update handshake (pendingWorker + applyUpdate(): SKIP_WAITING ->
 // controllerchange -> reload). The service worker is a fake that behaves like the browser's:
 // update() may find a new worker, which fires updatefound, installs, answers GET_VERSION, and on
-// SKIP_WAITING takes control (controllerchange). jsdom cannot reload, so the tests wrap the app's
-// reloadOnce() (every update path reloads through it) and count the calls that got through.
+// SKIP_WAITING takes control (controllerchange). jsdom cannot reload, so the tests replace the app's
+// hardReload() (the one real reload, reached only through reloadOnce()) and count the calls.
 import { test } from "node:test";
 import assert from "node:assert";
 import { MessageChannel } from "node:worker_threads";
@@ -19,7 +19,8 @@ function fakeServiceWorker(opts = {}) {
   const log = { update: 0, messages: [] };
   const swListeners = {};
   const sw = {
-    controller: { state: "activated" }, // this tab was already under a worker at boot
+    // this tab was already under a worker at boot, unless the test boots a fresh install
+    controller: opts.noControllerAtBoot ? null : { state: "activated" },
     addEventListener: (t, f) => { (swListeners[t] = swListeners[t] || []).push(f); },
     removeEventListener: () => {},
   };
@@ -34,6 +35,7 @@ function fakeServiceWorker(opts = {}) {
         log.messages.push(msg && msg.type);
         if (msg && msg.type === "GET_VERSION" && ports && ports[0]) { ports[0].postMessage({ version }); ports[0].close(); }
         if (msg && msg.type === "SKIP_WAITING") {
+          if (opts.onSkipWaiting) opts.onSkipWaiting();
           setTimeout(() => { w.state = "activated"; sw.controller = w; (swListeners.controllerchange || []).forEach((f) => f()); }, 5);
         }
       },
@@ -73,10 +75,10 @@ async function boot(opts = {}) {
   });
   await until(() => fake.log.registered, "registered");
   await wait(20);
-  // Count reload requests: reloadOnce() is a global function, and the app calls it by name.
+  // Count real reloads: hardReload() is a global function, and reloadOnce() calls it by name.
   const reload = { calls: 0 };
-  const orig = window.reloadOnce;
-  window.reloadOnce = () => { reload.calls++; orig(); };
+  window.hardReload = () => { reload.calls++; };
+  if (opts.afterBoot) opts.afterBoot(window);
   return { window, reload, ...fake };
 }
 const status = (w) => (w.document.getElementById("updateCheckStatus") || { textContent: "" }).textContent.trim();
@@ -156,4 +158,62 @@ test("any other error: a short Hebrew message, nothing swaps, nothing reloads", 
 test("the service worker answers GET_VERSION with its own SW_VERSION", async () => {
   const src = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   assert.match(src, /e\.data\.type === "GET_VERSION" && e\.ports && e\.ports\[0\]\) e\.ports\[0\]\.postMessage\(\{ version: SW_VERSION \}\)/);
+});
+
+// F-020 (real Chromium, ac7bab1). With no controller at boot (the first launch of a fresh install) the
+// reload comes from controllerchange or the 4 s backstop, after checkForUpdate() looked for running saves.
+// A dbPut that starts right after applyUpdate() must finish before any reload, and its row must be on disk.
+test("F-020: no controller at boot, a slow dbPut started after applyUpdate(): no reload until it is written", async () => {
+  const state = { window: null, putDone: false, events: [] };
+  const entry = { id: "late-1", exerciseId: "back-squat", date: "2026-11-15", type: "reps", weight: 80, reps: 5, sets: 1, durationSeconds: 0, ts: 1, isPR: false, groupId: null, blockLabel: null, est1RM: 93.3 };
+  const { window, log, reload } = await boot({
+    newVersion: "3.11.0",
+    noControllerAtBoot: true,
+    onSkipWaiting: () => {
+      const w = state.window;
+      // dbPut is slow inside its own call: openDB() takes 700 ms, so the write is in flight the whole time.
+      const realOpen = w.openDB;
+      w.openDB = async () => { await new Promise((r) => setTimeout(r, 700)); w.openDB = realOpen; return realOpen(); };
+      state.events.push("put-start");
+      w.dbPut(entry).then(() => { state.putDone = true; state.events.push("put-done"); });
+    },
+  });
+  state.window = window;
+  const realHard = window.hardReload;
+  window.hardReload = () => { state.events.push("reload"); realHard(); };
+  button(window).click();
+  await until(() => log.messages.includes("SKIP_WAITING"), "SKIP_WAITING");
+  await wait(300);
+  assert.equal(reload.calls, 0, "no reload while the put is in flight");
+  await until(() => state.putDone, "the put finished", 400);
+  await until(() => reload.calls >= 1, "reload after the put", 400);
+  await wait(4300); // past the 4 s backstop: still one reload
+  assert.equal(reload.calls, 1, "at most one reload");
+  assert.deepEqual(state.events, ["put-start", "put-done", "reload"], "the write lands before the reload");
+  const all = await window.dbLoadAll();
+  assert.ok(all.some((e) => e.id === "late-1"), "the row is on disk");
+});
+
+test("F-020: a save tried during \"מעדכנים…\" is held back with a toast, and the draft stays", async () => {
+  const { window, reload } = await boot({ newVersion: "3.11.0" });
+  await window.dbPutWodEntry({ id: "w1", date: "2026-11-15", name: "Fran", type: "ForTime", result: "5:00" });
+  const before = (await window.dbLoadAll()).length;
+  const realIdle = window.dbIdle;
+  window.dbIdle = () => false; // a write is running, so the update waits in "מעדכנים…"
+  button(window).click();
+  await until(() => /מעדכנים…/.test(status(window)), "updating text");
+  window.choosePickedMovement("back-squat");
+  window.applyFieldValue("step", "weight", 87.5);
+  window.applyFieldValue("step", "reps", 3);
+  window.render();
+  window.document.getElementById("bottomBarBtn").click();
+  await until(() => /רגע, האפליקציה מתעדכנת/.test((window.document.getElementById("appToastDock") || {}).textContent || ""), "the hold toast");
+  await window.deleteWodEntry("w1");
+  assert.equal((await window.dbLoadAll()).length, before, "no set was written");
+  assert.deepEqual((await window.dbLoadWodEntries()).map((w) => w.id), ["w1"], "and nothing was deleted");
+  const vals = [...window.document.querySelectorAll("input.stepper-val")].map((i) => i.value);
+  assert.deepEqual(vals.slice(0, 2), ["87.5", "3"], "the draft is still in the steppers");
+  assert.equal(reload.calls, 0);
+  window.dbIdle = realIdle;
+  await until(() => reload.calls === 1, "the update goes on once the write is done", 400);
 });
