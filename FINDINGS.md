@@ -26,6 +26,8 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-018 | lead (G5 check) | UX | medium | fixed: PR #16 c3d7637 (showToast owes its own paint); lead verified 7c52652 in real Chromium, both toasts on screen with no action | When sharing fails (network), the member never sees the message. `src/club.js` `toast()` only queues it (`showToast` stores `pendingToast`; `render()` paints it), and nothing renders before it expires, so "השינוי נשמר בטלפון. המועדון לא התעדכן הפעם." and "השיא נשמר בטלפון. השיתוף במועדון לא הצליח הפעם." are lost unless the member taps something. The workout's answer stays "shared", and the next save of that day posts it. A failed PR card is never retried. Not a data loss: the log is safe. | `src/club.js:44` `toast`, `:400`, `:433`; `app.js` `showToast` (2566); real Chromium on main 9ba46bb: toast queued in `pendingToast`, not on screen within 3 s; next edit of that day posted the workout | lead browser check (share-netfail) |
 | F-019 | lead (G5 check) | UX | low | open | The first-launch "יש לכם כבר נתונים?" sheet shows when the installed app opens with no lifts or WODs and "מתחילים מאפס" was never chosen. It shows again on later launches while that holds, by design ("offered again"). A member who chose "יש לי קוד העברה" or a file, imported nothing and then logged only body weight or measurements sees it on every launch, because `totalLoggedEntries()` counts only entries and WODs. | `app.js` `shouldOfferFirstImport` (2999), `totalLoggedEntries` (1961), `FIRST_IMPORT_KEY` | none |
 | F-020 | lead (verify 3.11.0) | DATA-2 | high (blocks 3.11.0) | fixed: PR #20 2747e37 (reloadOnce waits for saves on every path; saves held during the update); lead verified in real Chromium, full npm test 465/0 | The update check can reload the page in the middle of a save. `checkForUpdate()` waits for saves to be idle (`savesIdle()`), then calls `applyUpdate()`. On a page that had no controller at boot (the first launch of a fresh install), the reload comes later, from the `controllerchange` listener or the 4 s backstop `setTimeout(reloadOnce, 4000)`. Neither looks at `savesIdle()` again, so a save started in that window is cut and the set is lost. The normal path (controlled at boot) reloads at once after the idle wait and is safe. | real Chromium on ac7bab1: no controller at boot, a save started right after `applyUpdate()` with `dbPut` held 6 s: one reload, the set lost (`entries=0`); events `applyUpdate`, `put-start`, no `put-done` | lead browser check (update.mjs) |
+| F-021 | lead (Q-12 CI sweep) | SEC-3 | medium | open: fix in QUEUE Q-13 | haimunia-app-demo `claude-review.yml`: the `issue_comment` and `pull_request_review_comment` paths have no `author_association` guard. On a public repo anyone can comment "@claude" on an open same-repo PR; the job then reads `CLAUDE_CODE_OAUTH_TOKEN` with `pull-requests: write` and `id-token: write`. Not confirmed here whether claude-code-action itself refuses actors without write access. The only secret any untrusted trigger can reach. | sibling `.github/workflows/claude-review.yml` job `if:` (main af491fe) | Q-13 |
+| F-022 | lead (Q-12 CI sweep) | SEC-6 | low | wontfix while the old app is frozen | haimuniya/haimunia-app `test.yml` uses `actions/checkout@v4` and `actions/setup-node@v4` by tag, not by SHA. It holds no secrets and runs with `contents: read`, so the exposure is a compromised tag running tests. | old app `.github/workflows/test.yml:15-16` | none |
 
 - F-008: planned shutdown date 2026-12-15, then remove the site (`box-log.pages.dev`) and its Pages project.
 
@@ -63,9 +65,9 @@ No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 p
 | 3.9.0 | Per-workout sharing (PR #12), F-015 | haimunia-club | shipped, tag rollback-3.9.0 |
 | 3.10.0 | Self-serve delete account (PR #16), F-018, new privacy.html (G1) | haimunia-club | live (039aec7) |
 | (backend) | Usage purge 180 days, delete_my_account with aal2 (F-016) | haimunia-app-demo #173, migration 202611150002 | live, migration-status green |
-| 3.11.0 | Check-for-update button (PR #20) | haimunia-club | back to haimunia-fixes for F-020; ships before 3.12.0 |
-| 3.12.0 | Anonymous client error reports and the feedback box ("מה לא עובד טוב?"), with their privacy.html sections | haimunia-club + one haimunia-app-demo migration `202611150003` for both | before launch if verified by 20.11, else first after launch |
-| 3.13.0 | Log screen redesign | haimunia-club | waits for the owner's layout choice; ships before launch only if verified by 20.11, else first after launch |
+| 3.11.0 | Check-for-update button (PR #20), F-020 | haimunia-club | live (f344875) |
+| 3.12.0 | Anonymous client error reports and the feedback box ("מה לא עובד טוב?"), with their privacy.html sections | haimunia-club #22 + haimunia-app-demo #178 (migration `202611150003`) | verified 2026-11-15; ready to ship (backend first) |
+| 3.13.0 | Log screen layout A (PR #21) | haimunia-club | built; waits for 3.12.0 to merge, then rebase and verify; before launch only if verified by 20.11 |
 | 3.14.0 | Percentage chart from each lift's 1RM (50% to 95%), exercise screen | haimunia-club | after launch |
 | 3.15.0 | Personal weekly streak, no leaderboard | haimunia-club | after launch |
 | 3.16.0 | Monthly personal summary card (workouts, PRs, best lift) | haimunia-club | after launch |
@@ -108,6 +110,8 @@ Project `box-log`, eu-central-1, Postgres 17, free plan.
 | 3b | G4 club message approved | open (owner) |
 | 4 | C4-2 iPhone check: transfer code in Safari, install, redeem | open (owner, real iPhone) |
 | 5 | Cursor final pass | open (Cursor unavailable) |
+
+CI sweep 2026-11-15 (Q-12): no unknown PRs, branches or actors in any of the three repos, no run-number gaps, no pull_request_target, every action pinned by SHA in haimunia-app-demo. Findings: F-021, F-022.
 
 Open after launch: F-019 (low), F-005 (held, rename before merge), F-004 (watch CI), F-006, F-007, F-011, F-013, F-014. Owner task: shut down box-log.pages.dev on 2026-12-15 (F-008 follow-up).
 
