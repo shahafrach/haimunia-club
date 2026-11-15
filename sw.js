@@ -13,7 +13,7 @@
 //
 // SW_VERSION is written by scripts/sync-version.mjs from APP_VERSION in
 // app.js; the cache name carries it, so every release is a fresh cache.
-const SW_VERSION = "3.10.0";
+const SW_VERSION = "3.11.0";
 // The 2.x app's own prefix, kept: its caches are "haimunia-v2.34.0" and so
 // on, and the cleanup below removes them by this prefix.
 const CACHE_PREFIX = "haimunia-v";
@@ -132,6 +132,8 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("message", (e) => {
   if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
+  // Settings → "בדיקת עדכון" asks a new worker which version it is, to name it before the swap.
+  if (e.data && e.data.type === "GET_VERSION" && e.ports && e.ports[0]) e.ports[0].postMessage({ version: SW_VERSION });
 });
 
 function isPrecached(url) {

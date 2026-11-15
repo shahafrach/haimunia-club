@@ -1,3 +1,12 @@
+# 3.11.0 — בדיקת עדכון: a new version on demand, never during a save — 2026-11-15
+
+- Settings, by the version line: a "בדיקת עדכון" button. It answers up to date (with the installed version), a
+  new version (named, then "מעדכנים…" and one reload through the existing SKIP_WAITING handshake), offline, or a
+  short error. The training log is never touched.
+- No reload while a save runs (F-020): every update path reloads through one `reloadOnce()`, which waits until no
+  save or IndexedDB call is running; after the limit it does not reload and the update applies on the next start.
+- During the update, saves and deletes are held with "רגע, האפליקציה מתעדכנת", and the member's draft stays.
+
 # 3.10.0 — Delete the account from the app — 2026-11-15
 
 Needs haimunia-app-demo #173 (`delete_my_account()`, 202611150002) deployed first.
