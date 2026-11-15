@@ -20,6 +20,7 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-012 | cursor-C1 | OPS | medium | open: tag command for `v3.8.0` in the `findings/consolidated` PR text (sessions cannot push tags) | No `v3.8.0` git tag on `haimunia-club`; share-preview URL still reports `3.9.0` ahead of production `3.8.0`, so rollback and audit pointers are ambiguous. | `git ls-remote --tags origin v3.8.0` empty 2026-11-14; live `https://haimunia.pages.dev/` APP/SW 3.8.0 | C1 |
 | F-013 | cursor-C1 | UX | low | open | WebKit logs a console warning for `interactive-widget=resizes-content` in the viewport meta (harmless elsewhere; noisy in Safari Web Inspector during C1 runs). | `index.html:65,71`; C1 Chromium + WebKit console capture | C1 |
 | F-014 | cursor-C4 | OPS | medium | open | Sibling `haimunia-fixes` 3-year member export is not reachable from this audit session; C4 used `test/fixtures/old-app-backup-v1.json` instead of the longest real export. | fixture path + missing haimunia-fixes access 2026-11-14 | C4 |
+| F-015 | lead (verify 3.9.0) | UX | high (blocks 3.9.0) | open: PR #12 (e39088d) | After a PR or first-entry card, the "לשתף במועדון?" question can open and close by itself and the workout is recorded as "לא הפעם". Closing the card calls `history.back()` (dialog history layer); the popstate lands after `askClubShare` has opened the question, and the popstate handler closes the dialog now on top. Privacy-safe (nothing is shared) but the member never gets to answer. Same race for any dialog closed right before another opens (e.g. the save-set sanity confirm, then the share question). | `app.js` `closeCelebration` (setTimeout 0 to `askClubShare`), `syncAppDialogHistoryState` `history.back()`, popstate handler `dlg.close()`; real Chromium 2 of 3 runs, trace: history.back, askAppConfirm, pushState, popstate | lead browser check (share-per-workout) |
 
 - F-008: planned shutdown date 2026-12-15, then remove the site (`box-log.pages.dev`) and its Pages project.
 
@@ -44,6 +45,22 @@ No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 p
 - Club staff audit log (`club_staff_actions`, F-002): who did what as club staff, ids and time only, kept 12 months, then purged daily.
 - Transfer codes (F-001): an encrypted code is stored in the database table `transfer_blobs` for at most 24 hours, at most 1 MiB each and 150 MB in all.
 - Transfer codes (F-001): each code created in the club app sends a random device id, stored on the server only as an HMAC in the rate-limit table, for at most 2 days (`transfer_purge`). Limits: 3 codes per device and 30 per IP a day.
+- Owner decision 2026-11-15: usage counts are kept 180 days. The backend purge changes from 400 to 180 days (new migration in `shahafrach/haimunia-app-demo`). App text and privacy text stay at 180.
+- Owner decision 2026-11-15: the club app gets a self-serve delete-account button before launch (3.10.0, with its backend migration).
+- Owner fact 2026-11-15: the Supabase project is in eu-central-1 (Frankfurt), not ap-southeast-1 (Singapore). `privacy.html` must change.
+- Full inventory for the G1 paste: `docs/grok-inputs.he.md`.
+
+### Release plan (lead, 2026-11-15)
+
+| Version | Content | Repo | Status |
+|---------|---------|------|--------|
+| 3.8.1 | F-010 IndexedDB reopen | haimunia-club | live |
+| 3.9.0 | Per-workout sharing (PR #12) | haimunia-club | back to haimunia-fixes for F-015 |
+| 3.10.0 | Self-serve delete account | haimunia-club + backend migration in haimunia-app-demo | in progress (haimunia-fixes) |
+| (backend) | Usage purge 400 to 180 days | haimunia-app-demo migration | to do |
+| after launch | F-005 RLS initplan (PR #172) | haimunia-app-demo | held |
+
+Migration numbers: the held F-005 migration is `202611150001_rls_auth_uid_initplan.sql` (haimunia-app-demo PR #172). Every new migration uses a later version, `202611150002` or above. Once a later migration is applied, F-005 is older than the newest applied migration, and `supabase db push` refuses an out-of-order file without `--include-all`. So before F-005 merges, rename it (it was never applied) to a version later than the newest migration on main. The usage-purge change and the delete-account migration may share one file, or go in order, one open migration branch at a time (sibling CLAUDE.md).
 
 ### F-001 fix plan
 
@@ -71,25 +88,6 @@ Verified against `fix/f-001` in both apps (`haimunia-club` `57436c1`, `haimunia-
 **Re-verify (2026-11-14 ~22:10 Asia/Jerusalem):** fetched `origin/fix/f-001` at `57436c1` (merge of triage/grok). Re-ran **C3-1** and **C4-3** only — both pass (preview all 404; Chromium+WebKit create/redeem counts match; >1 MiB Hebrew 413). No merge blockers.
 
 **Merge blockers from this pass:** none for F-002 / F-003 / C4-3. Remaining Cursor checks not in this pass: C4-1 (banner/first-launch code review), C4-2 (real iPhone), C5/C6 as listed in `docs/audit/CURSOR-CHECKS.md`. F-004 (flaky waitfor helper) stays open, low.
-
-### Notes for G1 (privacy)
-
-No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 paste (owner decisions 2026-11-14). The live policy is `privacy.html`.
-
-- Club staff audit log (`club_staff_actions`, F-002): who did what as club staff, ids and time only, kept 12 months, then purged daily.
-- Transfer codes (F-001): an encrypted code is stored in the database table `transfer_blobs` for at most 24 hours, at most 1 MiB each and 150 MB in all.
-- Transfer codes (F-001): each code created in the club app sends a random device id, stored on the server only as an HMAC in the rate-limit table, for at most 2 days (`transfer_purge`). Limits: 3 codes per device and 30 per IP a day.
-
-### F-001 fix plan
-
-Order of work: 3 (backend origin), then 3b (create-code screen), then 1 (banner). Steps 2, 4 and 5 are unchanged.
-
-1. **Banner before install** (`index.html` `#iosInstallBanner`, `app.js` `maybeShowIOSInstallBanner()`): replace "כדי שהנתונים לא יימחקו" with a two-step message. Step one: back up now (a button that runs the existing backup export). Step two: add to the home screen. Say plainly that the installed app starts empty until the backup is imported. On iOS Safari the banner shows on the first visit, before the first entry: drop the `totalLoggedEntries() < 1` and first-day gates (`app.js:7610` and the `firstOpenDate` line after it).
-2. **Installed app, first launch, empty log** (`isStandalone()` true and `totalLoggedEntries() === 0`): offer the import before anything else, with two choices. "יש לי קובץ גיבוי" runs the existing backup import. "יש לי קוד העברה" opens the existing transfer screen (`src/transfer.js`, installed-only already).
-3. **Transfer codes from the club app** (owner decision 2026-11-14; **backend owned by `shahafrach/haimunia-app-demo`**): the sibling accepts `https://haimunia.pages.dev` as an allowed put origin in `supabase/functions/_shared/transfer.mjs` (today only `PUT_ORIGIN = "https://haimuniya.github.io"`, line 15). Expiry (24 hours), single use (the row is deleted on take) and the rate limits stay exactly as they are today (`transfer_take`, sibling `202611120001`). The sibling PR carries its own tests. This repo then uses that path from the Safari tab.
-3b. **Create-code screen in the club app** (this repo): port the existing create flow from the old app (`haimuniya/haimunia-app`). Reuse the same encryption, payload format and API calls; write no new crypto. The protocol stays as fixed in `src/transfer.js:7-13`: HKDF lookup and key, AES-GCM, gzip payload, then `transfer-put`. A code created in either app must redeem in the new installed app. Entry points: the iOS install banner ("העבר לאפליקציה המותקנת") and the backup screen in settings. The code and its instructions are shown in Hebrew and state the 24-hour expiry. Needs step 3 deployed first.
-4. **Tests:** a jsdom test for each of steps 1 and 2. Import must stay lossless for old backups (`test/old-app-backup-imports.test.mjs`).
-5. **Release:** bump `APP_VERSION` and `SW_VERSION` and add a `CHANGES.md` entry (CLAUDE.md, Releases).
 
 ## Triage log
 
