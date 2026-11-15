@@ -22,6 +22,7 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-09 | fixes | done | Q-01 | 3.13.0: log screen layout A, step 2 (implement for real, on PR #21) | [club #21](https://github.com/shahafrach/haimunia-club/pull/21) | Built on PR #21 (still draft), head `9138468`. Layout A in DOM order; prototype, option B, #logDock, seg comments and docs/ screenshots removed; sink pin back to 40. Prefill on pick + "פעם קודמת", "עוד סט זהה" via saveSet(), 56/52 px targets, inline "נשמר" instead of the toast on the log screen. log-layout-fits.mjs 19 PASS / 0 FAIL (both sizes, PR card then share question, plate visualizer). Existing checks equal to main (training-log-polish 59/2 on both); ladder/superset/duration/%/log-UX checks now open "עוד אפשרויות" first. jsdom: test/log-layout.test.mjs 7/7; full npm test 463 pass, 0 fail. **Not yet:** rebase + version 3.13.0 + CHANGES + rollback command, which the prompt puts after 3.12.0 merges; I will do them then. Playwright 1.63.0 locally (pin is 1.62.1); axe scan cannot run (no axe-core). |
 | Q-10 | release | todo | Q-09 | Verify 3.13.0 (layout A) | [club #21](https://github.com/shahafrach/haimunia-club/pull/21) | Real Chromium at 390×844 and 360×780; the PR, share, sanity and plate flows; jsdom; data-shape check. |
 | Q-11 | fixes | verified | – | 3.11.0 release details on PR #20 | [club #20](https://github.com/shahafrach/haimunia-club/pull/20) | Head `ec9e381` on PR #20. APP_VERSION/SW_VERSION 3.11.0 (`check-version` OK), CHANGES.md 3.11.0 entry at the top, rollback-3.10.0 command and the new title in the PR text. No code change since 2747e37. `test/update-check.test.mjs`: 9 pass, 0 fail. **release 2026-11-15:** the diff from 2747e37 to ec9e381 touches only the version lines (3.11.0 in app.js and sw.js) and CHANGES.md. `check-version` OK. It merges cleanly with main ccd1946 (docs only on main). |
+| Q-12 | release | todo | – | CI/CD security sweep after the wfx-loot campaign report (owner request 2026-11-15) | – | Advisor already checked haimunia-club and haimunia-app-demo: no PR or branch matching "docs: dependency audit notes" or wfx, no workflow-run number gaps in the last 100 runs, no pull_request_target, actions pinned by SHA, claude-review skips forks. Still to do: see section below. |
 
 ## Owner decisions (from Shahaf)
 - 2026-11-15: **Run to the end without waiting for "continue".** After finishing a task, take the next available row at once. Do not end the turn while you own an available row.
@@ -133,3 +134,12 @@ Lead here. PR #20 is verified (2747e37, full npm test 465/0 run by lead). Only t
 No code change. Run npm run check-version and test/update-check.test.mjs only. Put the head SHA in Notes and set done. Do not merge.
 ```
 
+
+
+## Q-12: CI/CD security sweep
+```
+1. haimuniya/haimunia-app (old app): the same checks the advisor ran on the other two repos. PRs or branches titled "docs: dependency audit notes" or containing "wfx", unknown PR authors, gaps in workflow run numbers, pull_request_target, unpinned actions, and which secrets exist. Read only.
+2. haimunia-app-demo claude-review.yml: issue_comment and pull_request_review_comment have no author_association guard. On a public repo, anyone can comment "@claude" on an open same-repo PR, and the job then runs with CLAUDE_CODE_OAUTH_TOKEN and pull-requests: write. Confirm whether claude-code-action itself refuses actors without write access. Either way, add a job-level guard: github.event.comment.author_association in OWNER, MEMBER, COLLABORATOR. Write it as a todo row for fixes with the exact prompt.
+3. List every repository secret in both repos and which workflows can read each one. Flag any secret readable by a workflow that untrusted input can trigger.
+4. Record the result in FINDINGS.md: a row per real issue, or one line "CI sweep 2026-11-15: clean".
+```
