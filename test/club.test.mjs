@@ -377,3 +377,65 @@ test("the club tab is a scene like the other tabs: scene chrome, app chevron, sh
   $(window, "[data-action='switch-tab'][data-tab='add']").click();
   await until(() => window.document.body.dataset.scene === "scene-page--add", "add scene");
 });
+
+// The welcome sheet is still open after boot in these tests; with it open behind the card, closing the
+// card pops nothing. Answer it first, as a member does, so the card is the only dialog.
+async function passWelcome(window) {
+  const w = window.document.getElementById("welcomeOverlay");
+  if (!w.classList.contains("open")) return;
+  window.document.getElementById("welcomeNameInput").value = "דנה";
+  $(window, "[data-action='save-user-name']").click();
+  await until(() => !w.classList.contains("open"), "welcome closed");
+  await wait(60);
+}
+
+// F-015 (3.9.0 verification, real Chromium): closing the first-entry card calls history.back() in the dialog
+// history layer; its popstate can land after "לשתף במועדון?" has opened and pushed its own entry. That pop
+// is the app's own, not the member's, so it must not close the question (and must not record "not shared").
+// jsdom's own back() timing never shows the race, so back() is held here and its popstate fired by hand
+// after the question is open, which is the order the real-Chromium trace showed.
+test("F-015: the popstate from the card's own history.back() leaves the share question open; a real back still closes it", async () => {
+  const { window } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await passWelcome(window);
+  let backs = 0;
+  window.history.back = () => { backs++; };
+  const pop = () => window.dispatchEvent(new window.PopStateEvent("popstate", { state: window.history.state }));
+  const question = () => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']");
+  const choice = (id) => JSON.parse(window.localStorage.getItem("haimunia:clubShareChoice") || "{}")["c1|" + id];
+
+  logLift(window, 80, 3, null);
+  await until(() => window.document.getElementById("celebrationOverlay").classList.contains("open"), "first-entry card");
+  window.closeCelebration();
+  await until(question, "share question");
+  assert.equal(backs, 1, "closing the card consumed its history entry with history.back()");
+  const id = (await window.buildBackupPayload()).entries[0].id;
+
+  pop(); // the card's own back() lands now
+  await wait(60);
+  assert.ok(question(), "the question is still open");
+  assert.equal(choice(id), undefined, "and nothing was recorded for the workout");
+  assert.ok(window.history.state && window.history.state.appDialog, "the question still holds a reserved history entry");
+
+  pop(); // the member presses back
+  await wait(60);
+  assert.equal(question(), null, "a real back-press closes the question");
+  assert.equal(choice(id), false, "and counts as not this time");
+});
+
+test("F-015: answering yes still works after the card's own popstate", async () => {
+  const { window, calls } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await passWelcome(window);
+  window.history.back = () => {};
+  logLift(window, 80, 3, null);
+  await until(() => window.document.getElementById("celebrationOverlay").classList.contains("open"), "first-entry card");
+  window.closeCelebration();
+  await until(() => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']"), "share question");
+  window.dispatchEvent(new window.PopStateEvent("popstate", { state: window.history.state }));
+  await wait(60);
+  $(window, "[data-action='app-confirm-yes']").click();
+  await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "shared");
+  const id = (await window.buildBackupPayload()).entries[0].id;
+  assert.equal(window.haimuniaClub.isShared(id), true);
+});

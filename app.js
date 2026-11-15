@@ -7356,16 +7356,48 @@ registerAppDialog("welcome", { overlayId: "welcomeOverlay", isOpen: () => docume
 // left pointing at a dead state that requires two presses to get past.
 let appDialogHistoryPushed = false;
 let appDialogClosingViaHistory = false;
+// F-015 (3.9.0 verification, real Chromium). history.back() is asynchronous: its popstate arrives a task or
+// more later. When a dialog closes and the next one opens straight away (a PR card, then "לשתף במועדון?";
+// a confirm, then a celebration), the second dialog has already pushed its own entry by the time the
+// first dialog's back() lands, and the handler below took that popstate for the member pressing back and
+// closed the new dialog. Every back() this layer issues itself is counted here, and the popstate it
+// causes is swallowed: it never closes a dialog. The window is a backstop for an embedding where back()
+// fires no popstate at all, so a stale count cannot swallow a real back-press much later.
+let appDialogSelfBackPending = 0;
+let appDialogSelfBackUntil = 0;
+const APP_DIALOG_SELF_BACK_WINDOW_MS = 1500;
 function syncAppDialogHistoryState() {
   const open = !!currentAppDialog();
   if (open && !appDialogHistoryPushed) {
     try { history.pushState({ appDialog: true }, ""); appDialogHistoryPushed = true; } catch (e) { /* history API unavailable in this embedding */ }
   } else if (!open && appDialogHistoryPushed && !appDialogClosingViaHistory) {
     appDialogHistoryPushed = false;
-    try { history.back(); } catch (e) {}
+    try {
+      appDialogSelfBackPending++;
+      appDialogSelfBackUntil = Date.now() + APP_DIALOG_SELF_BACK_WINDOW_MS;
+      history.back();
+    } catch (e) { appDialogSelfBackPending = Math.max(0, appDialogSelfBackPending - 1); }
   }
 }
+// True once per popstate that this layer's own history.back() caused (and consumes it).
+function consumeAppDialogSelfBack() {
+  if (appDialogSelfBackPending <= 0) return false;
+  appDialogSelfBackPending--;
+  return Date.now() <= appDialogSelfBackUntil;
+}
 window.addEventListener("popstate", () => {
+  if (consumeAppDialogSelfBack()) {
+    // Our own back(), not the member. A dialog opened meanwhile stays open; make sure it still holds a
+    // reserved entry, wherever the traversal landed, so the member's next back-press closes it.
+    if (currentAppDialog()) {
+      const st = history.state;
+      if (!(st && st.appDialog)) {
+        try { history.pushState({ appDialog: true }, ""); } catch (e) {}
+      }
+      appDialogHistoryPushed = true;
+    }
+    return;
+  }
   if (!appDialogHistoryPushed) return;
   appDialogHistoryPushed = false;
   const dlg = currentAppDialog();
