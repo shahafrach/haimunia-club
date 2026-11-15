@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.11.0";
+const APP_VERSION = "3.12.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -561,6 +561,13 @@ function noteStorageError(e) {
       ? "החיבור לאחסון במכשיר נותק. סגרו את האפליקציה לגמרי ופתחו אותה מחדש, ואז שמרו שוב."
       : "השמירה במכשיר נכשלה — הנתונים האחרונים אולי לא נשמרו";
   console.error("storage write failed:", e);
+  // 3.12.0: an anonymous "storage" error report (src/errors.js); off when usage counting is off.
+  try { if (window.HaimuniaErrors) window.HaimuniaErrors.report("storage", e, { screen: tab }); } catch (err) { /* never in the way */ }
+}
+// A small "שליחת משוב" link under a storage error: the feedback sheet, with this screen preselected.
+function storageFeedbackLink(screen) {
+  if (!window.HaimuniaFeedback) return "";
+  return ` <button type="button" class="link-btn link-btn--tap" data-feedback-open="${esc(screen || tab)}" style="display:inline; min-height:44px; padding:0 4px; font-size:12px; color:inherit;">שליחת משוב</button>`;
 }
 
 // Bodyweight tab state
@@ -4815,7 +4822,7 @@ function renderLogTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
+    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     ${editingEntryId ? `
     <div style="background:var(--p-e8b98a-a12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
       <span style="color:var(--brass); font-weight:700; font-size:13px;">עריכת סט קיים</span>
@@ -5950,7 +5957,7 @@ function renderHistoryTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
+    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     <div class="stat-row">
       <div class="stat-card stat-hero" style="text-align:center;"><div class="stat-value mono" style="color:var(--brass); font-size:20px;">${prCountThisMonth}</div><div class="stat-label">שיאים החודש</div></div>
       <div class="stat-card" style="text-align:center;"><div class="stat-value mono" style="font-size:20px;">${sessionsThisWeek}</div><div class="stat-label">אימונים השבוע</div></div>
@@ -6088,11 +6095,20 @@ function renderSettingsBody() {
           </div>
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
         </button>
+        <!-- 3.12.0: the feedback box (src/feedback.js). Anonymous: the typed text, the screen, the version
+             and the device type; no name or username. -->
+        <button class="exercise-row" data-feedback-open="" style="margin:8px 0 0;">
+          <div style="text-align:right;">
+            <div style="font-weight:700; font-size:13.5px;">שליחת משוב</div>
+            <div style="color:var(--steel); font-size:12px; margin-top:2px;">מה לא עובד טוב? בלי שם, בכמה מילים</div>
+          </div>
+          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
+        </button>
       </div>
 
       <div class="settings-block">
         <div class="settings-block-title">קובץ גיבוי להורדה</div>
-        <div class="footer-note"${storageOK ? "" : ' style="color:var(--red-text);" role="alert"'}>${storageOK ? esc("נשמר במכשיר הזה בלבד, ללא שרת") : esc(storageErrMsg || "שמירה נכשלה — בדקו את מקום האחסון")}</div>
+        <div class="footer-note"${storageOK ? "" : ' style="color:var(--red-text);" role="alert"'}>${storageOK ? esc("נשמר במכשיר הזה בלבד, ללא שרת") : esc(storageErrMsg || "שמירה נכשלה — בדקו את מקום האחסון") + storageFeedbackLink("settings")}</div>
         ${staleBackupNote}
         <!-- Audit 2026-11, finding 8: these were underlined text links
              sitting under the "backup is old" warning - the warning asked
@@ -7010,7 +7026,7 @@ function renderWodTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}</div>` : ""}
+    ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     <div class="subtabbar" role="tablist" aria-label="תצוגת ספריית האימונים">
       <button class="subtabbtn ${wodSubTab === "log" ? "active" : ""}" id="wodSubtab-log" data-action="switch-wod-subtab" data-subtab="log" role="tab" aria-selected="${wodSubTab === "log"}" aria-controls="wodContent" tabindex="${wodSubTab === "log" ? "0" : "-1"}">רישום</button>
       <button class="subtabbtn ${wodSubTab === "history" ? "active" : ""}" id="wodSubtab-history" data-action="switch-wod-subtab" data-subtab="history" role="tab" aria-selected="${wodSubTab === "history"}" aria-controls="wodContent" tabindex="${wodSubTab === "history" ? "0" : "-1"}">היסטוריה</button>
@@ -7188,6 +7204,7 @@ registerAppDialog("appConfirm", { overlayId: "appConfirmOverlay", isOpen: () => 
 // the sheet underneath and leave the visible one - which is the exact defect
 // openAchievements()'s own comment above describes, reached a second way.
 registerAppDialog("support", { overlayId: "supportOverlay", isOpen: () => document.getElementById("supportOverlay").classList.contains("open"), close: closeSupport });
+registerAppDialog("feedback", { overlayId: "feedbackOverlay", isOpen: () => !!(window.HaimuniaFeedback && window.HaimuniaFeedback.isOpen()), close: () => window.HaimuniaFeedback.close(), escapable: true });
 
 // COMM-358. Every role="tablist" group in this app (the fixed bottom tab
 // bar, WOD's Rx/Scaled-style subtabbar, Community's feed-scope filter)
@@ -8239,6 +8256,11 @@ document.addEventListener("click", (e) => {
     // close-nav-menu); this one was written without it.
     if (el.id === "supportOverlay" && e.target !== el) return;
     closeSupport();
+  }
+  else if (action === "close-feedback") {
+    // The same backdrop guard as support: a tap inside the sheet (the text box) must not close it.
+    if (el.id === "feedbackOverlay" && e.target !== el) return;
+    if (window.HaimuniaFeedback) window.HaimuniaFeedback.close();
   }
   else if (action === "support-send-whatsapp") { supportSendWhatsApp(); }
   else if (action === "support-send-email") { supportSendEmail(); }
