@@ -63,7 +63,7 @@ No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 p
 | 3.10.0 | Self-serve delete account (PR #16), F-018, new privacy.html (G1) | haimunia-club | live (039aec7) |
 | (backend) | Usage purge 180 days, delete_my_account with aal2 (F-016) | haimunia-app-demo #173, migration 202611150002 | live, migration-status green |
 | 3.11.0 | Check-for-update button | haimunia-club | in progress (haimunia-fixes); before launch |
-| 3.12.0 | Anonymous client error reports, with the privacy.html line | haimunia-club + haimunia-app-demo migration `202611150003` or later | next prompt; before launch |
+| 3.12.0 | Anonymous client error reports and the feedback box ("מה לא עובד טוב?"), with their privacy.html sections | haimunia-club + one haimunia-app-demo migration `202611150003` for both | before launch if verified by 20.11, else first after launch |
 | 3.13.0 | Log screen redesign | haimunia-club | waits for the owner's layout choice; ships before launch only if verified by 20.11, else first after launch |
 | 3.14.0 | Percentage chart from each lift's 1RM (50% to 95%), exercise screen | haimunia-club | after launch |
 | 3.15.0 | Personal weekly streak, no leaderboard | haimunia-club | after launch |
@@ -82,6 +82,20 @@ Migration numbers: the held F-005 migration is `202611150001_rls_auth_uid_initpl
 Also in STANDARD.md, "Platform decisions".
 - PD-1: no web push for now. WebKit bug 315804, owner report: in an iOS 26 installed PWA, an IndexedDB write never completes after a push subscribe. Lead could not open the bug (bugs.webkit.org is blocked in these sessions), so the source is the owner's report. Today's code has no push: `sw.js` has no push handler, and the club app makes no `PushManager.subscribe` call.
 - PD-2: never rely on persistent storage on iOS. Installing to the home screen is the only real protection, so the F-001 install flow and backup reminders stay a priority. privacy.html already says the browser may delete site data.
+
+### Capacity check (lead, 2026-11-15, read-only)
+
+Project `box-log`, eu-central-1, Postgres 17, free plan.
+- Database: 22 MB of 500 MB. Largest tables: `cron.job_run_details` 2.7 MB (pg_cron's run log, no purge, grows about 1 MB a week), `supabase_migrations` 1.5 MB, `edge_function_invocations` 0.7 MB; `workout_posts` 0.2 MB.
+- Connections: 15 open of 60.
+- Rows: 3 auth users, 3 memberships, 2 posts, 95 usage rows.
+- 200 members in one evening:
+  - Database size and connections are no risk.
+  - `join_circle` allows 10 tries an hour per user, not per club, so no risk.
+  - The club cap is 250 members (`circle_member_cap('club')`): enough for 200, with little headroom.
+  - Turnstile on the free plan has no request limit.
+  - **Risk:** the anonymous sign-in limit is per IP, and members at the gym share one IP. Run `set-auth-config` with `anon_limit = 300` before announcing (docs/LAUNCH.md step 6).
+  - The password sign-in limit (Supabase default, per IP) is not set by the workflow. Watch the auth logs on launch evening.
 
 ### Launch gates (lead, 2026-11-15; reserve duty starts 22.11)
 
