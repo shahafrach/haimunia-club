@@ -10,7 +10,7 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-002 | grok-G2 | SEC-7 | low | fixed: https://github.com/shahafrach/haimunia-app-demo/pull/170; C2-1 verified 2026-11-14 on `audit/c2` (local `supabase test db`, `0155` + `0157`) | Club staff actions (removing a member, deleting or pinning an announcement) leave no audit record. Announcements keep `author_id`, but a removal leaves nothing. The fix belongs in the sibling repo. | sibling `202611140001_club_staff_audit.sql` (`club_staff_log` from `remove_member`, `club_announcement_delete`, `club_announcement_set_pinned`) | C2-1 |
 | F-003 | owner (triage) | SEC-5 | high | fixed: `triage/grok`; C3-1 PASS 2026-11-14 on `https://haimunia.pages.dev` (all six paths 404) | `docs/` and the root audit files were served from the site root. Blocked in `functions/_middleware.js` (on main). C3-1 pass closes F-003. | `functions/_middleware.js` `BLOCKED_PREFIXES`; live curl 404 for `/docs/audit/CURSOR-CHECKS.md`, `/docs/`, `/FINDINGS.md`, `/STANDARD.md`, `/CLAUDE.md`, `/CHANGES.md`; `test/middleware.test.mjs` | C3-1 |
 | F-004 | owner (CI) | OPS | low | fix merged with haimunia-app-demo #173 (bound 200 to 190 ms); close after a few green CI runs | `test/waitfor-helper.test.mjs` "THE ORDERING THAT MAKES A LATE POLL SAFE" is flaky in CI: it failed once on haimunia-app-demo PR #170 (commit 9fe84d0, assertion "and this really did poll after the deadline, not before it") and passed on the run before and locally. Timing-dependent. No fix now. | sibling `test/waitfor-helper.test.mjs:43`; CI run on 9fe84d0, job node-tests | none |
-| F-005 | cursor-C2 | PERF-1 | medium | deferred until after launch (owner decision 2026-11-15): migration ready in https://github.com/shahafrach/haimunia-app-demo/pull/172, on hold | Many public RLS policies call `auth.uid()` / `aal_satisfied()` per row (splinter `0003_auth_rls_initplan`, WARN). Not a confidentiality break; hurts plan caching at scale. Prefer `(select auth.uid())` form. | Local splinter run 2026-11-14 on `audit/c2`; policies on `private_records`, `workout_posts`, `profiles`, `notifications`, … | C2 |
+| F-005 | cursor-C2 | PERF-1 | medium | open: ships as QUEUE Q-14 after demo #178 (launch postponed, so no longer held); migration in https://github.com/shahafrach/haimunia-app-demo/pull/172 | Many public RLS policies call `auth.uid()` / `aal_satisfied()` per row (splinter `0003_auth_rls_initplan`, WARN). Not a confidentiality break; hurts plan caching at scale. Prefer `(select auth.uid())` form. | Local splinter run 2026-11-14 on `audit/c2`; policies on `private_records`, `workout_posts`, `profiles`, `notifications`, … | C2 |
 | F-006 | cursor-C2 | OPS | low | open | `supabase/tests/0153_club_load_test.sql` test 12 ("the feed page uses workout_posts_circle_feed_idx") is flaky on local `supabase test db` (passed once, failed once). EXPLAIN-sensitive. | Local runs on `audit/c2` 2026-11-14 | C2 |
 | F-007 | cursor-C3 | SEC-4 | medium | open | CSP allows `style-src 'unsafe-inline'` for dynamic `style=""` attributes (documented; no inline scripts). Style injection remains possible if unsanitized markup ever reaches the DOM. | `_headers:13`, `index.html:50`, `test/headers.test.mjs` (inline only on `style-src`) | C3 |
 | F-008 | cursor-C3 | SEC-4 | high | fixed, live Turnstile check pending: haimunia-app-demo #171 (af491fe), full header CSP incl. Turnstile in connect-src (2690444); lead verified the merge in real Chromium (boot-smoke 6/6, founder-link 23/23, circles-client 78/78, frame-guard 4/4); owner check of live sign-up loading Turnstile (from a computer) still pending. Site still shuts down 2026-12-15, then remove it and its Pages project | Legacy sibling site `https://box-log.pages.dev` serves a sparse CSP: live `Content-Security-Policy` is only `frame-ancestors 'none'`, not the full policy the club app uses. | `curl -sI https://box-log.pages.dev/` 2026-11-14 | C3 |
@@ -67,14 +67,16 @@ No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 p
 | (backend) | Usage purge 180 days, delete_my_account with aal2 (F-016) | haimunia-app-demo #173, migration 202611150002 | live, migration-status green |
 | 3.11.0 | Check-for-update button (PR #20), F-020 | haimunia-club | live (f344875) |
 | 3.12.0 | Anonymous client error reports and the feedback box ("מה לא עובד טוב?"), with their privacy.html sections | haimunia-club #22 + haimunia-app-demo #178 (migration `202611150003`) | verified 2026-11-15; ready to ship (backend first) |
-| 3.13.0 | Log screen layout A (PR #21) | haimunia-club | built; waits for 3.12.0 to merge, then rebase and verify; before launch only if verified by 20.11 |
-| 3.14.0 | Percentage chart from each lift's 1RM (50% to 95%), exercise screen | haimunia-club | after launch |
-| 3.15.0 | Personal weekly streak, no leaderboard | haimunia-club | after launch |
-| 3.16.0 | Monthly personal summary card (workouts, PRs, best lift) | haimunia-club | after launch |
-| (repo) | Standard template repo from haimunia-club | new repo (the owner creates it) | after launch, after 3.16.0 |
-| after launch | F-005 RLS initplan (PR #172) | haimunia-app-demo | held; rename to a version after the newest applied migration before merge |
+| 3.13.0 | Log screen layout A (PR #21) | haimunia-club | built; waits for 3.12.0 to merge, then rebase and verify |
+| 3.14.0 | Small fixes: F-019, feedback preselect and 4xx handling (QUEUE Q-16) | haimunia-club | planned |
+| (backend) | F-005 RLS initplan (PR #172), renumbered after 202611150003 (QUEUE Q-14) | haimunia-app-demo | after #178 merges |
+| (tests) | F-014: synthetic 3-year log, backup, import and transfer size (QUEUE Q-15) | haimunia-club | planned |
+| 3.15.0 | Percentage chart from each lift's 1RM (Q-17) | haimunia-club | planned |
+| 3.16.0 | Personal weekly streak, no leaderboard (Q-18) | haimunia-club | planned |
+| 3.17.0 | Monthly personal summary card (Q-19) | haimunia-club | planned |
+| (repo) | Standard template repository (Q-20) | new repo | needs the owner to create it |
 
-Launch freeze: nothing ships to members from 20.11 except a fix for a broken app. Versions after 3.12.0 are a plan, not a promise. A later item takes the next free version when it ships, and only lead assigns them.
+Launch postponed with no date (owner, 2026-11-15): everything ships when it passes verification. Versions after 3.12.0 are a plan, not a promise. A later item takes the next free version when it ships, and only lead assigns them.
 
 All three after-launch features are computed on the phone from the existing records. They add no IndexedDB store or field, and nothing is sent to the server.
 
@@ -100,20 +102,21 @@ Project `box-log`, eu-central-1, Postgres 17, free plan.
   - **Risk:** the anonymous sign-in limit is per IP, and members at the gym share one IP. Run `set-auth-config` with `anon_limit = 300` before announcing (docs/LAUNCH.md step 6).
   - The password sign-in limit (Supabase default, per IP) is not set by the workflow. Watch the auth logs on launch evening.
 
-### Launch gates (lead, 2026-11-15; reserve duty starts 22.11)
+### Launch gates (owner, 2026-11-15: launch postponed, no date; launch only when every gate is green)
 
 | # | Gate | Status |
 |---|------|--------|
-| 1 | 3.8.1 verified and live | done (F-010 verified, shipped) |
-| 2 | Per-workout sharing verified and live as 3.9.0 | done (F-015 fixed and verified; 3.10.0 now live on top) |
-| 3a | G1 privacy policy approved | done (approved 2026-11-15; live in privacy.html with 3.10.0) |
-| 3b | G4 club message approved | open (owner) |
-| 4 | C4-2 iPhone check: transfer code in Safari, install, redeem | open (owner, real iPhone) |
-| 5 | Cursor final pass | open (Cursor unavailable) |
+| 1 | C4-2 on a real iPhone: create a transfer code in Safari, install, redeem | open (owner) |
+| 2 | G4 club message approved | open (owner) |
+| 3 | Cursor final pass, or lead's full real-Chromium pass on the live site (QUEUE Q-21) | open |
+| 4 | Q-12 CI sweep clean | open: F-021 (Q-13) |
+| 5 | No open critical, high or medium finding | open: F-005 (Q-14), F-007 (owner decision), F-008 (owner's live Turnstile check), F-014 (Q-15), F-021 (Q-13) |
+
+Done earlier: 3.8.1 (F-010), 3.9.0 (sharing), G1 privacy policy (live since 3.10.0), 3.10.0 (delete account), 3.11.0 (update check).
 
 CI sweep 2026-11-15 (Q-12): no unknown PRs, branches or actors in any of the three repos, no run-number gaps, no pull_request_target, every action pinned by SHA in haimunia-app-demo. Findings: F-021, F-022.
 
-Open after launch: F-019 (low), F-005 (held, rename before merge), F-004 (watch CI), F-006, F-007, F-011, F-013, F-014. Owner task: shut down box-log.pages.dev on 2026-12-15 (F-008 follow-up).
+Low items, not gates: F-004 (watch CI), F-006, F-011, F-013, F-019 (Q-16), F-022. Owner task: shut down box-log.pages.dev on 2026-12-15 (F-008 follow-up).
 
 ### F-001 fix plan
 
