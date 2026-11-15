@@ -182,15 +182,21 @@ test("Settings says what is counted, that the id links one phone's days, the IP 
 });
 
 test("the privacy page says the same: pseudonymous, linked across days, IP logs, 180 days, totals only", () => {
+  // The approved text for 3.10.0 (docs/privacy-final.he.md, grok/inputs 9bedb5f). The IP request logs moved
+  // to section 7 ("איפה המידע נשמר"), so that line is checked on the whole page.
   const html = read("privacy.html");
   const section = html.slice(html.indexOf('id="usage-counting"'), html.indexOf("</section>", html.indexOf('id="usage-counting"')));
+  assert.match(section, /<h2>5\. ספירת שימוש<\/h2>/);
   assert.match(section, /המזהה הוא כינוי, לא אנונימיות מלאה/);
-  assert.match(section, /מקשר את\s+הספירות של טלפון אחד לאורך הימים/);
-  assert.match(section, /יומני הבקשות של ספק השרת \(Supabase\) שומרים\s+אותם לזמן קצר/);
-  assert.match(section, /נמחקת אוטומטית אחרי 180 יום/);
-  assert.match(section, /אף אחד לא רואה את השורות עצמן, גם לא צוות המועדון/);
+  assert.match(section, /מקשר בין הספירות של אותו טלפון לאורך הימים/);
+  assert.match(section, /כל ספירה נמחקת אוטומטית אחרי 180 יום/);
+  assert.match(section, /אף משתמש באפליקציה, גם לא צוות המועדון, לא רואה את השורות/);
+  assert.match(section, /רק לסיכומים כלליים/);
+  assert.match(html, /ספקי השרת שומרים לזמן קצר יומני בקשות עם כתובת IP וסוג דפדפן/);
   assert.doesNotMatch(html, /אנונימי(?!ות מלאה)/, "nowhere claims the counts are anonymous");
-  assert.match(html, /עודכן לאחרונה: 23 בספטמבר 2026/);
+  assert.match(html, /עודכן לאחרונה: 15 בנובמבר 2026/);
+  assert.doesNotMatch(html, /\[\[/, "no placeholder left");
+  assert.match(html, /<a href="mailto:haimuniya@gmail\.com" dir="ltr">haimuniya@gmail\.com<\/a>/);
 });
 
 test("the CSP opens the usage endpoint for connect only, plus Turnstile for script and frame", () => {

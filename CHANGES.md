@@ -1,3 +1,17 @@
+# 3.10.0 — Delete the account from the app — 2026-11-15
+
+Needs haimunia-app-demo #173 (`delete_my_account()`, 202611150002) deployed first.
+
+- Connected mode, Settings → the club row: a "מחיקת החשבון" button for a signed-in member. The confirm says
+  what the server deletes (the account and username, the name and emoji in the club, club membership, every
+  shared workout, reactions given, notifications and the push subscription), that the training log on this
+  phone stays, and that it cannot be undone. It opens on "ביטול".
+- "מחיקה לצמיתות" calls `delete_my_account`, drops the session on this phone and leaves the device offline.
+  The log is not touched; no IndexedDB change.
+- A refused call (rate limit) changes nothing and says why. After a network error the app asks the server
+  who it is before saying anything: a user that no longer exists counts as deleted, one that still exists
+  gets "החשבון לא נמחק", and an unreachable server gets a message that it is not known yet.
+
 # 3.9.0 — Each workout asks whether to share it to the club — 2026-11-15
 
 Owner decision (2026-11-14): the member chooses per workout, not once for all.

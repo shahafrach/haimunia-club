@@ -338,6 +338,59 @@
     S.view = "choice"; paint();
     if (typeof showToast === "function") showToast("התנתקתם. האימונים נשארים בטלפון.");
   }
+  // Account deletion (backend delete_my_account, haimunia-app-demo 202611150002): the server deletes the
+  // account, the club profile, every membership, every post, the reactions given, push subscriptions and
+  // notifications, at once. The training log on this phone is not touched. After it, the device is offline:
+  // the session is dropped locally (the user no longer exists on the server) and the choice is "offline".
+  var DELETE_TEXT = {
+    rate_limited: "ניסיתם יותר מדי פעמים בשעה האחרונה. אפשר לנסות שוב בעוד שעה.",
+    offline: "אין חיבור כרגע. החשבון לא נמחק. אפשר לנסות שוב כשהחיבור חוזר.",
+    unknown: "אין חיבור כרגע, ולא ברור אם החשבון נמחק. כשהחיבור חוזר, פותחים שוב את המסך הזה.",
+    error: "מחיקת החשבון לא הושלמה. החשבון לא נמחק. אפשר לנסות שוב.",
+  };
+  // "deleted" when the server says this session's user no longer exists, "offline" when it still does
+  // (the delete did not happen), "unknown" when the server cannot be reached to tell.
+  function userGone(err) {
+    if (!err) return false;
+    return err.code === "user_not_found" || err.status === 404 ||
+      /user from sub claim in jwt does not exist|user not found|user does not exist/i.test(String(err.message || ""));
+  }
+  async function accountStateAfterLostAnswer() {
+    try {
+      var c = await getClient();
+      var r = await c.auth.getUser();
+      if (r && r.data && r.data.user && !r.error) return "offline";
+      if (r && userGone(r.error)) return "deleted";
+      return "unknown";
+    } catch (e) { return "unknown"; }
+  }
+  async function doDeleteAccount() {
+    if (S.busy) return;
+    S.busy = true; S.error = ""; S.view = "delete"; paint();
+    var status = "error";
+    try {
+      var c = await getClient();
+      var r = await c.rpc("delete_my_account");
+      if (!r || !r.error) status = "deleted";
+      else if (/rate_limited/.test(String(r.error.message || ""))) status = "rate_limited";
+      else if (isNetwork(r.error)) status = "offline";
+    } catch (e) { status = "offline"; }
+    // A network error does not say the call failed: the answer may be what was lost, after the server
+    // deleted the account. Ask the server who we are before saying "not deleted".
+    if (status === "offline") status = await accountStateAfterLostAnswer();
+    if (status !== "deleted") { S.busy = false; S.error = DELETE_TEXT[status] || DELETE_TEXT.error; paint(); return; }
+    try { var c2 = await getClient(); await c2.auth.signOut({ scope: "local" }); } catch (e) {}
+    try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
+    S.busy = false;
+    S.user = null; S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.clubName = ""; S.drafts = {}; joinToken = null;
+    setChoice("offline");
+    changed();
+    S.view = "choice";
+    // showToast only queues the toast; close() renders the app, which shows it.
+    if (typeof showToast === "function") showToast("החשבון נמחק. האימונים נשארים בטלפון.");
+    close();
+  }
+
   // "Delete everything" on the device also forgets the session, so the next person starts clean.
   function forget() {
     try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
@@ -405,6 +458,21 @@
           : '<form id="connectForm" data-connect-form="join" novalidate>' + fieldHtml("link", "קישור המועדון", "text", 'autocomplete="off" autocapitalize="none" spellcheck="false" dir="ltr"') + submitBtn("הצטרפות") + "</form>") +
         '<div style="text-align:center;">' + linkBtn("אחר כך", 'data-connect="close"') + "</div>";
     }
+    if (v === "delete") {
+      if (S.busy) return head("מוחקים את החשבון…");
+      return head("למחוק את החשבון?") + errorHtml() +
+        '<div class="settings-block" style="margin-bottom:12px; font-size:13.5px; line-height:1.6;">' +
+        '<div style="font-weight:700; margin-bottom:4px;">מה יימחק מהשרת</div>' +
+        '<div id="connectDeleteWhat" style="color:var(--steel);">שם המשתמש והחשבון, השם והאימוג׳י במועדון, החברות במועדון, כל האימונים ששיתפתם במועדון, הריאקציות שנתתם, ההתראות וההרשמה להתראות בטלפון.</div>' +
+        '<div style="font-weight:700; margin:10px 0 4px;">מה נשאר</div>' +
+        '<div id="connectDeleteKeep" style="color:var(--steel);">יומן האימונים בטלפון הזה נשאר כמו שהוא, וממשיכים להשתמש באפליקציה בלי חיבור.</div>' +
+        '<div id="connectDeleteFinal" style="font-weight:700; margin-top:10px; color:var(--red-text);">אי אפשר לבטל את המחיקה. גם קוד השחזור לא יחזיר את החשבון.</div>' +
+        "</div>" +
+        '<div class="chip-row" style="margin-top:0;">' +
+        btn("ביטול", 'data-connect="go-status"', "chip-btn") +
+        btn("מחיקה לצמיתות", 'data-connect="delete-account"', "chip-btn primary danger") +
+        "</div>";
+    }
     if (v === "profile") {
       var dn = S.drafts.displayName != null ? S.drafts.displayName : (typeof userName === "string" ? userName : "");
       var em = S.drafts.emoji != null ? S.drafts.emoji : "💪";
@@ -421,10 +489,11 @@
       '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:13.5px; font-weight:700;">' + (S.inClub ? "חברים במועדון" : "עדיין לא במועדון") + "</div>" +
       '<div style="color:var(--steel); font-size:12px; margin-top:4px;">האימונים והמשקלים שלכם נשארים בטלפון הזה. למועדון נשלחים רק אימונים שבחרתם לשתף.</div></div>' +
       (S.inClub === false ? btn("הצטרפות למועדון", 'data-connect="go-join"') : "") +
-      '<div style="text-align:center;">' + linkBtn("התנתקות", 'data-connect="signout"') + "</div>";
+      '<div style="text-align:center;">' + linkBtn("התנתקות", 'data-connect="signout"') + "</div>" +
+      (signedIn() ? '<div style="text-align:center; margin-top:14px;">' + btn("מחיקת החשבון", 'data-connect="go-delete"', "chip-btn danger") + "</div>" : "");
   }
 
-  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", join: "הצטרפות למועדון", profile: "פרופיל במועדון", status: "המועדון" };
+  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", join: "הצטרפות למועדון", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
   function paint() {
     var body = el("connectBody");
     if (!body) return;
@@ -436,6 +505,8 @@
     if (x) x.style.display = S.firstRun && (S.view || "choice") === "choice" ? "none" : "";
     var f = hadFocus && el(hadFocus);
     if (!f) f = body.querySelector("input:not([type=checkbox]), button.save-btn:not([disabled])");
+    // The delete confirm opens on its safe choice.
+    if (!f && S.view === "delete") f = body.querySelector('[data-connect="go-status"]');
     if (f && !S.busy) { try { f.focus(); } catch (e) {} }
   }
 
@@ -477,6 +548,9 @@
     else if (a === "go-login") { S.view = "login"; paint(); }
     else if (a === "go-choice") { S.view = "choice"; paint(); }
     else if (a === "go-join") { S.view = "join"; paint(); }
+    else if (a === "go-delete") { if (signedIn()) { S.view = "delete"; paint(); } }
+    else if (a === "go-status") { S.view = nextView(); paint(); }
+    else if (a === "delete-account") { doDeleteAccount(); }
     else if (a === "offline") { setChoice("offline"); close(); }
     else if (a === "close") { close(); }
     else if (a === "copy-code") {
