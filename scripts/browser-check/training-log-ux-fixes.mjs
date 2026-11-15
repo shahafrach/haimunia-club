@@ -49,8 +49,7 @@ import {
   dismissFirstLogArrival,
   dismissCelebrationIfOpen,
   switchTab,
-  consoleErrorCollector,
-} from "./lib/actions.mjs";
+  consoleErrorCollector, openLogOptions } from "./lib/actions.mjs";
 import { installMockCloud } from "./lib/mockCloud.mjs";
 import { hitTest } from "./lib/geometry.mjs";
 
@@ -100,6 +99,7 @@ const linkButtons = (page) =>
 // the real form - #logDateInput and the real save action - so this exercises
 // the shipped path rather than a record pushed into IndexedDB behind it.
 async function logSetOn(page, date) {
+  await openLogOptions(page);
   await page.fill("#logDateInput", date);
   await page.dispatchEvent("#logDateInput", "change");
   await page.click("[data-action='save-set']");
@@ -184,8 +184,15 @@ await selectMovement(page, "Strict");
 await page.waitForSelector("#bottomBarBtn", { state: "visible", timeout: 5000 });
 await logSetOn(page, new Date().toISOString().slice(0, 10));
 await dismissFirstLogArrival(page);
+await logSetOn(page, new Date().toISOString().slice(0, 10)); // a second row: the summary a returning member sees
+await dismissCelebrationIfOpen(page);
+// Layout A (3.13.0): once an exercise is chosen, today's sets sit BELOW the controls, so the picker comes
+// straight after the photo and this defect cannot bite there. It still can on a fresh open: a member who
+// already logged today and comes back sees the day summary above an unchosen picker. Reload into that state.
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".exercise-select", { state: "visible", timeout: 10000 });
 await page.evaluate(() => window.scrollTo(0, 0));
-await page.waitForTimeout(200);
+await page.waitForTimeout(300);
 
 // THE STATE THE DEFECT ACTUALLY BIT IN, and the reason this check does not
 // stop at the empty screen: once the day has a set in it, the day-summary
@@ -195,7 +202,7 @@ const pickerLogged = await rect(page, ".exercise-select");
 const navLogged = await rect(page, "#bottomNavWrap");
 const scrollLogged = await page.evaluate(() => Math.round(window.scrollY));
 check(
-  "with one set already logged today: the picker is STILL fully above the bottom nav, unscrolled",
+  "with sets already logged today (fresh open, nothing chosen): the picker is STILL fully above the bottom nav, unscrolled",
   scrollLogged === 0 && pickerLogged.bottom <= navLogged.top,
   `picker ${pickerLogged.top}-${pickerLogged.bottom}, nav starts ${navLogged.top}, scrollY=${scrollLogged}`,
 );
@@ -216,6 +223,9 @@ check(
 );
 await page.evaluate(() => document.querySelector(".scene-page--add").style.removeProperty("--scene-photo-height"));
 await page.waitForTimeout(150);
+// Back to the chosen state for the tap-size checks below; their ladder link sits under "עוד אפשרויות".
+await selectMovement(page, "Strict");
+await openLogOptions(page);
 
 // ===========================================================================
 // FINDING 4 — the 36px .link-btn controls
@@ -239,6 +249,7 @@ for (const l of addLinks) {
 
 // The fourth one only exists inside the ladder/superset panel, which is why
 // the review counted three: it is the same 36px control on the same screen.
+await openLogOptions(page);
 await page.click("[data-action='toggle-ladder-mode']");
 await page.waitForTimeout(250);
 const ladderLinks = await linkButtons(page);
@@ -264,6 +275,7 @@ check(
     ? JSON.stringify(strippedHeights)
     : "nothing carried the class — the measurement above is not attributable to it",
 );
+await openLogOptions(page);
 await page.click("[data-action='toggle-ladder-mode']");   // leave ladder mode
 await page.waitForTimeout(250);
 
@@ -274,6 +286,11 @@ console.log("\n---- finding 1: the save toast vs the save button ----");
 // The SECOND save is the one that toasts: the first entry of all is design
 // spec §1.2 S4's arrival card instead, dismissed above.
 await page.click("#bottomBarBtn");
+// Layout A (3.13.0): on the log screen the save is confirmed inline (the "נשמר" line), not by a toast, so the
+// toast cannot cover a stepper. The toast dock still serves the WOD save and every undo, so its geometry is
+// still checked: raise the same toast the save used to raise, and measure it.
+await page.waitForSelector(".log-last--saved", { state: "visible", timeout: 5000 });
+await page.evaluate(() => { window.showToast("נשמר: בדיקת מיקום"); });
 await page.waitForSelector("#appToastBar", { state: "visible", timeout: 5000 });
 
 const toastBox = await rect(page, "#appToastBar");

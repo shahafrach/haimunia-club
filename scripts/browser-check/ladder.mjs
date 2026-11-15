@@ -10,7 +10,7 @@
 //   TARGET_URL=<url> node ladder.mjs # a deployed site
 import { chromium } from "playwright";
 import { resolveTarget } from "./lib/target.mjs";
-import { switchTab, dismissWelcomeModal, selectMovement, dismissCelebrationIfOpen, consoleErrorCollector, readAppConfirm, resolveAppConfirm } from "./lib/actions.mjs";
+import { switchTab, dismissWelcomeModal, selectMovement, dismissCelebrationIfOpen, consoleErrorCollector, readAppConfirm, resolveAppConfirm, openLogOptions } from "./lib/actions.mjs";
 import { installMockCloud } from "./lib/mockCloud.mjs";
 
 let failed = false;
@@ -42,6 +42,7 @@ await selectMovement(page, "Strict");
 const exerciseName = (await page.textContent(".exercise-select span")).trim();
 check("selected the intended exercise", exerciseName === "Strict Press", `got "${exerciseName}"`);
 
+await openLogOptions(page);
 await page.click("[data-action='toggle-ladder-mode']");
 await page.waitForFunction(() => document.querySelector("[data-action='toggle-ladder-mode']").textContent.includes("סולם פעיל"), { timeout: 5000 });
 
@@ -129,6 +130,7 @@ check("a confirmed delete offers a short undo", undoOffered === 1);
 
 await switchTab(page, "tabAddBtn");
 await page.waitForTimeout(150);
+await openLogOptions(page);
 await page.click("[data-action='toggle-ladder-mode']"); // finish, without switching tabs afterward
 await page.waitForTimeout(150);
 const toggleAfterFinish = (await page.textContent("[data-action='toggle-ladder-mode']")).trim();

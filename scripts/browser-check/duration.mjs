@@ -11,7 +11,7 @@
 //   TARGET_URL=<url> node duration.mjs # a deployed site
 import { chromium } from "playwright";
 import { resolveTarget } from "./lib/target.mjs";
-import { switchTab, dismissWelcomeModal, selectMovement, dismissCelebrationIfOpen, consoleErrorCollector } from "./lib/actions.mjs";
+import { switchTab, dismissWelcomeModal, selectMovement, dismissCelebrationIfOpen, consoleErrorCollector, openLogOptions } from "./lib/actions.mjs";
 import { installMockCloud } from "./lib/mockCloud.mjs";
 
 let failed = false;
@@ -49,6 +49,7 @@ await selectMovement(page, "Back Squat");
 const barbellVisibleBefore = await page.evaluate(() => !!document.getElementById("barbellVisual"));
 check("reps mode shows the barbell visual for a barbell movement", barbellVisibleBefore);
 
+await openLogOptions(page);
 await page.click("[data-action='set-log-entry-type'][data-type='duration']");
 await page.waitForTimeout(150);
 
@@ -65,6 +66,7 @@ check("selected the intended exercise", exerciseName.includes("Weighted Plank"),
 // Picking a fresh exercise resets entry type from its own history (none
 // yet), not from the previous exercise's mode — switch back to duration
 // explicitly for the save/history/calendar checks below.
+await openLogOptions(page);
 await page.click("[data-action='set-log-entry-type'][data-type='duration']");
 await page.waitForTimeout(150);
 
@@ -98,6 +100,7 @@ check("a shorter hold than the existing best does not celebrate a PR", !celebrat
 for (const [daysBack, seconds] of [[2, 30], [4, 20]]) {
   const d = new Date();
   d.setDate(d.getDate() - daysBack);
+  await openLogOptions(page);
   await page.fill("#logDateInput", d.toISOString().slice(0, 10));
   await page.dispatchEvent("#logDateInput", "change");
   await page.fill("[data-field='durationSeconds'].stepper-val", String(seconds));

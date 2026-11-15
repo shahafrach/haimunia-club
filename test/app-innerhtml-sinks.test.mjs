@@ -167,12 +167,8 @@ test("the sink count is pinned, so a new sink is a deliberate decision", () => {
   // 39 -> 40 (3.1.0): the usage-counting row in Settings is swapped in place
   // (renderUsageCountingRow), like the text-size row. It interpolates only two
   // fixed labels and a boolean - no member input reaches it.
-  // 40 -> 41 (log screen redesign prototype): render() writes renderLogDock() into #logDock (layout b).
-  // Every interpolation in it goes through esc() or bidiText(): the exercise name (bidiText), its
-  // category colour (esc), the last-session line and the repeat button (esc), and renderStepper(),
-  // which escapes every attribute. Nothing user-typed is written raw. Empty unless ?layout=b.
-  assert.equal(count, 41,
-    `app.js has ${count} innerHTML/outerHTML sinks, expected 41. If you added one, verify its interpolations are escaped and update this number; if you removed one, just update it.`);
+  assert.equal(count, 40,
+    `app.js has ${count} innerHTML/outerHTML sinks, expected 40. If you added one, verify its interpolations are escaped and update this number; if you removed one, just update it.`);
 });
 
 test("esc() is a single shared definition, so there is one escaping rule and not several", () => {

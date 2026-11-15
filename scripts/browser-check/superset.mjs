@@ -9,7 +9,7 @@
 //   TARGET_URL=<url> node superset.mjs # a deployed site
 import { chromium } from "playwright";
 import { resolveTarget } from "./lib/target.mjs";
-import { switchTab, dismissWelcomeModal, selectMovement, dismissCelebrationIfOpen, consoleErrorCollector } from "./lib/actions.mjs";
+import { switchTab, dismissWelcomeModal, selectMovement, dismissCelebrationIfOpen, consoleErrorCollector, openLogOptions } from "./lib/actions.mjs";
 import { installMockCloud } from "./lib/mockCloud.mjs";
 
 let failed = false;
@@ -38,6 +38,7 @@ await page.waitForSelector("#app", { state: "visible" });
 await dismissWelcomeModal(page);
 
 await selectMovement(page, "Strict");
+await openLogOptions(page);
 await page.click("[data-action='toggle-ladder-mode']");
 await page.waitForFunction(() => document.querySelector("[data-action='toggle-ladder-mode']").textContent.includes("פעיל"), { timeout: 5000 });
 
@@ -96,6 +97,7 @@ await dismissCelebrationIfOpen(page);
 const stillOnAfterThree = await page.evaluate(() => document.querySelector("[data-action='toggle-ladder-mode']").textContent.includes("3 סטים"));
 check("all 3 alternating rounds saved with the superset staying active", stillOnAfterThree);
 
+await openLogOptions(page);
 await page.click("[data-action='toggle-ladder-mode']"); // finish
 await page.waitForTimeout(200);
 

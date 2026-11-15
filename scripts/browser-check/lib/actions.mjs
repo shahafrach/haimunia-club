@@ -382,3 +382,16 @@ export async function submitManagementGate(page, account, password, { timeout = 
   await page.click("#panelUnlock button[type=submit]");
   await page.waitForFunction(() => !document.getElementById("panelUnlock"), { timeout });
 }
+
+// Layout A (3.13.0): on the log screen the type toggle, the date, the 1RM card, the % table, the bar choice
+// and the ladder/superset entry sit under "עוד אפשרויות" (a <details>, closed by default). A member opens it
+// with one tap before using any of them; a check does the same. Safe to call when it is already open, when
+// the screen has no such fold, or when the control is already in the main controls (a past date, an active
+// ladder).
+export async function openLogOptions(page) {
+  await page.evaluate(() => {
+    const d = document.querySelector("details.log-more");
+    if (d && !d.open) d.querySelector("summary").click();
+  });
+  await page.waitForTimeout(50);
+}
