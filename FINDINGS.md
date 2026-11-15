@@ -13,7 +13,7 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-005 | cursor-C2 | PERF-1 | medium | deferred until after launch (owner decision 2026-11-15): migration ready in https://github.com/shahafrach/haimunia-app-demo/pull/172, on hold | Many public RLS policies call `auth.uid()` / `aal_satisfied()` per row (splinter `0003_auth_rls_initplan`, WARN). Not a confidentiality break; hurts plan caching at scale. Prefer `(select auth.uid())` form. | Local splinter run 2026-11-14 on `audit/c2`; policies on `private_records`, `workout_posts`, `profiles`, `notifications`, … | C2 |
 | F-006 | cursor-C2 | OPS | low | open | `supabase/tests/0153_club_load_test.sql` test 12 ("the feed page uses workout_posts_circle_feed_idx") is flaky on local `supabase test db` (passed once, failed once). EXPLAIN-sensitive. | Local runs on `audit/c2` 2026-11-14 | C2 |
 | F-007 | cursor-C3 | SEC-4 | medium | open | CSP allows `style-src 'unsafe-inline'` for dynamic `style=""` attributes (documented; no inline scripts). Style injection remains possible if unsanitized markup ever reaches the DOM. | `_headers:13`, `index.html:50`, `test/headers.test.mjs` (inline only on `style-src`) | C3 |
-| F-008 | cursor-C3 | SEC-4 | high | fixed 2026-11-15: haimunia-app-demo #171 (af491fe), full header CSP incl. Turnstile in connect-src (2690444); lead verified the merge in real Chromium (boot-smoke 6/6, founder-link 23/23, circles-client 78/78, frame-guard 4/4); owner confirmed live sign-up loads Turnstile. Site still shuts down 2026-12-15, then remove it and its Pages project | Legacy sibling site `https://box-log.pages.dev` serves a sparse CSP: live `Content-Security-Policy` is only `frame-ancestors 'none'`, not the full policy the club app uses. | `curl -sI https://box-log.pages.dev/` 2026-11-14 | C3 |
+| F-008 | cursor-C3 | SEC-4 | high | fixed, live Turnstile check pending: haimunia-app-demo #171 (af491fe), full header CSP incl. Turnstile in connect-src (2690444); lead verified the merge in real Chromium (boot-smoke 6/6, founder-link 23/23, circles-client 78/78, frame-guard 4/4); owner check of live sign-up loading Turnstile (from a computer) still pending. Site still shuts down 2026-12-15, then remove it and its Pages project | Legacy sibling site `https://box-log.pages.dev` serves a sparse CSP: live `Content-Security-Policy` is only `frame-ancestors 'none'`, not the full policy the club app uses. | `curl -sI https://box-log.pages.dev/` 2026-11-14 | C3 |
 | F-009 | cursor-C3 | SEC-6 | high | fixed: `findings/consolidated` (`npm audit fix`: lockfile only, `npm audit` 0 vulnerabilities) | `npm audit` reports 2 high-severity issues in dev dependencies (`source-map-js`, `undici`). Nothing from `package.json` ships to members; CI and local test runs still pull them. | `npm audit` 2026-11-14 on `audit/c3`; `package.json` dev-only | C3 |
 | F-010 | cursor-C5 | OFF-1 | high | fixed: `findings/consolidated` (`src/db.js` `withReopen`, `onclose`; `test/db-connection-reopen.test.mjs`) | WebKit bug 277615: IndexedDB connection can be lost until a full reload. The app caches one DB connection in `src/db.js` with no `onclose` handler or reopen path; the save error does not tell the member to reload. | `src/db.js:53-78` (`_dbPromise`, no `onclose`); `app.js:552-558`; WebKit 277615 confirmed (was U-1) | C5-1 |
 | F-011 | cursor-C5 | UX | low | open | WebKit bug 313800 (NEW): `visualViewport` may be short by the status bar in standalone iOS 26.3.1. Overlays sized from `visualViewport.height` could sit under the status bar. | `app.js:3841, 6950, 7349`; `index.html:71` `viewport-fit=cover`; WebKit 313800 (was U-2) | C5-1 |
@@ -25,6 +25,7 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-017 | lead (verify 3.10.0) | OPS | high (blocks #173) | fixed: #173 96079bf, CI migration-check green (58 files, 1685 tests) | CI `migration-check` is red: `0157_delete_my_account_test.sql:56` inserts `notifications.club_id`, a column that does not exist, so the file stops after 2 of its tests and none of the delete checks ran. 0135 and 0152 passed. | CI job 132740124247 on 55df825 | CI green on #173 |
 | F-018 | lead (G5 check) | UX | medium | fixed: PR #16 c3d7637 (showToast owes its own paint); lead verified 7c52652 in real Chromium, both toasts on screen with no action | When sharing fails (network), the member never sees the message. `src/club.js` `toast()` only queues it (`showToast` stores `pendingToast`; `render()` paints it), and nothing renders before it expires, so "השינוי נשמר בטלפון. המועדון לא התעדכן הפעם." and "השיא נשמר בטלפון. השיתוף במועדון לא הצליח הפעם." are lost unless the member taps something. The workout's answer stays "shared", and the next save of that day posts it. A failed PR card is never retried. Not a data loss: the log is safe. | `src/club.js:44` `toast`, `:400`, `:433`; `app.js` `showToast` (2566); real Chromium on main 9ba46bb: toast queued in `pendingToast`, not on screen within 3 s; next edit of that day posted the workout | lead browser check (share-netfail) |
 | F-019 | lead (G5 check) | UX | low | open | The first-launch "יש לכם כבר נתונים?" sheet shows when the installed app opens with no lifts or WODs and "מתחילים מאפס" was never chosen. It shows again on later launches while that holds, by design ("offered again"). A member who chose "יש לי קוד העברה" or a file, imported nothing and then logged only body weight or measurements sees it on every launch, because `totalLoggedEntries()` counts only entries and WODs. | `app.js` `shouldOfferFirstImport` (2999), `totalLoggedEntries` (1961), `FIRST_IMPORT_KEY` | none |
+| F-020 | lead (verify 3.11.0) | DATA-2 | high (blocks 3.11.0) | open: PR #20 (ac7bab1) | The update check can reload the page in the middle of a save. `checkForUpdate()` waits for saves to be idle (`savesIdle()`), then calls `applyUpdate()`. On a page that had no controller at boot (the first launch of a fresh install), the reload comes later, from the `controllerchange` listener or the 4 s backstop `setTimeout(reloadOnce, 4000)`. Neither looks at `savesIdle()` again, so a save started in that window is cut and the set is lost. The normal path (controlled at boot) reloads at once after the idle wait and is safe. | real Chromium on ac7bab1: no controller at boot, a save started right after `applyUpdate()` with `dbPut` held 6 s: one reload, the set lost (`entries=0`); events `applyUpdate`, `put-start`, no `put-done` | lead browser check (update.mjs) |
 
 - F-008: planned shutdown date 2026-12-15, then remove the site (`box-log.pages.dev`) and its Pages project.
 
@@ -59,12 +60,43 @@ No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 p
 | Version | Content | Repo | Status |
 |---------|---------|------|--------|
 | 3.8.1 | F-010 IndexedDB reopen | haimunia-club | shipped, tag rollback-3.8.1 |
-| 3.9.0 | Per-workout sharing (PR #12), F-015 | haimunia-club | live (9ba46bb), tag rollback-3.9.0 |
+| 3.9.0 | Per-workout sharing (PR #12), F-015 | haimunia-club | shipped, tag rollback-3.9.0 |
 | 3.10.0 | Self-serve delete account (PR #16), F-018, new privacy.html (G1) | haimunia-club | live (039aec7) |
 | (backend) | Usage purge 180 days, delete_my_account with aal2 (F-016) | haimunia-app-demo #173, migration 202611150002 | live, migration-status green |
-| after launch | F-005 RLS initplan (PR #172) | haimunia-app-demo | held |
+| 3.11.0 | Check-for-update button (PR #20) | haimunia-club | back to haimunia-fixes for F-020; ships before 3.12.0 |
+| 3.12.0 | Anonymous client error reports and the feedback box ("מה לא עובד טוב?"), with their privacy.html sections | haimunia-club + one haimunia-app-demo migration `202611150003` for both | before launch if verified by 20.11, else first after launch |
+| 3.13.0 | Log screen redesign | haimunia-club | waits for the owner's layout choice; ships before launch only if verified by 20.11, else first after launch |
+| 3.14.0 | Percentage chart from each lift's 1RM (50% to 95%), exercise screen | haimunia-club | after launch |
+| 3.15.0 | Personal weekly streak, no leaderboard | haimunia-club | after launch |
+| 3.16.0 | Monthly personal summary card (workouts, PRs, best lift) | haimunia-club | after launch |
+| (repo) | Standard template repo from haimunia-club | new repo (the owner creates it) | after launch, after 3.16.0 |
+| after launch | F-005 RLS initplan (PR #172) | haimunia-app-demo | held; rename to a version after the newest applied migration before merge |
 
-Migration numbers: the held F-005 migration is `202611150001_rls_auth_uid_initplan.sql` (haimunia-app-demo PR #172). Every new migration uses a later version, `202611150002` or above. Once a later migration is applied, F-005 is older than the newest applied migration, and `supabase db push` refuses an out-of-order file without `--include-all`. So before F-005 merges, rename it (it was never applied) to a version later than the newest migration on main. The usage-purge change and the delete-account migration may share one file, or go in order, one open migration branch at a time (sibling CLAUDE.md).
+Launch freeze: nothing ships to members from 20.11 except a fix for a broken app. Versions after 3.12.0 are a plan, not a promise. A later item takes the next free version when it ships, and only lead assigns them.
+
+All three after-launch features are computed on the phone from the existing records. They add no IndexedDB store or field, and nothing is sent to the server.
+
+Migration numbers: the held F-005 migration is `202611150001_rls_auth_uid_initplan.sql` (haimunia-app-demo PR #172). Every new migration uses a later version. `202611150002` is applied, so the next one is `202611150003` or later. Once a later migration is applied, F-005 is older than the newest applied migration, and `supabase db push` refuses an out-of-order file without `--include-all`. So before F-005 merges, rename it (it was never applied) to a version later than the newest migration on main. The usage-purge change and the delete-account migration may share one file, or go in order, one open migration branch at a time (sibling CLAUDE.md).
+
+### Platform decisions (owner, 2026-11-15)
+
+Also in STANDARD.md, "Platform decisions".
+- PD-1: no web push for now. WebKit bug 315804, owner report: in an iOS 26 installed PWA, an IndexedDB write never completes after a push subscribe. Lead could not open the bug (bugs.webkit.org is blocked in these sessions), so the source is the owner's report. Today's code has no push: `sw.js` has no push handler, and the club app makes no `PushManager.subscribe` call.
+- PD-2: never rely on persistent storage on iOS. Installing to the home screen is the only real protection, so the F-001 install flow and backup reminders stay a priority. privacy.html already says the browser may delete site data.
+
+### Capacity check (lead, 2026-11-15, read-only)
+
+Project `box-log`, eu-central-1, Postgres 17, free plan.
+- Database: 22 MB of 500 MB. Largest tables: `cron.job_run_details` 2.7 MB (pg_cron's run log, no purge, grows about 1 MB a week), `supabase_migrations` 1.5 MB, `edge_function_invocations` 0.7 MB; `workout_posts` 0.2 MB.
+- Connections: 15 open of 60.
+- Rows: 3 auth users, 3 memberships, 2 posts, 95 usage rows.
+- 200 members in one evening:
+  - Database size and connections are no risk.
+  - `join_circle` allows 10 tries an hour per user, not per club, so no risk.
+  - The club cap is 250 members (`circle_member_cap('club')`): enough for 200, with little headroom.
+  - Turnstile on the free plan has no request limit.
+  - **Risk:** the anonymous sign-in limit is per IP, and members at the gym share one IP. Run `set-auth-config` with `anon_limit = 300` before announcing (docs/LAUNCH.md step 6).
+  - The password sign-in limit (Supabase default, per IP) is not set by the workflow. Watch the auth logs on launch evening.
 
 ### Launch gates (lead, 2026-11-15; reserve duty starts 22.11)
 

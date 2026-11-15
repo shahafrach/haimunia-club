@@ -30,3 +30,13 @@ Every finding in FINDINGS.md cites one code from this list.
 | ID-1 | Credit line on about screen and README |
 
 Severity: critical (blocks launch), high, medium, low. Status: open, fixed, wontfix.
+
+## Platform decisions
+
+Standing rules for every app built from this standard. A change needs an owner decision recorded here and in FINDINGS.md.
+
+| ID | Decision | Why | Revisit when |
+|----|----------|-----|--------------|
+| PD-1 | No web push for now. No `PushManager.subscribe`, no push or notificationclick handler in `sw.js`. | WebKit bug 315804 (owner report 2026-11-15): in an iOS 26 installed PWA, an IndexedDB write never completes after a push subscribe. Members' logs live in IndexedDB (DATA-2). | WebKit closes 315804 and a real-iPhone check shows IndexedDB writes completing after a subscribe. |
+| PD-2 | Never rely on persistent storage on iOS. `navigator.storage.persist()` may still be requested, but no feature or text assumes it is granted. Installing to the home screen is the only real protection, so the install flow (F-001: banner, transfer code, first-launch import) stays a priority, together with backup reminders. | Safari can evict a site's storage regardless of `persist()`, and the home-screen app's storage is separate from Safari's. | Apple documents persistent storage for home-screen web apps, and a real-iPhone test confirms it. |
+
