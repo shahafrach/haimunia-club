@@ -59,12 +59,29 @@ No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 p
 | Version | Content | Repo | Status |
 |---------|---------|------|--------|
 | 3.8.1 | F-010 IndexedDB reopen | haimunia-club | shipped, tag rollback-3.8.1 |
-| 3.9.0 | Per-workout sharing (PR #12), F-015 | haimunia-club | live (9ba46bb), tag rollback-3.9.0 |
+| 3.9.0 | Per-workout sharing (PR #12), F-015 | haimunia-club | shipped, tag rollback-3.9.0 |
 | 3.10.0 | Self-serve delete account (PR #16), F-018, new privacy.html (G1) | haimunia-club | live (039aec7) |
 | (backend) | Usage purge 180 days, delete_my_account with aal2 (F-016) | haimunia-app-demo #173, migration 202611150002 | live, migration-status green |
-| after launch | F-005 RLS initplan (PR #172) | haimunia-app-demo | held |
+| 3.11.0 | Check-for-update button | haimunia-club | in progress (haimunia-fixes); before launch |
+| 3.12.0 | Anonymous client error reports, with the privacy.html line | haimunia-club + haimunia-app-demo migration `202611150003` or later | next prompt; before launch |
+| 3.13.0 | Log screen redesign | haimunia-club | waits for the owner's layout choice; ships before launch only if verified by 20.11, else first after launch |
+| 3.14.0 | Percentage chart from each lift's 1RM (50% to 95%), exercise screen | haimunia-club | after launch |
+| 3.15.0 | Personal weekly streak, no leaderboard | haimunia-club | after launch |
+| 3.16.0 | Monthly personal summary card (workouts, PRs, best lift) | haimunia-club | after launch |
+| (repo) | Standard template repo from haimunia-club | new repo (the owner creates it) | after launch, after 3.16.0 |
+| after launch | F-005 RLS initplan (PR #172) | haimunia-app-demo | held; rename to a version after the newest applied migration before merge |
 
-Migration numbers: the held F-005 migration is `202611150001_rls_auth_uid_initplan.sql` (haimunia-app-demo PR #172). Every new migration uses a later version, `202611150002` or above. Once a later migration is applied, F-005 is older than the newest applied migration, and `supabase db push` refuses an out-of-order file without `--include-all`. So before F-005 merges, rename it (it was never applied) to a version later than the newest migration on main. The usage-purge change and the delete-account migration may share one file, or go in order, one open migration branch at a time (sibling CLAUDE.md).
+Launch freeze: nothing ships to members from 20.11 except a fix for a broken app. Versions after 3.12.0 are a plan, not a promise. A later item takes the next free version when it ships, and only lead assigns them.
+
+All three after-launch features are computed on the phone from the existing records. They add no IndexedDB store or field, and nothing is sent to the server.
+
+Migration numbers: the held F-005 migration is `202611150001_rls_auth_uid_initplan.sql` (haimunia-app-demo PR #172). Every new migration uses a later version. `202611150002` is applied, so the next one is `202611150003` or later. Once a later migration is applied, F-005 is older than the newest applied migration, and `supabase db push` refuses an out-of-order file without `--include-all`. So before F-005 merges, rename it (it was never applied) to a version later than the newest migration on main. The usage-purge change and the delete-account migration may share one file, or go in order, one open migration branch at a time (sibling CLAUDE.md).
+
+### Platform decisions (owner, 2026-11-15)
+
+Also in STANDARD.md, "Platform decisions".
+- PD-1: no web push for now. WebKit bug 315804, owner report: in an iOS 26 installed PWA, an IndexedDB write never completes after a push subscribe. Lead could not open the bug (bugs.webkit.org is blocked in these sessions), so the source is the owner's report. Today's code has no push: `sw.js` has no push handler, and the club app makes no `PushManager.subscribe` call.
+- PD-2: never rely on persistent storage on iOS. Installing to the home screen is the only real protection, so the F-001 install flow and backup reminders stay a priority. privacy.html already says the browser may delete site data.
 
 ### Launch gates (lead, 2026-11-15; reserve duty starts 22.11)
 
