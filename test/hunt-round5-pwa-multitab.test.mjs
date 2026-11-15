@@ -40,8 +40,11 @@ test("a controller swap is recorded even when this tab did not ask for it", () =
 test("a banner in a tab whose controller already swapped reloads instead of hanging", () => {
   const at = appJs.indexOf("function applyUpdate()");
   const body = appJs.slice(at, appJs.indexOf("\n}", at));
-  assert.match(body, /if \(controllerAlreadySwapped\) \{ location\.reload\(\); return; \}/,
+  // Every update path reloads through reloadOnce() (one reload per page, update check included).
+  assert.match(body, /if \(controllerAlreadySwapped\) \{ reloadOnce\(\); return; \}/,
     "there is nothing left to hand-shake with, so it reloads directly");
+  const ro = appJs.slice(appJs.indexOf("function reloadOnce()"), appJs.indexOf("\n}", appJs.indexOf("function reloadOnce()")));
+  assert.match(ro, /location\.reload\(\)/, "reloadOnce() is a real reload");
   const swapAt = body.indexOf("controllerAlreadySwapped");
   const postAt = body.indexOf('postMessage({ type: "SKIP_WAITING" })');
   assert.ok(swapAt > -1 && postAt > -1 && swapAt < postAt,

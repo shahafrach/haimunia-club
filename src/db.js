@@ -499,8 +499,13 @@ function forgetDBConnection() {
   _dbPromise = null;
   if (p) p.then((db) => { try { db.close(); } catch (e) { /* already closed */ } }, () => {});
 }
+// How many db* calls are running right now (reads and writes). The update check (app.js
+// checkForUpdate) waits for 0 before it lets a new version reload the page, so a reload never cuts a
+// write short. Counting only; it changes nothing about the call itself.
+let dbCallsInFlight = 0;
+function dbIdle() { return dbCallsInFlight === 0; }
 function withReopen(fn) {
-  return async function () {
+  const reopening = async function () {
     try {
       return await fn.apply(this, arguments);
     } catch (e) {
@@ -513,6 +518,11 @@ function withReopen(fn) {
         throw e2;
       }
     }
+  };
+  return async function () {
+    dbCallsInFlight++;
+    try { return await reopening.apply(this, arguments); }
+    finally { dbCallsInFlight--; }
   };
 }
 dbGetSetting = withReopen(dbGetSetting); dbSetSetting = withReopen(dbSetSetting); dbClearSettings = withReopen(dbClearSettings);

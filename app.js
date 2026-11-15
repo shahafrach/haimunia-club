@@ -6140,6 +6140,7 @@ function renderSettingsBody() {
           </div>`}
       </div>
       <div class="footer-note" style="text-align:center; margin-top:2px;">© ${new Date().getFullYear()} Shahaf Rachmany · v${APP_VERSION}</div>
+      ${renderUpdateCheck()}
     </div>`;
 }
 
@@ -7580,6 +7581,14 @@ let controllerAlreadySwapped = false;
 // only reload-app's own call to applyUpdate() may apply it - no future
 // visibilitychange may, until a fresh offerUpdate() arrives.
 let updateBannerShowing = false;
+// Every update path reloads through here, so a page reloads at most once however many of them fire
+// (the banner, the controllerchange listener, the Settings check and its backstop).
+let appReloadStarted = false;
+function reloadOnce() {
+  if (appReloadStarted) return;
+  appReloadStarted = true;
+  location.reload();
+}
 function applyUpdate() {
   const worker = pendingWorker;
   pendingWorker = null; // guard against a second trigger firing before the reload lands
@@ -7588,12 +7597,12 @@ function applyUpdate() {
   // banner and clients.claim() swapped this one too - there is nothing left to
   // ask for and no second controllerchange coming. Reload straight away, which
   // is the whole of what the handshake would have achieved.
-  if (controllerAlreadySwapped) { location.reload(); return; }
+  if (controllerAlreadySwapped) { reloadOnce(); return; }
   if (worker) {
     swapRequested = true;
     try { worker.postMessage({ type: "SKIP_WAITING" }); return; } catch (e) { swapRequested = false; }
   }
-  location.reload();
+  reloadOnce();
 }
 // A new version becomes available mid-session fairly often here — the phone
 // screen locks between sets, which already fires visibilitychange, so most
@@ -7607,6 +7616,113 @@ function offerUpdate(worker) {
   pendingWorker = worker;
   if (document.visibilityState === "visible") { updateBannerShowing = true; showUpdateBanner(); }
   else applyUpdate();
+}
+
+// ---------- Settings: "בדיקת עדכון" ----------
+// The member asks for the check. It uses the handshake above (pendingWorker + applyUpdate():
+// SKIP_WAITING -> controllerchange -> reload), never a second one. It never touches the training log:
+// before the swap it releases a held undo write and waits until no IndexedDB call and no save is
+// running, and it reloads at most once (reloadOnce). Works the same in the installed app and a tab.
+let swRegistration = null; // set by setUpServiceWorker()
+let updateCheck = { busy: false, text: "", tone: "" }; // tone: "" | "ok" | "warn"
+const UPDATE_CHECK_TEXT = {
+  offline: "אין חיבור כרגע. נסו שוב כשיש רשת.",
+  error: "הבדיקה לא הצליחה. נסו שוב בעוד רגע.",
+  unsupported: "הדפדפן הזה לא מאפשר לבדוק עדכונים מכאן.",
+  busySave: "שמירה עדיין רצה. העדכון ייכנס בפתיחה הבאה של האפליקציה.",
+};
+const UPDATE_SAVE_WAIT_MS = 20000;
+const UPDATE_RELOAD_BACKSTOP_MS = 4000;
+function setUpdateCheck(busy, text, tone) { updateCheck = { busy, text, tone: tone || "" }; render(); }
+function updateCheckLooksOffline(e) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  const msg = String((e && e.message) || "");
+  if (/\b(404|403|500|bad HTTP response)\b/i.test(msg)) return false; // the server answered: not "offline"
+  return !!e && (e.name === "NetworkError" || (e.name === "TypeError" && /fetch|network|load failed/i.test(msg)));
+}
+// Resolves once the new worker has installed (it may already be activating: sw.js still calls
+// skipWaiting() on install). Rejects if it fails to install.
+function waitForWorkerInstalled(worker, ms = 30000) {
+  return new Promise((resolve, reject) => {
+    const done = () => worker.state !== "installing" && worker.state !== "parsed";
+    if (worker.state === "redundant") { reject(new Error("worker redundant")); return; }
+    if (done()) { resolve(); return; }
+    const t = setTimeout(() => { worker.removeEventListener("statechange", on); reject(new Error("install timeout")); }, ms);
+    function on() {
+      if (worker.state === "redundant") { clearTimeout(t); worker.removeEventListener("statechange", on); reject(new Error("worker redundant")); }
+      else if (done()) { clearTimeout(t); worker.removeEventListener("statechange", on); resolve(); }
+    }
+    worker.addEventListener("statechange", on);
+  });
+}
+// The new worker's SW_VERSION (sw.js answers GET_VERSION), or "" when it does not answer in time.
+function askWorkerVersion(worker, ms = 2000) {
+  return new Promise((resolve) => {
+    let settled = false, ch = null;
+    const finish = (v) => {
+      if (settled) return;
+      settled = true;
+      try { if (ch) ch.port1.close(); } catch (e) { /* already closed */ }
+      resolve(v);
+    };
+    setTimeout(() => finish(""), ms);
+    try {
+      ch = new MessageChannel();
+      ch.port1.onmessage = (ev) => finish(ev.data && typeof ev.data.version === "string" ? ev.data.version.slice(0, 20) : "");
+      worker.postMessage({ type: "GET_VERSION" }, [ch.port2]);
+    } catch (e) { finish(""); }
+  });
+}
+function savesIdle() {
+  return !savingSet && !savingWod && (typeof dbIdle !== "function" || dbIdle());
+}
+async function waitForSavesToFinish(maxMs = UPDATE_SAVE_WAIT_MS) {
+  const until = Date.now() + maxMs;
+  // Two quiet looks in a row, so a save that starts right after one finishes is not cut short.
+  let quiet = 0;
+  while (Date.now() < until) {
+    quiet = savesIdle() ? quiet + 1 : 0;
+    if (quiet >= 2) return true;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return false;
+}
+async function checkForUpdate() {
+  if (updateCheck.busy || appReloadStarted) return;
+  if (!("serviceWorker" in navigator)) { setUpdateCheck(false, UPDATE_CHECK_TEXT.unsupported, "warn"); return; }
+  if (navigator.onLine === false) { setUpdateCheck(false, UPDATE_CHECK_TEXT.offline, "warn"); return; }
+  setUpdateCheck(true, `בודקים… הגרסה המותקנת ${APP_VERSION}`, "");
+  let reg;
+  try {
+    reg = swRegistration || (await navigator.serviceWorker.getRegistration());
+    if (!reg) throw new Error("no service worker registration");
+    await reg.update();
+  } catch (e) {
+    setUpdateCheck(false, updateCheckLooksOffline(e) ? UPDATE_CHECK_TEXT.offline : UPDATE_CHECK_TEXT.error, "warn");
+    return;
+  }
+  const worker = reg.installing || reg.waiting;
+  if (!worker) { setUpdateCheck(false, `האפליקציה מעודכנת (גרסה ${APP_VERSION})`, "ok"); return; }
+  try { await waitForWorkerInstalled(worker); }
+  catch (e) { setUpdateCheck(false, UPDATE_CHECK_TEXT.error, "warn"); return; }
+  const version = await askWorkerVersion(worker);
+  setUpdateCheck(true, version ? `יש גרסה חדשה ${version}. מעדכנים…` : "יש גרסה חדשה. מעדכנים…", "ok");
+  // A delete still inside its undo window is written now, not dropped by the reload.
+  if (settleToast(false)) render();
+  if (!(await waitForSavesToFinish())) { setUpdateCheck(false, UPDATE_CHECK_TEXT.busySave, "warn"); return; }
+  pendingWorker = worker;
+  updateBannerShowing = false;
+  applyUpdate();
+  // sw.js still calls skipWaiting() on install, so the new worker may have taken over before we asked:
+  // then no controllerchange is coming for this request. Reload once anyway (reloadOnce never repeats).
+  setTimeout(reloadOnce, UPDATE_RELOAD_BACKSTOP_MS);
+}
+function renderUpdateCheck() {
+  const color = updateCheck.tone === "warn" ? "var(--danger-text)" : "var(--steel)";
+  return `<div class="flex items-center justify-center gap-10" style="margin-top:6px;">
+      <button class="chip-btn" data-action="check-update"${updateCheck.busy ? " disabled" : ""}>${updateCheck.busy ? "בודקים…" : "בדיקת עדכון"}</button>
+    </div>
+    <div id="updateCheckStatus" class="footer-note" role="status" aria-live="polite" style="text-align:center; margin-top:4px; color:${color};">${esc(updateCheck.text)}</div>`;
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && pendingWorker && !updateBannerShowing) applyUpdate();
@@ -7749,6 +7865,7 @@ document.addEventListener("click", (e) => {
   if (!el) return;
   const action = el.dataset.action;
   if (action === "reload-app") { applyUpdate(); }
+  else if (action === "check-update") { checkForUpdate(); }
   else if (action === "install-app") { installApp(); }
   else if (action === "dismiss-install-hint") { dismissInstallBanner(); }
   else if (action === "dismiss-ios-install-hint") { dismissIOSInstallBanner(); }
@@ -8349,6 +8466,7 @@ function setUpServiceWorker() {
     // the banner/next visibility-regain otherwise. That keeps the running
     // page and its cached assets on the same version until it's safe to swap.
     navigator.serviceWorker.register("./sw.js").then((reg) => {
+      swRegistration = reg;
       if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
       reg.addEventListener("updatefound", () => {
         const nw = reg.installing;
@@ -8401,7 +8519,7 @@ function setUpServiceWorker() {
       if (!swapRequested) return; // e.g. the first-ever clients.claim() — nothing to reload for
       if (reloading) return;
       reloading = true;
-      location.reload();
+      reloadOnce();
     });
   }
 }

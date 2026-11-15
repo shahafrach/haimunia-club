@@ -132,6 +132,8 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("message", (e) => {
   if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
+  // Settings → "בדיקת עדכון" asks a new worker which version it is, to name it before the swap.
+  if (e.data && e.data.type === "GET_VERSION" && e.ports && e.ports[0]) e.ports[0].postMessage({ version: SW_VERSION });
 });
 
 function isPrecached(url) {
