@@ -8,6 +8,10 @@
   הסט הראשון עם משקל.", and no chart.
 - Computed on the phone from logged sets; no new store, field or setting. At the 2.5 kg increment on a
   20 or 15 kg bar the chart and the chips give the same weights.
+- F-024: in an iPhone Safari tab (390×664) the two-step install banner covered the log controls. On the log
+  screen it is now one line ("מתקינים במסך הבית? קודם מגבים.", "איך מתקינים?", close); once an exercise is
+  picked it steps aside and a link under the controls opens the full card. Other tabs show the full card,
+  and it still shows on the first visit (F-001).
 
 # 3.14.0 — Small fixes: first-launch import, feedback screen and refusals — 2026-11-16
 

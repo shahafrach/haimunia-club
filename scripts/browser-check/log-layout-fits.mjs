@@ -5,12 +5,15 @@
 //   - after picking the exercise: the steppers (weight, reps, sets), the plate visualizer and the save
 //     button are on screen and are what document.elementFromPoint() hits (nothing covers them), at scrollY 0;
 //   - after a save: the same, plus "עוד סט זהה"; one tap on it logs the same set again;
-//   - a PR still shows its card, and after it the club share question (connected mode, fake client).
+//   - a PR still shows its card, and after it the club share question (connected mode, fake client);
+//   - F-024: iPhone 13 in a Safari tab (390×664) with the iOS install banner showing: the same controls are on
+//     screen and hit. Before picking the banner is one line; with an exercise picked it steps aside and a link
+//     under the controls opens the full two steps.
 //
 // Usage:
 //   node log-layout-fits.mjs                  # local working tree
 //   TARGET_URL=<url> node log-layout-fits.mjs # a deployed site
-import { chromium } from "playwright";
+import { chromium, devices } from "playwright";
 import { resolveTarget } from "./lib/target.mjs";
 import { consoleErrorCollector, dismissWelcomeModal } from "./lib/actions.mjs";
 import { installMockCloud } from "./lib/mockCloud.mjs";
@@ -52,8 +55,8 @@ function fakeClubClient() {
   window.supabase = { createClient: () => client };
 }
 
-async function openWithHistory(size, { connected = false } = {}) {
-  const ctx = await browser.newContext({ viewport: size, hasTouch: true, isMobile: true });
+async function openWithHistory(size, { connected = false, device = null } = {}) {
+  const ctx = await browser.newContext(device ? { ...device } : { viewport: size, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   const errors = await consoleErrorCollector(page);
   await installMockCloud(page);
@@ -129,6 +132,40 @@ for (const [w, h, name] of [[390, 844, "390x844"], [360, 780, "360x780"]]) {
   check(`${name}: one tap on "עוד סט זהה" logs the same set again`, today.join(",") === "100x5x1,100x5x1", today.join(","));
   check(`${name}: no horizontal scroll`, await page.evaluate(() => document.scrollingElement.scrollWidth <= innerWidth));
   check(`${name}: no console errors`, errors.length === 0, errors.join(" | "));
+  await ctx.close();
+}
+
+// F-024: iPhone 13 in a Safari tab (390×664), first visit, so the two-step iOS install banner is showing.
+// The banner must never sit over the log controls: they stay on screen and are what a tap hits.
+{
+  const { ctx, page, errors } = await openWithHistory(null, { device: devices["iPhone 13"] });
+  const shown = await page.evaluate(() => getComputedStyle(document.getElementById("iosInstallBanner")).display !== "none");
+  check("iPhone 13 Safari tab: the iOS install banner is showing", shown);
+  report("iPhone 13 Safari tab, banner showing, before picking: the pick button is on screen and hit", await reachable(page, { "pick an exercise": ".pick-hero" }));
+  const line = await page.evaluate(() => { const b = document.getElementById("iosInstallBanner"); return { compact: b.classList.contains("install-dock--compact"), how: !!b.querySelector(".install-dock-line [data-action='ios-install-expand']"), dismiss: !!b.querySelector(".install-dock-line [data-action='dismiss-ios-install-hint']") }; });
+  check("iPhone 13: before picking, the banner is one line with 'איך מתקינים?' and its close button", line.compact && line.how && line.dismiss, JSON.stringify(line));
+  await pickBackSquat(page);
+  const vp = await page.evaluate(() => `${innerWidth}x${innerHeight}`);
+  report(`iPhone 13 Safari tab (${vp}), banner showing: the steppers, plate visualizer and save are on screen and hit, no scroll`, await reachable(page, CONTROLS));
+  const tucked = await page.evaluate(() => ({
+    dockHidden: getComputedStyle(document.getElementById("iosInstallBanner")).display === "none",
+    link: !!document.querySelector("#content #iosInstallInline [data-action='ios-install-expand']"),
+  }));
+  check("iPhone 13: with an exercise picked the dock steps aside and a link under the controls offers it", tucked.dockHidden && tucked.link, JSON.stringify(tucked));
+  // Tapping the link shows the full two steps, both buttons included.
+  await page.locator("#iosInstallInline [data-action='ios-install-expand']").click();
+  const full = await page.evaluate(() => {
+    const b = document.getElementById("iosInstallBanner");
+    const vis = (sel) => { const e = b.querySelector(sel); return !!e && e.getClientRects().length > 0; };
+    return { steps: vis("#iosInstallSteps"), transfer: vis("[data-action='open-transfer-create']"), backup: vis("[data-action='ios-install-backup']") };
+  });
+  check("iPhone 13: 'איך מתקינים?' opens the full two steps with both buttons", full.steps && full.transfer && full.backup, JSON.stringify(full));
+  // On another tab the full card shows as before (F-001's first-visit message is not lost).
+  await page.click("#tabHistoryBtn");
+  await page.waitForTimeout(200);
+  check("iPhone 13: on the progress tab the full card shows", await page.evaluate(() => !document.getElementById("iosInstallBanner").classList.contains("install-dock--compact")));
+  check("iPhone 13: no horizontal scroll", await page.evaluate(() => document.scrollingElement.scrollWidth <= innerWidth));
+  check("iPhone 13: no console errors", errors.length === 0, errors.join(" | "));
   await ctx.close();
 }
 

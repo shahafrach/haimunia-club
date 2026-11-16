@@ -1088,6 +1088,17 @@
   body:has(#bottomNavWrap .install-dock[style*="block"]) #app{
     padding-bottom: calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve) + var(--install-dock-reserve));
   }
+  /* F-024 (3.15.0): the one-line form of the iOS dock, used while an exercise is picked on the log screen.
+     On an iPhone 13 Safari tab (390x664) the full two-step card covered the steppers and the plate picture. */
+  .install-dock-line{ display:none; align-items:center; gap:8px; }
+  .install-dock--compact .install-dock-line{ display:flex; }
+  .install-dock--compact .install-dock-full{ display:none; }
+  .install-dock--compact{ padding-top:6px; }
+  .install-dock--compact .install-dock-card{ padding:6px 10px; border-radius:14px; }
+  .install-dock--tucked{ display:none !important; }
+  body:has(#bottomNavWrap .install-dock--compact[style*="block"]) #app{
+    padding-bottom: calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve) + 70px);
+  }
   /* Icon-only buttons (a dialog's close x, the dock's dismiss) carry no
      text to give them a hit area, and were rendering 28x31 / 38x41 CSS px.
      WCAG 2.2 AA 2.5.8 asks 24x24; this app's own tap-target floor is 44x44
@@ -3382,6 +3393,16 @@
        for the same reason. -->
   <div id="iosInstallBanner" class="install-dock" role="status" style="display:none;">
     <div class="install-dock-card">
+      <!-- F-024 (3.15.0): on the log screen the dock is this one line, so it never sits over the log controls
+           (app.js syncIOSInstallDock). "איך מתקינים?" opens the full two steps below. -->
+      <div class="install-dock-line">
+        <span style="flex:1; min-width:0; font-weight:700; font-size:13.5px; color:var(--chalk);">מתקינים במסך הבית? קודם מגבים.</span>
+        <button data-action="ios-install-expand" class="chip-btn" style="min-height:44px; flex-shrink:0;">איך מתקינים?</button>
+        <button data-action="dismiss-ios-install-hint" class="icon-btn" aria-label="סגירה" style="color:var(--steel);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="install-dock-full">
       <div class="flex items-center gap-10" style="margin-bottom:12px;">
         <div style="width:52px; height:52px; border-radius:16px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; box-shadow:var(--shadow-card);">
           <img src="./assets/mark.png" alt="" style="width:30px; height:auto;" />
@@ -3427,6 +3448,7 @@
       <div class="brand-stripe" style="height:4px; margin-bottom:12px;"></div>
       <div class="flex items-center gap-10">
         <button data-action="dismiss-ios-install-hint" class="save-btn" style="flex:1; max-width:none; font-family:inherit; font-weight:800; font-size:15px; padding:12px 0; box-shadow:none;">הבנתי</button>
+      </div>
       </div>
     </div>
   </div>
