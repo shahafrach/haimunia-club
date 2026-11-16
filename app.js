@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.14.0";
+const APP_VERSION = "3.15.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -659,8 +659,28 @@ function recentEntriesFor(id, days = 14, cap = 5) {
 // smallest common plate pair is 1.25 kg a side. An unrounded "77.3 ק\"ג" is a
 // number nobody can load, and rounding at the point of display keeps the
 // arithmetic honest above it.
-const PCT_STEPS = [95, 90, 85, 80, 75, 70, 65, 60];
+//
+// 3.15.0 (owner's post-launch list): the table is a percentage CHART, 95% down
+// to 50%, and each row is a weight that can actually be loaded on the member's
+// bar (loadableKg) with the plates for one side (calcPlates, the same plate
+// set the bar picture uses). A non-barbell lift gets the 2.5 kg rounding and
+// no plates. Computed here from logged sets; nothing is stored.
+const PCT_STEPS = [95, 90, 85, 80, 75, 70, 65, 60, 55, 50];
 function roundToPlate(kg) { return Math.round(kg / 2.5) * 2.5; }
+// The nearest total a barbell lift can be loaded to: the bar, plus a whole
+// number of 1.25 kg pairs. Never under the empty bar.
+function loadableKg(kg, barbell) {
+  if (typeof kg !== "number" || !isFinite(kg) || kg <= 0) return 0;
+  if (!barbell) return roundToPlate(kg);
+  if (kg <= barWeight) return barWeight;
+  return Math.round((barWeight + roundToPlate(kg - barWeight)) * 100) / 100;
+}
+function pctChartRows(est, barbell) {
+  return PCT_STEPS.map((pct) => {
+    const kg = loadableKg(est * pct / 100, barbell);
+    return { pct, kg, plates: barbell ? calcPlates(kg).map((p) => p.kg) : null };
+  });
+}
 function formatPlateKg(kg) { return Number.isInteger(kg) ? String(kg) : kg.toFixed(1); }
 
 // ---- The percentage CHIPS, gated on club_features.strength_percentages ----
@@ -673,19 +693,15 @@ function formatPlateKg(kg) { return Number.isInteger(kg) ? String(kg) : kg.toFix
 // surfaces on one screen, disagreeing about their rounding, is exactly the
 // drift this codebase is prone to.
 //
-// STRENGTH_PCT_CHIPS is PCT_STEPS' twin and deliberately a superset of it:
-// the same 5% ladder, carried down to 50%, because a chip row can hold ten
-// options where the collapsed table was a list to read. Descending for the
-// reason PCT_STEPS is descending - the heaviest number is the one being
-// planned around, so it is read first.
+// STRENGTH_PCT_CHIPS is PCT_STEPS' twin: the same 5% ladder, 95 down to 50
+// (since 3.15.0 PCT_STEPS goes to 50 too). Descending because the heaviest
+// number is the one being planned around, so it is read first.
 //
-// PCT_STEPS and roundToPlate() are left exactly as they are, and that is the
-// deliberate half of the drift: they now serve ONLY the pre-key table, where
-// "rounded to 2.5 kg, the smallest jump a barbell can hold" is the whole
-// argument and there is no member setting to respect. When the key is on, the
-// member has answered that question themselves and roundToIncrement() takes
-// their answer. Both are reachable, neither is dead, and when the key is on
-// club-wide the table and its rounding can be retired together.
+// The two round differently ON PURPOSE. A chip fills the weight stepper at the
+// member's own increment (roundToIncrement, 1, 2 or 2.5 kg, for microplates).
+// The chart under the chips (renderPctTable) says what to load: the nearest
+// total the bar and the plate set can make (loadableKg) and the plates for a
+// side. With a 20 kg or 15 kg bar and the 2.5 kg increment they agree exactly.
 const STRENGTH_PCT_CHIPS = [95, 90, 85, 80, 75, 70, 65, 60, 55, 50];
 // Nearest multiple of `inc`, float dust rounded out of the answer. 82.5 * 0.7
 // is 57.750000000000004 in IEEE 754 and the naive Math.round(x / inc) * inc
@@ -4523,22 +4539,31 @@ const ICONS = {
 // to show one (`est && !isDuration` - no estimate and no percentages, a hold
 // has no 1RM to take a percentage of); these two decide what it looks like.
 //
-// The collapsed table is what shipped before club_features.strength_percentages
-// existed and is what every member still sees until their club turns the key
-// on. Untouched, deliberately, down to its 2.5 kg rounding note.
-function renderPctTable(est) {
+// 3.15.0: the collapsed table is the percentage CHART, shown in this edition
+// under the chips (strengthPercentagesOn() is always true here). The chips
+// fill the stepper at the member's own increment; the chart answers a
+// different question, what to put on the bar: the nearest weight the bar and
+// the app's plate set can make, and the plates for one side.
+function renderPctTable(est, barbell) {
+  const rows = pctChartRows(est, barbell);
   return `
     <div style="margin-bottom:12px;">
       <button data-action="toggle-pct-table" class="movement-btn ${pctTableExpanded ? "active" : ""}" aria-expanded="${pctTableExpanded}" style="width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-        <span>אחוזים לאימון הבא</span>
+        <span>טבלת אחוזים ופלטות</span>
         <span style="display:inline-flex; transition:transform .2s; transform:rotate(${pctTableExpanded ? "90deg" : "180deg"});">${ICONS.chevron}</span>
       </button>
       ${pctTableExpanded ? `<div class="chart-card" style="margin-top:8px;">
         <div class="footer-note" style="margin:0 0 10px;">מחושב מ־1RM משוער (${est} ק״ג) — הערכה מהסטים שרשמתם, לא מקס שנבדק. נקודת פתיחה להתאמה.</div>
         <div class="log-list">
-          ${PCT_STEPS.map((pct) => `<div class="log-row"><span style="color:var(--steel); font-weight:700;">${pct}%</span><span class="mono" style="font-weight:700; color:var(--brass);">${bidiUnit(`${formatPlateKg(roundToPlate(est * pct / 100))} ק״ג`)}</span></div>`).join("")}
+          ${rows.map((r) => `<div class="log-row pct-chart-row" data-pct="${r.pct}" data-kg="${esc(String(r.kg))}" style="align-items:flex-start; gap:10px;">
+            <span style="color:var(--steel); font-weight:700; flex-shrink:0;">${r.pct}%</span>
+            <span style="display:flex; flex-direction:column; align-items:flex-end; min-width:0; text-align:left;">
+              <span class="mono" style="font-weight:700; color:var(--brass);">${bidiUnit(`${formatPlateKg(r.kg)} ק״ג`)}</span>
+              ${r.plates ? `<span class="pct-plates" style="color:var(--steel); font-size:12px; font-weight:600; overflow-wrap:anywhere;">${r.plates.length ? `לכל צד: <span class="mono" dir="ltr">${r.plates.map((kg) => String(kg)).join(" + ")}</span>` : "מוט ריק"}</span>` : ""}
+            </span>
+          </div>`).join("")}
         </div>
-        <div class="footer-note" style="margin:10px 0 0;">מעוגל ל־2.5 ק״ג — הקפיצה הקטנה ביותר שאפשר להעמיס על המוט.</div>
+        <div class="footer-note" style="margin:10px 0 0;">${barbell ? `מעוגל למשקל שאפשר להעמיס: מוט ${barWeight} ק״ג ועוד זוגות של 1.25 ק״ג לפחות.` : "מעוגל ל־2.5 ק״ג."}</div>
       </div>` : ""}
     </div>`;
 }
@@ -5061,7 +5086,8 @@ function renderLogTab() {
       </button>` : ""}
     </div>` : ""}
 
-    ${est && !isDuration ? `${strengthPercentagesOn() ? renderStrengthPctChips(est) : renderPctTable(est)}` : ""}
+    ${est && !isDuration ? `${strengthPercentagesOn() ? renderStrengthPctChips(est) : ""}${renderPctTable(est, isBarbellMovement(selectedId))}` : ""}
+    ${!est && !isDuration ? `<div class="footer-note" id="pctNoEst" style="margin:0 0 12px;">אין עדיין 1RM משוער לתרגיל הזה. טבלת האחוזים תופיע אחרי הסט הראשון עם משקל.</div>` : ""}
 
     ${(() => {
       const recent = recentEntriesFor(selectedId);
