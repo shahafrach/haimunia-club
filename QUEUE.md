@@ -10,7 +10,6 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 - Merge demo #179 (F-021, claude-review guard) once its CI is all green. Workflow only.
 - After #21: 3.14.0 (#26) once fixes rebases it; create rollback-3.13.0 first.
 - Create the missing tag rollback-3.10.0 at ccd1946.
-- Decide F-007 (CSP inline styles): (a) accept as low, recommended, or (b) a refactor that removes every inline style.
 - Live Turnstile check on box-log sign-up from a computer (closes F-008).
 - Merge docs PR #24.
 - G4 approval; C4-2 on a real iPhone; for Q-20, an empty template repository.
@@ -49,6 +48,8 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-22 | release | doing | first real report | After 3.12.0 is live: confirm which IP headers the database receives for client_error_report and feedback_submit (per-IP limits, see backend #178) | – | Added by the advisor 2026-11-15. If no usable IP header arrives, the per-IP limit is a no-op and only the global and per-device caps hold: record a finding with severity and a fix plan. Use one test call each, and note the test rows so the purge or a manual delete removes them. **release:** renumbered from Q-14, which clashed with the F-005 row; text unchanged. Note: it writes one test row in each production table; done only because the owner asked for it here. **release 2026-11-15, part 1, read-only, no test rows:** 3.12.0 is live (sw.js 3.12.0). The API gateway logs show every live request in the last 24 h arriving with `cf-connecting-ip` and `x-forwarded-for`. The database already reads request.headers (89 usage rows have app=club, which is set from the Origin header). No error report or feedback row exists yet, so no rate counter yet. Part 2: on the first real report, check whether the counter's ip_hash equals the hash of 'unknown' (no IP header reaches the database) or not (one does). The test calls are not needed while real traffic can answer this; this session cannot reach the API host anyway. **release 2026-11-16:** part 2 not run: the Supabase connector failed to connect this session (503). Retry at the next check-in. **release 2026-11-16 06:20:** retry failed: the Supabase connector answers "Failed to resolve project for permission check". Retry at the next check-in. |
 
 ## Owner decisions (from Shahaf)
+- 2026-11-16: F-007 (CSP style-src 'unsafe-inline'): option (a), accept as low. release: mark it accepted in FINDINGS.md with the reason (no script injection path, styles only), so it is not a launch gate.
+- 2026-11-16: F-005 (demo #172) merged at 06:23 UTC after a green backup-database run.
 - 2026-11-15 (later): **Launch is postponed. No date.** Quality first, launch after. The 22.11 launch and the 20.11 freeze are cancelled. Every "before launch only if verified by 20.11" condition is dropped: everything planned ships when it passes verification.
   Launch happens only when all gates are green: C4-2 on a real iPhone, G4 approved, the Cursor final pass (or release's full real-Chromium pass), Q-12 clean, and no open critical, high or medium finding. release keeps this gate list current in FINDINGS.md.
   After 3.12.0 and 3.13.0, release plans the next quality work from FINDINGS.md and the post-launch list (monthly summary, weekly streak, % chart, F-019, F-005 renumbered, template repo) and adds the rows itself.
