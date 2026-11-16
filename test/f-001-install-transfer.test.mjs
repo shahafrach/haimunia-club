@@ -213,3 +213,23 @@ test("'start fresh' opens the welcome sheet and is not asked again; a log or a b
   await withLog.importBackupData(backup);
   assert.equal(withLog.maybeOfferFirstImport(), false, "a device with entries is not offered the import");
 });
+
+test("F-019: body weight, measurements, custom WODs or movements alone also count as a log: no import offer", async () => {
+  const cases = {
+    "body weight": { bodyweightEntries: [{ id: "bw-1", date: "2026-11-01", weight: 80, ts: 1793000000000 }] },
+    measurements: { measureTypes: [{ id: "mt-1", name: "מותניים" }], measureEntries: [{ id: "me-1", typeId: "mt-1", date: "2026-11-01", value: 85, ts: 1793000000000 }] },
+    "a custom WOD": { customWods: [{ id: "customwod-1", name: "שלי", category: "Custom", scoreType: "time", desc: "", timeCapSeconds: 600 }] },
+    "a custom movement": { customMovements: [{ id: "custom-1", name: "Sled Push", category: "Other" }] },
+  };
+  for (const [label, data] of Object.entries(cases)) {
+    const { window } = await boot({ installed: true });
+    assert.equal(window.maybeOfferFirstImport(), true, "an empty device is offered the import");
+    window.closeFirstImport(false);
+    assert.equal(await window.importBackupData({ app: "box-log", version: 1, ...data }), true, label + " imported");
+    assert.equal(window.totalLoggedEntries(), 0, "no lifts or WOD results");
+    assert.equal(window.maybeOfferFirstImport(), false, `a device with only ${label} is not offered the import`);
+    assert.equal(window.hasAnyMemberData(), true);
+  }
+  const { window } = await boot({ installed: true });
+  assert.equal(window.hasAnyMemberData(), false, "and an empty device still has none");
+});

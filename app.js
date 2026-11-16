@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.13.0";
+const APP_VERSION = "3.14.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -3019,8 +3019,14 @@ function openWelcomeModal(editing) {
 // "Start fresh" is remembered; the other two are not, so a member who backs out with nothing
 // imported is offered it again next time.
 const FIRST_IMPORT_KEY = "haimunia:firstImportAnswered";
+// F-019: any data at all, not only lifts and WODs. A member who logs only body weight or measurements, or
+// has only built custom WODs or movements, has a log too and must not be offered the import again.
+function hasAnyMemberData() {
+  return totalLoggedEntries() > 0 || bodyweightEntries.length > 0 || measureEntries.length > 0 || measureTypes.length > 0
+    || customWods.length > 0 || customMovements.length > 0;
+}
 function shouldOfferFirstImport() {
-  if (!isStandalone() || totalLoggedEntries() !== 0) return false;
+  if (!isStandalone() || hasAnyMemberData()) return false;
   try { return localStorage.getItem(FIRST_IMPORT_KEY) !== "1"; } catch (e) { return true; }
 }
 function maybeOfferFirstImport() {
@@ -6247,8 +6253,8 @@ function renderSettingsBody() {
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
         </button>
         <!-- 3.12.0: the feedback box (src/feedback.js). Anonymous: the typed text, the screen, the version
-             and the device type; no name or username. -->
-        <button class="exercise-row" data-feedback-open="" style="margin:8px 0 0;">
+             and the device type; no name or username. Opened from here it is about Settings (3.14.0). -->
+        <button class="exercise-row" data-feedback-open="settings" style="margin:8px 0 0;">
           <div style="text-align:right;">
             <div style="font-weight:700; font-size:13.5px;">שליחת משוב</div>
             <div style="color:var(--steel); font-size:12px; margin-top:2px;">מה לא עובד טוב? בלי שם, בכמה מילים</div>

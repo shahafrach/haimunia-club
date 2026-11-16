@@ -191,6 +191,7 @@
     empty: "אין עדיין רישומים להעביר. אפשר להתקין ולהתחיל לרשום ישר באפליקציה המותקנת.",
   };
   function hasData() {
+    if (typeof hasAnyMemberData === "function") return hasAnyMemberData(); // app.js, F-019: the same rule as the first-launch sheet
     var n = typeof totalLoggedEntries === "function" ? totalLoggedEntries() : 1;
     var bw = typeof bodyweightEntries !== "undefined" && bodyweightEntries ? bodyweightEntries.length : 0;
     var me = typeof measureEntries !== "undefined" && measureEntries ? measureEntries.length : 0;
