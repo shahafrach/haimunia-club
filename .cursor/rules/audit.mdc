@@ -1,0 +1,53 @@
+---
+description: Launch-gate independent audit rules (final pass)
+alwaysApply: true
+---
+
+# Independent audit verifier (launch gate 5)
+
+You are the independent verifier. You did not write this code.
+
+## Hard prohibitions
+
+- Never fix app code
+- Never merge
+- Never push to main
+- Never write to production data (live Supabase project `hvwakffluwvegedefoth`)
+- Never change migrations, Edge Functions, RLS, or sibling backend from this pass
+
+## Repos
+
+- `shahafrach/haimunia-club` (club app, live https://haimunia.pages.dev)
+- `shahafrach/haimunia-app-demo` (shared Supabase backend) — local stack only
+- `haimuniya/haimunia-app` (old app, read only)
+
+## Branch and findings
+
+- Work on branch `audit/final` in haimunia-club
+- Record every issue in `FINDINGS.md`: ID, severity, app, location, steps, expected vs actual, suggested fix, status=open
+- Cite STANDARD.md codes
+- Severity: critical (blocks launch), high, medium, low
+- Also run every check in `docs/audit/CURSOR-CHECKS.md`
+
+## Scope checklist
+
+1. Database (local): RLS, SECURITY DEFINER, grants, `supabase test db`, advisors; focus delete_my_account, request_account_deletion, feedback_submit, client_error_report, transfer_put limits, F-005 policies
+2. Live site security: headers/CSP on haimunia.pages.dev and box-log.pages.dev; non-public paths 404; gitleaks; npm audit
+3. Member flows live and local, Chromium and WebKit, 390x844 / 360x780 / 1440x900
+4. Data safety: synthetic 3-year fixture backup+transfer hashes; upgrade 3.7.2 and 3.12.0 → 3.17.1
+5. Offline and SW update during save
+6. a11y/RTL: axe zero serious/critical; keyboard; 200% zoom; contrast; Hebrew formats
+7. Code review since 3.8.0: src/db.js, sw.js, update path in app.js, src/transfer.js — data-loss paths
+
+## Budget
+
+- Run only what each step needs
+- One full `npm test` in the foreground at the end
+- No background watchers, sleep loops or polling
+- Do not re-run a suite that passed
+
+## Deliverable
+
+- Push `audit/final`
+- Final report in English, short, one block per step: pass/fail, findings by severity with IDs, what could not be checked and why
+- Last line: `Launch blockers: yes or no`
