@@ -30,8 +30,48 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-022 | lead (Q-12 CI sweep) | SEC-6 | low | wontfix while the old app is frozen | haimuniya/haimunia-app `test.yml` uses `actions/checkout@v4` and `actions/setup-node@v4` by tag, not by SHA. It holds no secrets and runs with `contents: read`, so the exposure is a compromised tag running tests. | old app `.github/workflows/test.yml:15-16` | none |
 | F-023 | owner (advisor) / lead | OPS | medium | open: owner's set-vault-secrets run (2026-11-16 13:20) did not fix it, the 401s continued; the real fix is QUEUE Q-26 (a dedicated cron secret) | scheduled-job-alert has failed on every run since about 2026-11-13, and it is right. job_health_state lists `edge: notif_push_send` and `edge: purge_abandoned_profiles`. In the last 24 h both Edge Functions answered 401 `{"error":"unauthorized"}` to every cron call (480/480 and 1/1): the Vault secret `edge_functions_service_role_key` that `cron_invoke_edge_function()` sends no longer equals the functions' env `SUPABASE_SERVICE_ROLE_KEY`. Effect: abandoned sign-ups are not purged (a privacy promise), and BOX-LOG push sends fail (the club app has no push). The operator hint points at `scheduled_job_health()`, which cannot see Edge Function answers (Q-24). | read-only SQL 2026-11-16 on job_health_state, edge_function_invocations, net._http_response; sibling `202609230008`, `supabase/functions/{notif_push_send,purge_abandoned_profiles}/index.ts` | Q-23 |
 | F-024 | lead (Q-21 live pass) | UX | low | fix verified: club #31 a08921e (3.17.1; iPhone 13 Safari tab with the banner: every log control reachable; 514/0); closes when #31 ships | In the iPhone Safari tab (iPhone 13, 390×664), the two-step iOS install banner covers the layout A steppers and the plate visualizer until it is dismissed; save stays reachable. After dismissing, every control is reachable. | live 3.13.0, real Chromium iPhone 13 profile: elementFromPoint on the steppers returns `#iosInstallBanner` | Q-25 |
+| F-025 | cursor-security 2026-11-16 | SEC-2 | high | open | MFA incomplete for club staff SECURITY DEFINER RPCs. A password-only (aal1) session of a club owner/coach who has a verified TOTP factor can still `rotate_club_link` (returns the new 64-hex join token), `club_announcement_post` / `club_announcement_delete` / `club_announcement_set_pinned`, and `remove_member`. Table RLS has restrictive `aal2_required`, but these DEFINER functions bypass RLS and do not call `aal_satisfied()` (unlike `delete_my_account` / `request_account_deletion`, fixed in F-016). Same class as F-016, wider surface. Fix in `shahafrach/haimunia-app-demo`: require `aal_satisfied()` at the top of every authenticated staff/member mutating DEFINER RPC (at least the staff ones above; prefer the full missing list from the audit harness). | Local Supabase (sibling migrations through `202611150004`): enrolled verified factor on audit_user_a; password login JWT `aal=aal1`, `aal_satisfied()=false`; `rotate_club_link` → 200 + new token; `club_announcement_post` → 200; `remove_member` → 204 and row gone from `circle_members`; `club_staff_actions` logged the three. Failing proof: `AUDIT_LOCAL=1 node --test test/audit-aal1-staff-rpcs.test.mjs` (and `scripts/audit-security-harness.mjs`). | security final |
+| F-026 | cursor-security 2026-11-16 | SEC-7 | low | open | Sign-up username/email enumeration via GoTrue: existing synthetic email returns HTTP 422 `user_already_exists`; a fresh email returns 200 with tokens. Club usernames map 1:1 to `<user>@members.haimuniya.invalid`. Recover endpoint responses match (both 200). Platform Auth behaviour; mitigate with identical client errors and/or Turnstile (already on anon sign-in). | Local Auth: signup existing → 422; signup fresh → 200. | security final |
+| F-027 | cursor-security 2026-11-16 | OPS | low | open | Dependabot alerts API is disabled (HTTP 403) on `haimunia-club` and `haimunia-app-demo`. `npm audit` is currently clean (0 vulns) on both; without Dependabot there is no ongoing GitHub alert stream. | `gh api repos/.../dependabot/alerts` → 403; `npm audit` 0/0. | security final |
 
-- F-008: planned shutdown date 2026-12-15, then remove the site (`box-log.pages.dev`) and its Pages project.
+- F-008: planned shutdown date 2026-12-15, then remove the site (`box-log.pages.dev`) and its Pages project. **Live re-check 2026-11-16:** `https://box-log.pages.dev/` now serves a full CSP (default-src self, script-src self + Turnstile, connect-src includes Supabase + Turnstile), matching the fix claim; owner Turnstile check from a computer still pending.
+
+## Security assessment (cursor, 2026-11-16, Asia/Jerusalem)
+
+Branch `audit/security`. Method: find / prove / propose fix / retest. No app-code fixes. Local stack: sibling `haimunia-app-demo` Supabase CLI 2.116.0 with all migrations; test users A/B/C + anonymous in `~/dev/audit.env`. Live sites: read-only headers/paths/one page load only.
+
+### New open findings
+See F-025 (high), F-026 (low), F-027 (low) above.
+
+### Tested and found safe (with proof sketch)
+
+| Area | Result |
+|------|--------|
+| IDOR clubs / private_records / workout_posts / circle_members / announcements | A cannot read B's friends circle or private_records; B cannot read A's club; anon selects return empty / denied. Insert into B's private_records as A → 403 RLS. |
+| Staff RPCs as plain member C | `club_announcement_*` → not authorized; `owner_create_club` → permission denied; wrong-arg staff names → 404. |
+| Anon Postgres role vs transfer | `transfer_put`/`transfer_take` execute denied (service_role only). |
+| MFA aal1 on account deletion | `delete_my_account` / `request_account_deletion` → not authorized (F-016 holds). `private_records` insert blocked by restrictive `aal2_required`. |
+| Transfer code | 13 bytes / 104-bit Crockford; put stores; take once then `not_found`; wrong takes rate-limit (observed at 9/window after prior takes); device put 3/day; global caps in `transfer_put` source (300 blobs / 150 MB / 1 MiB). |
+| Join link | 32 random bytes hex; stored as sha256; after `rotate_club_link` old token → `invalid`, new token joins; fragment-only client read; live `Referrer-Policy: no-referrer`. |
+| Stored XSS | Announcements/posts/names go through `bidiText`→`esc` (`src/club.js`, `safe-helpers.js`); `test/app-innerhtml-sinks.test.mjs` green. Script payloads stored in `app_feedback` / `client_error_reports` as text; members cannot SELECT those tables (42501). CSP `script-src` has no unsafe-inline. |
+| Feedback / errors | Caps in SQL (500/day feedback, 5/device/day, 20/IP/day; 2000/day errors, 30/IP/hour); over-cap returns void. Staff read via Management API workflow, not client grants. |
+| Client secrets / maps | `app-config.js` publishable + Turnstile site key only (public by design). No `.map` files; live `app.js.map` 404. gitleaks: publishable key hits only (expected). |
+| Same-device storage | `haimunia:auth` and IndexedDB `box-log-db` readable to anyone with device/XSS — expected offline-first posture; CSP + esc are the web boundary. |
+| SW cache | Versioned cache name; REQUIRED_ASSETS fail-closed install; no push handlers (PD-1). |
+| Headers / CSP live | Club: full CSP + HSTS + COOP + nosniff + DENY + no-referrer. Box-log: full CSP now (F-008 live). Blocked paths 404 including docs/FINDINGS/package.json/test. `/src/*.js` and `/app-config.js` 200 by design (buildless). |
+| npm audit | 0 vulnerabilities on club and demo. |
+| CI (demo) | No `pull_request_target`; actions SHA-pinned; F-021 author_association guard present on claude-review comment paths. Club repo has no GitHub Actions (Cloudflare Pages git deploy). Old app: F-022 unpinned tags, wontfix while frozen. |
+
+### Could not test / limits
+| Item | Why |
+|------|-----|
+| Production Supabase active exploit | Rules of engagement: local only for active tests. |
+| Real Turnstile / captcha bypass | Needs live site interaction beyond read-only; owner check still pending (F-008 note). |
+| Real iPhone transfer redeem (C4-2) | Needs owner's device. |
+| Edge Function Deno runtime locally | Transfer proved via `transfer_put`/`transfer_take` RPCs as service_role (same DB path the Edge Functions call). |
+| Dependabot alert contents | API disabled (F-027). |
+| Full pgTAP `supabase test db` wall clock | Budget: targeted RPC/REST proofs + existing F-016 coverage instead of full 1600+ assertion rerun. |
+| Anonymous JWT `delete_my_account` | Self-delete only (`auth.uid()`); role is `authenticated`. Not filed as a vulnerability; product may still want to refuse `is_anonymous`. |
 
 ## C3 audit (2026-11-14, UTC)
 
