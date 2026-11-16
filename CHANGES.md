@@ -1,3 +1,12 @@
+# 3.16.0 — A personal weekly streak on the progress screen — 2026-11-16
+
+- "רצף שבועי אישי" on התקדמות: the number of consecutive weeks (Sunday to Saturday, by the date in
+  Asia/Jerusalem) with at least one logged lift or WOD. The current week counts once it has one; until then
+  the run up to last week still stands ("אימון אחד השבוע ימשיך את הרצף."). An empty log: "אין עדיין רצף".
+- Personal only: computed on the phone at every render from the stored dates, so editing a past date
+  recalculates it. Nothing stored, nothing sent, not in the share prompt or the club, no leaderboard.
+- Weeks are counted on calendar dates, so DST changes never split or merge a week.
+
 # 3.15.0 — Percentage chart with plates on the exercise screen — 2026-11-16
 
 - Under the percentage chips, "טבלת אחוזים ופלטות" (collapsed): 95% down to 50% of the lift's estimated

@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.15.0";
+const APP_VERSION = "3.16.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -6120,6 +6120,45 @@ function benchmarkSectionHtml() {
     ${items.map((item) => renderBenchmarkRow(item) + (benchmarkExpandedId === item.id ? renderBenchmarkCard(item) : "")).join("")}`;
 }
 
+// ---- THE WEEKLY STREAK (3.16.0) ----
+// Consecutive weeks, Sunday to Saturday, with at least one logged workout (a lift or a WOD). The current week
+// counts once it has one; until then the streak is the run up to last week, still alive. Personal only: never
+// sent, never shared, no leaderboard. Computed from the stored dates at every render, so editing or deleting
+// a past entry recalculates it; nothing is stored.
+//
+// "Today" is the date in Asia/Jerusalem. Weeks are counted on calendar dates (day numbers from Date.UTC), so
+// a DST change, which moves clocks and not dates, never splits or merges a week.
+function jerusalemTodayISO(now) {
+  const d = now && typeof now.getTime === "function" && isFinite(now.getTime()) ? new Date(now.getTime()) : new Date();
+  try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit" }).format(d); }
+  catch (e) { return localISODate(d); }
+}
+function isoDayNumber(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+  return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000) : null;
+}
+// The day number of the Sunday that starts this day's week. Day 0 (1970-01-01) was a Thursday.
+function weekStartDay(dayNum) { return dayNum - ((dayNum + 4) % 7 + 7) % 7; }
+function weeklyStreak(now) {
+  const weeks = new Set();
+  for (const e of entries) { const d = isoDayNumber(e.date); if (d !== null) weeks.add(weekStartDay(d)); }
+  for (const e of wodEntries) { const d = isoDayNumber(e.date); if (d !== null) weeks.add(weekStartDay(d)); }
+  const current = weekStartDay(isoDayNumber(jerusalemTodayISO(now)));
+  const thisWeek = weeks.has(current);
+  let w = thisWeek ? current : current - 7;
+  let count = 0;
+  while (weeks.has(w)) { count++; w -= 7; }
+  return { weeks: count, thisWeek };
+}
+function renderWeeklyStreak() {
+  const s = weeklyStreak();
+  const value = s.weeks === 0 ? "אין עדיין רצף" : s.weeks === 1 ? "שבוע אחד ברצף" : `${s.weeks} שבועות ברצף`;
+  const note = s.weeks === 0 ? "אימון אחד השבוע מתחיל רצף." : s.thisWeek ? "השבוע כבר נספר." : "אימון אחד השבוע ימשיך את הרצף.";
+  return `<div class="stat-card weekly-streak" id="weeklyStreak" data-weeks="${s.weeks}" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px;">
+      <div><div class="stat-label">רצף שבועי אישי</div><div class="stat-value" style="font-size:18px;${s.weeks ? " color:var(--brass);" : ""}">${value}</div></div>
+      <div class="footer-note" style="margin:0; text-align:left; max-width:50%;">${note}</div>
+    </div>`;
+}
 function renderHistoryTab() {
   const now = new Date();
   const monthPrefix = localISODate(now).slice(0, 7);
@@ -6146,6 +6185,7 @@ function renderHistoryTab() {
       <div class="stat-card" style="text-align:center;"><div class="stat-value mono" style="font-size:20px;">${sessionsThisWeek}</div><div class="stat-label">אימונים השבוע</div></div>
       <div class="stat-card" style="text-align:center;"><div class="stat-value mono" style="font-size:20px;">${totalSetsLogged}</div><div class="stat-label">סטים שנרשמו</div></div>
     </div>
+    ${renderWeeklyStreak()}
 
     ${activeExercises().length > 0 ? `
     <h2 class="section-label">שיאים כלל-זמנים</h2>
