@@ -978,6 +978,30 @@
      UX audit, defect 1: the two install banners are members of this same
      wrapper now, for exactly the same reason - see .install-dock below. */
   #bottomNavWrap{ position:fixed; left:0; right:0; bottom:0; z-index:30; }
+  /* ---- Log screen, layout A (3.13.0): controls first, no scroll at 390x844 and 360x780 ----
+     scripts/browser-check/log-layout-fits.mjs measures it. The photo shrinks to a band once an exercise is
+     chosen; the last session, "עוד סט זהה", the plate visualizer and the steppers come first. */
+  .scene-page--add.scene-page--compact{ --scene-photo-height:132px; }
+  .scene-page--add.scene-page--compact .scene-page__intro{ inset-block-start:calc(env(safe-area-inset-top,0px) + 64px); }
+  .scene-page--add.scene-page--compact .scene-page__title{ font-size:24px; }
+  .scene-page--add.scene-page--compact .scene-page__subtitle{ display:none; }
+  .log-last{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; min-height:22px; color:var(--steel); font-size:12.5px; font-weight:700; margin-bottom:8px; }
+  .log-last-label{ display:inline-flex; align-items:center; gap:4px; flex-shrink:0; }
+  .log-last-value{ color:var(--chalk); font-size:14px; text-align:end; }
+  .log-last--none{ justify-content:flex-start; }
+  .log-last--saved .log-last-label{ color:var(--chalk); }
+  .log-repeat{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; font-size:15px; font-weight:800; margin-bottom:10px; }
+  .log-controls .bar-wrap{ margin-bottom:10px; }
+  .log-controls #barbellVisual{ transform:scale(.8); transform-origin:center top; margin-bottom:-24px; }
+  .log-controls .steppers{ flex-wrap:wrap; margin-bottom:10px; }
+  .log-controls .steppers .stepper:last-child{ flex-basis:100%; }
+  .log-controls .stepper-btn{ width:56px; height:56px; }
+  .log-controls .stepper-val{ min-height:56px; font-size:20px; }
+  .log-controls .est-line{ margin-bottom:6px; }
+  .log-more{ margin-block:4px 14px; }
+  .log-more > summary{ list-style:none; display:block; font-size:12.5px; }
+  .log-more > summary::-webkit-details-marker{ display:none; }
+
   .bottom-bar{ display:flex; justify-content:center; background:linear-gradient(to top, var(--bg) 70%, transparent); padding:10px 16px 8px; }
   /* ---- The toast dock (#appToastDock) ----
      UX review, finding 1 - THE SAVE CONFIRMATION SAT ON THE SAVE BUTTON.

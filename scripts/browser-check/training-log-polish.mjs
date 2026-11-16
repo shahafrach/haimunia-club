@@ -66,8 +66,7 @@ import {
   dismissFirstLogArrival,
   dismissCelebrationIfOpen,
   switchTab,
-  consoleErrorCollector,
-} from "./lib/actions.mjs";
+  consoleErrorCollector, openLogOptions } from "./lib/actions.mjs";
 
 let failed = false;
 function check(label, ok, detail = "") {
@@ -132,6 +131,7 @@ const isoDaysAgo = (n) => {
 };
 
 async function logSet(page, { date, weight, reps }) {
+  await openLogOptions(page);
   await page.fill("#logDateInput", date);
   await page.dispatchEvent("#logDateInput", "change");
   await page.evaluate(({ weight, reps }) => {

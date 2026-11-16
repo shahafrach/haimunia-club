@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.12.0";
+const APP_VERSION = "3.13.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -1281,6 +1281,8 @@ function celebrateAfterSave(prLabel, savedLabel) {
     // rendered by this point, so without this the confirmation would sit in
     // pendingToast until some unrelated render happened to flush it, which is
     // to say: it would look implemented and do nothing.
+    // The log screen shows it inline instead (noteLogSaved), so it never covers a stepper.
+    if (savedLabel && tab === "add") { noteLogSaved(savedLabel.replace(/^נשמר: /, "")); return; }
     if (savedLabel) { showToast(savedLabel); render(); }
     return;
   }
@@ -4793,6 +4795,77 @@ function renderTourCard() {
 }
 
 
+// ---------- Log screen, layout A (3.13.0) ----------
+// The fastest loggers (Strong, Hevy) share three things, and the log screen now has them: the last
+// session is on screen and already in the steppers, an unchanged set is one tap, and the controls are
+// big enough for a tired thumb. Nothing here writes outside saveSet(); no stored shape changes.
+let logMoreOpen = false;            // "עוד אפשרויות" stays as the member left it across re-renders
+let logSavedNote = "";              // the inline "נשמר" line, in place of the last-session line
+let logSavedTimer = null;
+function logTypeMatches(e) { return (e.type === "duration") === (logEntryType === "duration"); }
+// The most recent EARLIER day this exercise was logged in the current mode: its rows, newest first.
+function lastSessionRows() {
+  const today = todayISO();
+  const prior = entriesFor(selectedId).filter((e) => logTypeMatches(e) && e.date < today);
+  if (!prior.length) return [];
+  const day = prior[0].date;
+  return prior.filter((e) => e.date === day);
+}
+// "100×5" for a reps set; the hold (with any added weight) for a duration set. Weight first, as on the steppers.
+function setShape(e) { return e.type === "duration" ? `${e.weight ? e.weight + "×" : ""}${formatDuration(e.durationSeconds)}` : `${e.weight}×${e.reps}`; }
+// "3 סטים של 100×5": a row saved with sets:3 counts as three sets.
+function setsPhrase(n, shape) { return `${n === 1 ? "סט אחד" : `${n} סטים`} של <bdi class="mono">${esc(shape)}</bdi>`; }
+function renderLastPerformance() {
+  if (logSavedNote) {
+    return `<div class="log-last log-last--saved" role="status" aria-live="polite"><span class="log-last-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> נשמר</span><span class="log-last-value"><bdi>${esc(logSavedNote)}</bdi></span></div>`;
+  }
+  const rows = lastSessionRows();
+  if (!rows.length) return `<div class="log-last log-last--none" role="status" aria-live="polite">אין עדיין אימון קודם בתרגיל הזה</div>`;
+  const groups = [];
+  rows.slice().reverse().forEach((e) => {
+    const k = setShape(e);
+    const g = groups.find((x) => x.k === k);
+    if (g) g.n += e.sets || 1; else groups.push({ k, n: e.sets || 1 });
+  });
+  return `<div class="log-last" role="status" aria-live="polite"><span class="log-last-label">פעם קודמת · <bdi>${esc(fmtDate(rows[0].date))}</bdi></span><span class="log-last-value">${groups.map((g) => setsPhrase(g.n, g.k)).join(" · ")}</span></div>`;
+}
+// Today's latest row for this exercise in the current mode: the set "עוד סט זהה" repeats.
+function todaysLastSet() {
+  const today = todayISO();
+  return entries.find((e) => e.exerciseId === selectedId && e.date === today && logTypeMatches(e)) || null;
+}
+function renderRepeatSet() {
+  const t = todaysLastSet();
+  if (!t || editingEntryId || ladderMode || logDate !== todayISO()) return "";
+  return `<button class="chip-btn primary log-repeat" data-action="repeat-last-set" aria-label="${esc(`רישום סט זהה — ${setShape(t)}`)}">${ICONS.repeat}<span>עוד סט זהה · <bdi class="mono">${esc(setShape(t))}</bdi></span></button>`;
+}
+// One tap: today's last set again, through saveSet() itself, so the sanity confirm, PR detection,
+// the club share question and the update guard all apply exactly as for the save button.
+function repeatLastSet() {
+  const t = todaysLastSet();
+  if (!t) return;
+  weight = t.weight; sets = t.sets;
+  if (t.type === "duration") durationSeconds = t.durationSeconds; else reps = t.reps;
+  saveSet();
+}
+// Picking an exercise fills the steppers from its most recent row in the current mode (today's if
+// there is one, else the last session). Never while editing a row, and not when re-picking the same one.
+function prefillOnPick() {
+  if (editingEntryId) return;
+  const last = entriesFor(selectedId).find(logTypeMatches);
+  if (!last) return;
+  weight = last.weight; sets = last.sets;
+  if (last.type === "duration") durationSeconds = last.durationSeconds; else reps = last.reps;
+}
+// On the log screen the save confirmation takes the last-session line's place for the toast window,
+// instead of a toast over the controls (step 1 found the toast covering the sets stepper).
+function noteLogSaved(label) {
+  logSavedNote = label;
+  clearTimeout(logSavedTimer);
+  logSavedTimer = setTimeout(() => { logSavedNote = ""; render(); }, TOAST_WINDOW_MS);
+  render();
+}
+
 function renderLogTab() {
   const selected = movementById(selectedId);
   const isDuration = logEntryType === "duration";
@@ -4812,7 +4885,7 @@ function renderLogTab() {
   // here rather than duplicated, since dayEntries is already built above.
   const hasLoggedToday = dayEntries.length > 0;
   return `
-    <section class="scene-page ${PAGE_SCENES.add.className}" aria-labelledby="pageTitle-add">
+    <section class="scene-page ${PAGE_SCENES.add.className}${movementExplicitlyChosen ? " scene-page--compact" : ""}" aria-labelledby="pageTitle-add">
       <div class="scene-page__media" aria-hidden="true"></div>
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
@@ -4831,6 +4904,7 @@ function renderLogTab() {
 
     <div class="scene-summary-meta"><bdi>${esc(fmtDate(logDate))}</bdi></div>
 
+    ${movementExplicitlyChosen ? "" : `
     ${dayEntries.length === 0 ? `
     <div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כאן מתעדים את האימון שהושלם." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>` : `
     <h2 class="section-label">${isToday ? "סיכום האימון" : `סיכום ${esc(dayLabel)}`}</h2>
@@ -4840,6 +4914,7 @@ function renderLogTab() {
       <span class="flex items-center gap-6">לוח השנה${ICONS.chevronsLeft}</span>
     </button>`}
 
+`}
     <!-- .pick-hero only while nothing is chosen - see index.html for why the
          chosen state deliberately stays a calm row. The chosen branch's
          markup is untouched: several checks read the exercise name off
@@ -4858,6 +4933,7 @@ function renderLogTab() {
 
 
 
+    ${movementExplicitlyChosen ? "" : `
     ${renderUpgradeBackupCard()}
     ${renderTourCard()}
 
@@ -4868,7 +4944,6 @@ function renderLogTab() {
          blank screen. The when-line is the load-bearing slot here: an empty
          log screen that says what is about to appear in it reads as ready,
          where one that says only "choose an exercise" reads as broken. -->
-    ${!movementExplicitlyChosen ? `
     <div class="log-empty" data-empty-state="log-choose-exercise">
       <span class="log-empty-medal" aria-hidden="true">${ICONS.emptyBarbell}</span>
       <div class="log-empty-text">
@@ -4876,19 +4951,97 @@ function renderLogTab() {
         <div class="log-empty-body">בוחרים תרגיל בכרטיס שלמעלה, ומשקל, חזרות וסטים נפתחים בדיוק כאן.</div>
       </div>
       <div class="log-empty-when">מיד אחרי הבחירה יופיעו כאן גם השיא שלכם, האימון האחרון וההיסטוריה בתרגיל.</div>
-    </div>` : `
-
+    </div>
+`}
+    ${!movementExplicitlyChosen ? "" : `
+    <!-- Layout A (owner, 2026-11-15; PR #21): what a set needs comes first, with no scroll at 390x844
+         and 360x780 - the last session, "עוד סט זהה", the plate visualizer, the steppers. Everything
+         else sits under "עוד אפשרויות". scripts/browser-check/log-layout-fits.mjs measures it. -->
     <h2 class="sr-only">רישום סט</h2>
+    <div class="log-controls">
+    ${renderLastPerformance()}
+    ${renderRepeatSet()}
+    ${logDate !== todayISO() ? `<div class="flex items-center gap-8" style="margin-bottom:12px;">
+      <input type="date" id="logDateInput" value="${esc(logDate)}" max="${todayISO()}" aria-label="תאריך רישום הסט" style="flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--chalk); font-size:14px; font-weight:700; font-family:inherit;" />
+      ${logDate !== todayISO() ? `<button data-action="reset-log-date" class="reset-date-btn">היום</button>` : ""}
+    </div>` : ""}
+    <div class="bar-wrap" id="barWrap">
+      <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא חדש!</span></div>
+      ${isDuration || !isBarbell ? "" : `<div id="barbellVisual">${renderBarbell(weight)}</div>`}
+    </div>
+
+    <div class="steppers">
+      ${renderStepper("weight", "משקל (ק\"ג)", weight, 2.5, isDuration || !isBarbell ? 0 : barWeight)}
+      ${isDuration ? renderStepper("durationSeconds", "משך (שניות)", durationSeconds, 5, 1) : renderStepper("reps", "חזרות", reps, 1, 1)}
+      ${renderStepper("sets", "סטים", sets, 1, 1)}
+    </div>
+
+    ${isDuration
+      ? `<div class="est-line">‹ משך ההחזקה: <b id="durationLineValue">${formatDuration(durationSeconds)}</b></div>`
+      : `<div class="est-line">‹ הסט הזה מעריך 1RM של <b id="estLineValue">${estimate1RM(weight, reps)} ק״ג</b></div>`}
+
+    ${ladderMode ? (() => {
+      const rounds = ladderMode ? currentLadderRounds() : [];
+      const nextNum = rounds.length + 1;
+      const isSuperset = !!ladderPartnerId;
+      const modeLabel = isSuperset ? "סופרסט" : "סולם";
+      const partner = ladderPartnerId ? movementById(ladderPartnerId) : null;
+      // Most single-set sessions never touch ladder/superset, so it no
+      // longer competes at full CTA weight with the actual set entry above
+      // it - a plain link-sized entry point until it's actually active,
+      // where the full control (live round count, block label, panel)
+      // still gets the same weight it always did.
+      if (!ladderMode) {
+        return `<button data-action="toggle-ladder-mode" class="link-btn link-btn--tap" aria-pressed="false" style="display:block; margin-bottom:12px; font-size:12.5px;">${ICONS.ladder} רישום סולם / סופרסט</button>`;
+      }
+      return `
+      <button data-action="toggle-ladder-mode" class="movement-btn active" aria-pressed="true" style="margin-bottom:0;">
+        <div class="flex items-center gap-8">
+          <span style="display:inline-flex; color:var(--brass); flex-shrink:0;">${ICONS.ladder}</span>
+          <div style="text-align:right;">
+            <div aria-live="polite" style="font-weight:700; font-size:14px; color:var(--brass);">${rounds.length ? `${modeLabel} פעיל — ${rounds.length === 1 ? "סט אחד נרשם" : `${rounds.length} סטים נרשמו`} · הבא: ${nextNum}` : `${modeLabel} פעיל — קבעו את הסט הראשון למטה`}</div>
+          </div>
+        </div>
+        <span style="color:var(--brass); font-size:12px; font-weight:700; flex-shrink:0;">סיום</span>
+      </button>
+      <div style="border:1px solid var(--brass); border-top:none; border-radius:0 0 12px 12px; padding:10px 12px; margin-bottom:12px; margin-top:-1px;">
+        <div class="flex items-center gap-8" style="margin-bottom:10px;" role="radiogroup" aria-label="תווית בלוק (לא חובה)">
+          <span style="color:var(--steel); font-size:11px; font-weight:700;">בלוק:</span>
+          ${["A", "B", "C", "D"].map((l) => `<button class="format-chip ${ladderBlockLabel === l ? "active" : ""}" style="flex:0 0 auto; padding:5px 12px; font-size:12px;" data-action="set-ladder-block-label" data-label="${l}" role="radio" aria-checked="${ladderBlockLabel === l}">${l}</button>`).join("")}
+          ${ladderBlockLabel ? `<button class="format-chip" style="flex:0 0 auto; padding:5px 12px; font-size:12px;" data-action="set-ladder-block-label" data-label="">ללא</button>` : ""}
+        </div>
+        ${partner ? (() => {
+          const primary = movementById(ladderPrimaryId);
+          return `
+        <div class="flex items-center gap-8" style="margin-bottom:10px;" role="radiogroup" aria-label="תרגיל נוכחי בסופרסט">
+          <button class="format-chip ${selectedId === ladderPrimaryId ? "active" : ""}" style="padding:8px 10px; font-size:12.5px;" data-action="ladder-switch-exercise" data-id="${esc(ladderPrimaryId)}" role="radio" aria-checked="${selectedId === ladderPrimaryId}">${bidiText(primary ? primary.name : "?")}</button>
+          <button class="format-chip ${selectedId === ladderPartnerId ? "active" : ""}" style="padding:8px 10px; font-size:12.5px;" data-action="ladder-switch-exercise" data-id="${esc(ladderPartnerId)}" role="radio" aria-checked="${selectedId === ladderPartnerId}">${bidiText(partner.name)}</button>
+        </div>`;
+        })() : `
+        <button data-action="open-picker" data-target="partner" class="link-btn link-btn--tap" style="display:block; margin-bottom:10px; font-size:12.5px;">${ICONS.repeat} הוספת תרגיל שני (סופרסט)</button>`}
+        ${rounds.length ? `<div class="flex wrap gap-8">
+          ${rounds.map((r, i) => `
+            <span class="flex items-center gap-6 mono" style="background:var(--surface2); border-radius:10px; padding:6px 10px; font-size:13px; font-weight:700;">
+              ${i + 1}. ${esc(ladderRoundSummary(r, isSuperset))}
+              <button data-action="delete-entry" data-id="${esc(r.id)}" aria-label="מחיקת סט ${i + 1} מה${modeLabel}" style="color:var(--steel); padding:0; display:inline-flex;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </span>`).join("")}
+        </div>` : `<div style="color:var(--steel); font-size:12px;">אפשר לשנות משקל וחזרות לכל סט בנפרד — לחצו על כפתור השמירה בכל פעם שסט מוכן</div>`}
+      </div>`;
+    })() : ""}
+    </div>
+    <details class="log-more"${logMoreOpen ? " open" : ""}>
+      <summary class="link-btn link-btn--tap">עוד אפשרויות: סוג רישום, תאריך, 1RM, אחוזים, סולם</summary>
     <div class="rx-toggle" role="radiogroup" aria-label="סוג רישום">
       <button class="rx-btn ${!isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="reps" role="radio" aria-checked="${!isDuration}">משקל וחזרות</button>
       <button class="rx-btn ${isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="duration" role="radio" aria-checked="${isDuration}"><span style="display:inline-flex; width:16px; height:16px; vertical-align:-3px; margin-left:4px;">${ICONS.stopwatchIcon}</span>החזקה בזמן</button>
     </div>
 
-    <div class="flex items-center gap-8" style="margin-bottom:12px;">
+    ${logDate === todayISO() ? `<div class="flex items-center gap-8" style="margin-bottom:12px;">
       <input type="date" id="logDateInput" value="${esc(logDate)}" max="${todayISO()}" aria-label="תאריך רישום הסט" style="flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--chalk); font-size:14px; font-weight:700; font-family:inherit;" />
       ${logDate !== todayISO() ? `<button data-action="reset-log-date" class="reset-date-btn">היום</button>` : ""}
-    </div>
-
+    </div>` : ""}
     ${(est || bestHold || last) ? `
     <div class="stat-row">
       ${est ? `<div class="stat-card stat-hero"><div class="stat-label">1RM משוער</div><div class="stat-value mono" style="color:var(--brass);">${est} ק״ג</div></div>` : ""}
@@ -4938,22 +5091,7 @@ function renderLogTab() {
 
     ${isDuration || !isBarbell ? "" : renderBarWeightRow()}
 
-    <div class="bar-wrap" id="barWrap">
-      <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא חדש!</span></div>
-      ${isDuration || !isBarbell ? "" : `<div id="barbellVisual">${renderBarbell(weight)}</div>`}
-    </div>
-
-    <div class="steppers">
-      ${renderStepper("weight", "משקל (ק\"ג)", weight, 2.5, isDuration || !isBarbell ? 0 : barWeight)}
-      ${isDuration ? renderStepper("durationSeconds", "משך (שניות)", durationSeconds, 5, 1) : renderStepper("reps", "חזרות", reps, 1, 1)}
-      ${renderStepper("sets", "סטים", sets, 1, 1)}
-    </div>
-
-    ${isDuration
-      ? `<div class="est-line">‹ משך ההחזקה: <b id="durationLineValue">${formatDuration(durationSeconds)}</b></div>`
-      : `<div class="est-line">‹ הסט הזה מעריך 1RM של <b id="estLineValue">${estimate1RM(weight, reps)} ק״ג</b></div>`}
-
-    ${(() => {
+    ${ladderMode ? "" : (() => {
       const rounds = ladderMode ? currentLadderRounds() : [];
       const nextNum = rounds.length + 1;
       const isSuperset = !!ladderPartnerId;
@@ -5003,6 +5141,19 @@ function renderLogTab() {
         </div>` : `<div style="color:var(--steel); font-size:12px;">אפשר לשנות משקל וחזרות לכל סט בנפרד — לחצו על כפתור השמירה בכל פעם שסט מוכן</div>`}
       </div>`;
     })()}
+    </details>
+    ${dayEntries.length === 0 ? `
+    <div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כאן מתעדים את האימון שהושלם." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>` : `
+    <h2 class="section-label">${isToday ? "סיכום האימון" : `סיכום ${esc(dayLabel)}`}</h2>
+    <div class="chart-card" style="margin-bottom:8px;">${renderDayEntriesListHtml(dayEntries, [])}</div>
+    <button class="link-btn link-btn--tap" data-action="view-log-date-calendar" style="display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:0;">
+      <span>הערות לאימון ופרטי היום · ${bidiText(entrySummary(dayEntries[0]))}</span>
+      <span class="flex items-center gap-6">לוח השנה${ICONS.chevronsLeft}</span>
+    </button>`}
+
+    ${renderUpgradeBackupCard()}
+    ${renderTourCard()}
+
     `}
 
 
@@ -7093,10 +7244,12 @@ function openPicker(target) {
 function choosePickedMovement(id) {
   if (pickerTarget === "partner") { setLadderPartner(id); return; }
   if (id !== selectedId) endEntryEditIfActive();
+  const changed = id !== selectedId || !movementExplicitlyChosen;
   selectedId = id;
   movementExplicitlyChosen = true; // COMM-360
   syncLogEntryTypeToSelection();
   endLadder();
+  if (changed) { logSavedNote = ""; prefillOnPick(); }
 }
 
 // The log form's starting values for an EMOM: each station's own target -
@@ -7952,6 +8105,7 @@ document.addEventListener("click", (e) => {
   else if (action === "ladder-switch-exercise") { switchLadderExercise(el.dataset.id); }
   else if (action === "set-ladder-block-label") { setLadderBlockLabel(el.dataset.label); }
   else if (action === "prefill-last") { prefillFromLast(); }
+  else if (action === "repeat-last-set") { repeatLastSet(); }
   else if (action === "cancel-edit-entry") { cancelEditEntry(); }
   else if (action === "edit-entry") { startEditEntry(el.dataset.id); }
   else if (action === "view-log-wod-date-calendar") {
@@ -8329,6 +8483,10 @@ document.addEventListener("keydown", (e) => {
     e.target.blur();
   }
 });
+// "עוד אפשרויות" (log screen): remember the member's choice, so a re-render does not fold it back.
+document.addEventListener("toggle", (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains("log-more")) logMoreOpen = e.target.open;
+}, true);
 document.addEventListener("input", (e) => {
   const el = e.target;
   if (!el.classList || !el.classList.contains("stepper-val")) return;

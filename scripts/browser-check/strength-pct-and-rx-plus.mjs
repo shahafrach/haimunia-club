@@ -23,7 +23,7 @@
 import { chromium } from "playwright";
 import { resolveLocalOnlyTarget } from "./lib/target.mjs";
 import { consoleErrorCollector, dismissWelcomeModal, dismissFirstLogArrival, dismissCelebrationIfOpen,
-  selectMovement, selectBenchmarkWod, switchTab } from "./lib/actions.mjs";
+  selectMovement, selectBenchmarkWod, switchTab, openLogOptions } from "./lib/actions.mjs";
 import { installMockCloud } from "./lib/mockCloud.mjs";
 
 let failed = false;
@@ -111,6 +111,7 @@ await dismissFirstLogArrival(page);
 await dismissCelebrationIfOpen(page);
 
 // The training-log edition has no club switchboard: the chips are simply on.
+await openLogOptions(page);
 await page.waitForSelector('[data-action="set-weight-from-pct"]');
 
 const chipRow = await page.evaluate(() => {
@@ -141,6 +142,7 @@ check("the chips wrap inside the viewport instead of scrolling the page sideways
 
 // The increment control, and the numbers changing with it.
 const at25 = chipRow.boxes.map((b) => Number(b.kg));
+await openLogOptions(page);
 await page.click('[data-action="set-pct-increment"][data-inc="1"]');
 await page.waitForFunction(() => {
   const b = document.querySelector('[data-action="set-pct-increment"][data-inc="1"]');
