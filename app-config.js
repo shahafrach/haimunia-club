@@ -9,9 +9,6 @@
 // haimuniya/haimunia-app-demo). Never a service-role or secret key. Remove
 // `usage` and counting simply stops; nothing else depends on it.
 window.HAIMUNIA_CONFIG = Object.freeze({
-  supportWhatsApp: "",
-  supportEmail: "haimuniya@gmail.com",
-
   usage: Object.freeze({
     url: "https://hvwakffluwvegedefoth.supabase.co",
     key: "sb_publishable_MRSX0PLMZjoDIX4iuDbI2g_G2EdMRu6",

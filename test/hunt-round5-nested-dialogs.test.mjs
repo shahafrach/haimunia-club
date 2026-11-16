@@ -13,6 +13,8 @@ import fs from "node:fs";
 
 const appJs = fs.readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const indexHtml = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+// Q-27: the support sheet became the feedback box (src/feedback.js), which opens from inside Settings too.
+const feedbackJs = fs.readFileSync(new URL("../src/feedback.js", import.meta.url), "utf8");
 
 test("the confirm sheet paints above every other overlay, not merely inside one", () => {
   // renderAppConfirmSheet() injects into #content, which is inside #app, while
@@ -36,7 +38,7 @@ test("the confirm sheet paints above every other overlay, not merely inside one"
 });
 
 test("closing a nested dialog does not unlock the page its parent still covers", () => {
-  // Support opens from a row INSIDE the still-open Settings sheet. Clearing
+  // The feedback box (formerly the support sheet) opens from a row INSIDE the still-open Settings sheet. Clearing
   // body.style.overflow unconditionally on close let the background scroll
   // behind a sheet that was still on screen.
   const at = appJs.indexOf("function releaseScrollLockIfLastDialog()");
@@ -48,7 +50,14 @@ test("closing a nested dialog does not unlock the page its parent still covers",
 });
 
 test("every nested-close path asks, rather than clearing the lock outright", () => {
-  for (const fn of ["closeSupport", "closeAppConfirm", "runAppConfirm"]) {
+  {
+    // The feedback box's close(), the successor of closeSupport() (Q-27).
+    const at = feedbackJs.indexOf("function close(");
+    assert.ok(at > -1, "the feedback box has a close()");
+    const body = feedbackJs.slice(at, feedbackJs.indexOf("\n  }", at));
+    assert.match(body, /releaseScrollLockIfLastDialog\(\)/, "it asks before unlocking");
+  }
+  for (const fn of ["closeAppConfirm", "runAppConfirm"]) {
     const at = appJs.indexOf(`function ${fn}(`);
     assert.ok(at > -1, `${fn} exists`);
     const body = appJs.slice(at, appJs.indexOf("\n}", at));
@@ -61,8 +70,8 @@ test("every nested-close path asks, rather than clearing the lock outright", () 
 test("the release is asked AFTER the closing dialog stops counting as open", () => {
   // Order matters: ask too early and the dialog being closed is still open, so
   // the lock is never released at all - trading a scroll bug for a stuck page.
-  const at = appJs.indexOf("function closeSupport(");
-  const body = appJs.slice(at, appJs.indexOf("\n}", at));
+  const at = feedbackJs.indexOf("function close(");
+  const body = feedbackJs.slice(at, feedbackJs.indexOf("\n  }", at));
   const removeAt = body.indexOf('classList.remove("open")');
   const askAt = body.indexOf("releaseScrollLockIfLastDialog()");
   assert.ok(removeAt > -1 && askAt > removeAt,
