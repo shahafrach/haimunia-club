@@ -1,10 +1,12 @@
-# Launch day: haimunia.pages.dev (22.11.2026)
+# Launch day: haimunia.pages.dev (date not set)
+
+The launch is postponed with no date (owner, 2026-11-15). It happens only when every gate in FINDINGS.md "Launch gates" is green.
 
 One ordered list. Each line is one step and who does it. **Owner** = Shahaf. **Lead** = the lead session.
 **Fixes** = the haimunia-fixes session. **Coach** = the club's coach. Backend steps in detail:
 `shahafrach/haimunia-app-demo` `docs/club/LAUNCH.md`.
 
-## Before (by 21.11)
+## Before (the day before launch)
 1. Owner: confirm the five launch gates are done (FINDINGS.md, "Launch gates"); stop if one is open.
 2. Lead: final pass on the live version in real Chromium, with a fake backend: install banner, transfer code, log a set, share, delete account, update button, feedback box (gate 5 fallback if Cursor has not run).
 3. Owner: create `rollback-<live version>` at main and the final tag `v<live version>` (command in CLAUDE.md, "Releases").
