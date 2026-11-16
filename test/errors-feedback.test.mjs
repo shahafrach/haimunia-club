@@ -11,7 +11,7 @@ const $ = (w, s) => w.document.querySelector(s);
 
 async function boot(opts = {}) {
   const calls = [];
-  const state = { ok: opts.ok !== false, offline: !!opts.offline };
+  const state = { ok: opts.ok !== false, offline: !!opts.offline, status: opts.status || 204 };
   const window = await bootApp({
     localStorage: opts.localStorage,
     beforeScripts: (w) => {
@@ -19,7 +19,7 @@ async function boot(opts = {}) {
       w.fetch = async (url, init) => {
         calls.push({ url: String(url), init, body: init && init.body ? JSON.parse(init.body) : null });
         if (!state.ok) throw new TypeError("Failed to fetch");
-        return { ok: true, status: 204, json: async () => null };
+        return { ok: state.status < 300, status: state.status, json: async () => null };
       };
       Object.defineProperty(w.navigator, "onLine", { configurable: true, get: () => !state.offline });
     },
@@ -198,6 +198,44 @@ test("a failed send is kept and sent on the next start", async () => {
   const next = await boot({ localStorage: { "haimunia:feedbackQueue": queued } });
   await waitFor(() => next.rpc("feedback_submit").length === 1);
   assert.equal(next.rpc("feedback_submit")[0].body.p_body, "לא נשלח");
+});
+
+test("3.14.0: opened from the Settings row, the sheet is about 'הגדרות', not the tab underneath", async () => {
+  const { window } = await boot();
+  window.document.getElementById("tabHistoryBtn").click();
+  await wait();
+  await openFromSettings(window);
+  assert.equal($(window, "[data-feedback-screen='settings']").getAttribute("aria-checked"), "true");
+  assert.equal($(window, "[data-feedback-screen='history']").getAttribute("aria-checked"), "false");
+});
+
+test("3.14.0: a 4xx refusal is not queued; the member is told and keeps the draft. 5xx, 408 and 429 wait", async () => {
+  const { window, rpc, state } = await boot({ status: 400 });
+  await openFromSettings(window);
+  $(window, "#feedbackText").value = "טקסט שהשרת דחה";
+  $(window, "[data-feedback='send']").click();
+  await waitFor(() => /המשוב לא נשלח\. נסו לקצר או לנסח אחרת\./.test($(window, "#feedbackNote").textContent));
+  assert.equal(rpc("feedback_submit").length, 1);
+  assert.equal($(window, "#feedbackText").value, "טקסט שהשרת דחה", "the draft stays in the box");
+  assert.ok(!$(window, "[data-feedback='send']").disabled, "and can be edited and sent again");
+  assert.equal(JSON.parse(window.localStorage.getItem("haimunia:feedbackQueue") || "[]").length, 0, "nothing queued");
+  for (const [status, n] of [[500, 1], [503, 2], [408, 3], [429, 4]]) {
+    state.status = status;
+    $(window, "#feedbackText").value = "שוב " + status;
+    $(window, "[data-feedback='send']").click();
+    await waitFor(() => JSON.parse(window.localStorage.getItem("haimunia:feedbackQueue") || "[]").length === n);
+    await waitFor(() => /נשלח כשיהיה חיבור/.test($(window, "#feedbackNote").textContent));
+  }
+});
+
+test("3.14.0: a queued message the server refuses is dropped, not retried at every start", async () => {
+  const queued = JSON.stringify([{ p_app_version: "3.12.0", p_screen: "other", p_device_type: "other", p_standalone: false, p_body: "ישן", p_device: "abcdefabcdefabcdef" }]);
+  const next = await boot({ status: 400, localStorage: { "haimunia:feedbackQueue": queued } });
+  await waitFor(() => next.rpc("feedback_submit").length === 1);
+  await waitFor(() => next.window.localStorage.getItem("haimunia:feedbackQueue") === "[]");
+  const later = await boot({ localStorage: { "haimunia:feedbackQueue": next.window.localStorage.getItem("haimunia:feedbackQueue") } });
+  await wait(100);
+  assert.equal(later.rpc("feedback_submit").length, 0, "nothing left to send");
 });
 
 test("the storage error offers 'שליחת משוב' with that screen preselected", async () => {

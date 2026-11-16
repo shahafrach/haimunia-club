@@ -1,3 +1,13 @@
+# 3.14.0 — Small fixes: first-launch import, feedback screen and refusals — 2026-11-16
+
+- F-019: the first-launch "יש לכם כבר נתונים?" sheet no longer shows on a device that has only body weight,
+  measurements, custom WODs or custom movements. `hasAnyMemberData()` in app.js; the transfer code's "nothing
+  to move" check uses the same rule.
+- Feedback opened from the Settings row is about "הגדרות", not the tab under Settings.
+- Feedback: a 4xx from feedback_submit (other than 408/429) is not queued. The member sees "המשוב לא נשלח. נסו
+  לקצר או לנסח אחרת." and the draft stays in the box. A network failure, a 5xx, 408 or 429 still waits in the
+  queue. A refused message already in the queue is dropped on the next flush instead of retried at every start.
+
 # 3.13.0 — The log screen: controls first, one tap for the same set — 2026-11-15
 
 Layout A, the owner's choice from PR #21 step 1.

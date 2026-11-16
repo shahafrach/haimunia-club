@@ -6,8 +6,11 @@
 // id made on this phone for this purpose only (haimunia:feedbackDeviceId, apart from the usage-count id)
 // (haimunia-app-demo 202611150003, feedback_submit()). Only the app's operator reads it.
 //
-// Offline, or a send that fails: the message waits in localStorage (5 at most) and goes when the app is
-// online again or next starts. The member sees "נשלח כשיהיה חיבור".
+// Offline, a network failure or a 5xx (or 408/429): the message waits in localStorage (5 at most) and goes
+// when the app is online again or next starts. The member sees "נשלח כשיהיה חיבור".
+// Any other 4xx means the server refused the fields: it is not queued (3.14.0). The member sees
+// "המשוב לא נשלח. נסו לקצר או לנסח אחרת." and the draft stays in the box. A refused entry already in the
+// queue (from 3.12.0/3.13.0) is dropped on the next flush instead of being retried at every start.
 //
 // Classic script, one IIFE, exports window.HaimuniaFeedback. Reads esc() and the app's dialog helpers from
 // the shared scope, only inside function bodies.
@@ -23,6 +26,7 @@
     queued: "נשלח כשיהיה חיבור",
     full: "כבר מחכות 5 הודעות לשליחה. נסו שוב כשיש חיבור.",
     empty: "כתבו כמה מילים לפני השליחה.",
+    refused: "המשוב לא נשלח. נסו לקצר או לנסח אחרת.",
   };
   var S = { screen: "other", note: "", noteKind: "", busy: false, opener: null };
 
@@ -89,16 +93,21 @@
       p_device: deviceId(),
     };
   }
+  // Resolves "sent", "refused" (a 4xx other than 408/429: sending it again cannot help) or "retry".
   function post(p) {
     var ep = endpoint();
-    if (!ep || typeof global.fetch !== "function" || !online()) return Promise.resolve(false);
+    if (!ep || typeof global.fetch !== "function" || !online()) return Promise.resolve("retry");
     return global.fetch(ep.url, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: ep.key, Prefer: "return=minimal" },
       body: JSON.stringify(p),
       credentials: "omit",
       referrerPolicy: "no-referrer",
-    }).then(function (res) { return !!(res && res.ok); }, function () { return false; });
+    }).then(function (res) {
+      if (res && res.ok) return "sent";
+      var st = res ? Number(res.status) : 0;
+      return st >= 400 && st < 500 && st !== 408 && st !== 429 ? "refused" : "retry";
+    }, function () { return "retry"; });
   }
 
   // Sends what waited, oldest first; keeps what still fails. Always resolves.
@@ -110,7 +119,7 @@
       if (!list.length || !online()) return Promise.resolve(0);
       return list.reduce(function (chain, p) {
         return chain.then(function (acc) {
-          return post(p).then(function (ok) { if (!ok) acc.left.push(p); else acc.sent++; return acc; });
+          return post(p).then(function (r) { if (r === "retry") acc.left.push(p); else if (r === "sent") acc.sent++; return acc; });
         });
       }, Promise.resolve({ sent: 0, left: [] })).then(function (acc) {
         // Anything queued while this ran was appended after the snapshot: keep it too.
@@ -170,10 +179,11 @@
     if (!body) { setNote(TEXT.empty, "warn"); return; }
     var p = payload(body, S.screen);
     S.busy = true; paint();
-    var ok = false;
-    try { ok = await post(p); } catch (e) { ok = false; }
+    var r = "retry";
+    try { r = await post(p); } catch (e) { r = "retry"; }
     S.busy = false;
-    if (ok) {
+    if (r === "refused") { paint(); setNote(TEXT.refused, "warn"); return; } // paint() keeps the draft
+    if (r === "sent") {
       var sentBox = el("feedbackText"); // paint() above replaced the box: clear the one on screen
       if (sentBox) sentBox.value = "";
       paint();
