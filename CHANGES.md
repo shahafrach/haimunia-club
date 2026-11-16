@@ -1,3 +1,11 @@
+# 3.17.1 — The iOS install banner never covers the log controls — 2026-11-16
+
+- F-024: in an iPhone Safari tab (390×664) the two-step install banner covered the log controls (the
+  steppers, the plate picture, and before a pick the pick button). On the log screen it is now one line
+  ("מתקינים במסך הבית? קודם מגבים.", "איך מתקינים?", close). Once an exercise is picked it steps aside,
+  and a link under the controls opens the full card. Other tabs show the full card, and it still shows on
+  the first visit (F-001). Display only; nothing stored.
+
 # 3.17.0 — A monthly personal summary on the progress screen — 2026-11-16
 
 - "סיכום חודשי" on התקדמות: the last full month and the current month so far (months by the date in
