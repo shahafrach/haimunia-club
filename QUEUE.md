@@ -8,7 +8,6 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 - Ship 3.17.1 (F-024): merge club #31 and check that sw.js says 3.17.1.
 - Merge demo #180 (Q-24, alert hint) and docs PR #32.
 - F-023 is not fixed by set-vault-secrets (the 401s continued after 13:20). Q-26 is with fixes; you will get a workflow to run when it is ready.
-- Advisor: run the read-only query in Q-22 and paste the numbers.
 - Live Turnstile check on box-log sign-up from a computer (closes F-008, the last open high).
 - G4 approval; C4-2 on a real iPhone; for Q-20, an empty template repository.
 
@@ -49,6 +48,7 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-26 | fixes | todo | – | haimunia-app-demo: cron calls to Edge Functions get 401 even after set-vault-secrets (F-023) | – | Medium (a launch gate): abandoned sign-ups have not been purged since about 13.11. Diagnose without printing any key, then give the cron calls their own secret. |
 
 ## Owner decisions (from Shahaf)
+- 2026-11-16 17:05 UTC, advisor ran the Q-22 query: errors=0, feedback=0, ip_counters=0, keyed_unknown=0. No real report yet. Shahaf will send one test feedback from his phone; the advisor reruns the query after it.
 - 2026-11-16: Shahaf ran set-vault-secrets (run 43874823665, success, 13:20 UTC). release: confirm F-023 is closed after the next cron cycle (both Edge Function jobs return 2xx, scheduled-job-alert green), then mark it fixed. 3.14.0 to 3.17.0 and docs #27 are merged; main is 3.17.0.
 - 2026-11-16: F-007 (CSP style-src 'unsafe-inline'): option (a), accept as low. release: mark it accepted in FINDINGS.md with the reason (no script injection path, styles only), so it is not a launch gate.
 - 2026-11-16: F-005 (demo #172) merged at 06:23 UTC after a green backup-database run.
