@@ -73,9 +73,9 @@ No `docs/privacy-policy.he.md` exists in either repo, so these wait for the G1 p
 | 3.14.0 | Small fixes: F-019, feedback preselect and 4xx handling (QUEUE Q-16) | haimunia-club | planned |
 | (backend) | F-005 RLS initplan (PR #172), renumbered after 202611150003 (QUEUE Q-14) | haimunia-app-demo | after #178 merges |
 | (tests) | F-014: synthetic 3-year log, backup, import and transfer size (QUEUE Q-15) | haimunia-club | planned |
-| 3.15.0 | Percentage chart from each lift's 1RM (Q-17) | haimunia-club | planned |
-| 3.16.0 | Personal weekly streak, no leaderboard (Q-18) | haimunia-club | planned |
-| 3.17.0 | Monthly personal summary card (Q-19) | haimunia-club | planned |
+| 3.15.0 | Percentage chart from each lift's 1RM (Q-17, PR #28) | haimunia-club | verified 2026-11-16; ships after 3.14.0 |
+| 3.16.0 | Personal weekly streak, no leaderboard (Q-18, PR #29) | haimunia-club | verified 2026-11-16; ships after 3.15.0 |
+| 3.17.0 | Monthly personal summary card (Q-19, PR #30) | haimunia-club | verified 2026-11-16 (stack on main: 513/0, 115 Chromium checks); ships after 3.16.0 |
 | (repo) | Standard template repository (Q-20) | new repo | needs the owner to create it |
 
 Launch postponed with no date (owner, 2026-11-15): everything ships when it passes verification. Versions after 3.12.0 are a plan, not a promise. A later item takes the next free version when it ships, and only lead assigns them.
