@@ -4,9 +4,9 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 
 ## Waiting for Shahaf
 (release keeps this list current, newest first; one line each)
-- **Rollback tags missing for 3.10.0, 3.11.0 and 3.12.0** (the newest is rollback-3.9.0). Create rollback-3.10.0 at ccd1946, rollback-3.11.0 at 2e7d425 (the main commit before #22) and rollback-3.12.0 at 5aee5e9^1 (the commit before #21's merge, d8f4672's line; check in git log). Then rollback-3.13.0 at main before #26.
+- **Rollback tags missing for 3.10.0, 3.11.0 and 3.12.0** (the newest is rollback-3.9.0). On main: rollback-3.10.0 at ccd1946, rollback-3.11.0 at 2e7d425, rollback-3.12.0 at d8f4672 (each is the main commit just before the next release merged). Then rollback-3.13.0 at main (now 2e8b9e0) before #26.
 - Ship 3.14.0: create rollback-3.13.0 at main, merge club #26, and check that sw.js says 3.14.0.
-- Merge club #25 (F-014 tests, no release) and demo #179 (F-021 guard, workflow only, once its CI is green).
+- Merge demo #179 (F-021 guard, workflow only) once its CI is green. (#25 is merged: F-014 closed.)
 - Merge docs PR #27 (F-005 fixed, F-007 accepted, F-023).
 - Q-23: run the read-only SQL in that row in the Supabase SQL editor and paste the result, unless my connector comes back first.
 - The Supabase connector fails in the lead session ("Failed to resolve project for permission check"); reconnect it if you can (Q-22, Q-23).
