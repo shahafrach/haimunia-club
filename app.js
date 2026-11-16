@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.16.0";
+const APP_VERSION = "3.17.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -6159,6 +6159,76 @@ function renderWeeklyStreak() {
       <div class="footer-note" style="margin:0; text-align:left; max-width:50%;">${note}</div>
     </div>`;
 }
+// ---- THE MONTHLY SUMMARY (3.17.0) ----
+// For the last full month and the current month so far (months by the date in Asia/Jerusalem): workouts
+// (days with a lift or a WOD, the streak's own unit), PRs (celebratablePrEntryIds(), the same count as
+// "שיאים החודש"), and the best lift. The best lift is the month's PR with the largest gain by the PR card's
+// rule (clubPrPercent: a rep-record weight gain first, else the estimated-1RM gain, each against the log
+// before that set); a month with no such PR shows its heaviest set instead. Personal and computed at render:
+// nothing stored, nothing sent.
+function monthKeyOf(iso) { return String(iso || "").slice(0, 7); }
+function prGainDetail(e) {
+  const before = entries.filter((x) => x.exerciseId === e.exerciseId && x.type !== "duration" && x.id !== e.id && (x.ts || 0) < (e.ts || 0));
+  const prevRepRecord = before.filter((x) => x.reps === e.reps).reduce((m, x) => Math.max(m, x.weight), 0);
+  const prevEst1RM = before.reduce((m, x) => Math.max(m, x.est1RM || 0), 0);
+  return { repRecordPR: e.weight > prevRepRecord, est1rmPR: e.est1RM > prevEst1RM, weight: e.weight, reps: e.reps, est: e.est1RM, prevRepRecord, prevEst1RM };
+}
+function monthSummary(key, prIds) {
+  const sets = entries.filter((e) => monthKeyOf(e.date) === key);
+  const wods = wodEntries.filter((e) => monthKeyOf(e.date) === key);
+  const days = new Set(sets.map((e) => e.date).concat(wods.map((e) => e.date)));
+  const prs = sets.filter((e) => prIds.has(e.id));
+  let best = null;
+  for (const e of prs) {
+    const pct = clubPrPercent(e, prGainDetail(e));
+    if (pct && (!best || pct > best.pct || (pct === best.pct && (e.ts || 0) > (best.entry.ts || 0)))) best = { kind: "pr", pct, entry: e };
+  }
+  if (!best) {
+    const lifted = sets.filter((e) => e.type !== "duration" && e.weight > 0);
+    const top = lifted.reduce((b, e) => (!b || e.weight > b.weight || (e.weight === b.weight && e.reps > b.reps) ? e : b), null);
+    if (top) best = { kind: "heaviest", pct: null, entry: top };
+  }
+  return { key, workouts: days.size, prs: prs.length, best };
+}
+function monthlySummaries(now) {
+  const today = jerusalemTodayISO(now);
+  const y = +today.slice(0, 4), m = +today.slice(5, 7);
+  const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+  const prIds = celebratablePrEntryIds();
+  return { last: monthSummary(prev, prIds), current: monthSummary(today.slice(0, 7), prIds) };
+}
+function monthLabel(key) { return `${MONTH_NAMES[+key.slice(5, 7) - 1]} ${key.slice(0, 4)}`; }
+function renderMonthBlock(sum, current) {
+  const title = current ? `${monthLabel(sum.key)} עד היום` : monthLabel(sum.key);
+  if (!sum.workouts) {
+    return `<div class="month-summary-block" data-month="${esc(sum.key)}"><div class="stat-label">${esc(title)}</div><div class="footer-note" style="margin:4px 0 0;">${current ? "עדיין לא נרשמו אימונים החודש." : `לא נרשמו אימונים ב${esc(MONTH_NAMES[+sum.key.slice(5, 7) - 1])}.`}</div></div>`;
+  }
+  const m = sum.best ? movementById(sum.best.entry.exerciseId) : null;
+  const set = sum.best ? `${sum.best.entry.weight} ק״ג × ${sum.best.entry.reps}` : "";
+  const bestLine = !sum.best || !m ? ""
+    : sum.best.kind === "pr"
+      ? `<div class="month-best" style="margin-top:6px; font-size:13px;">השיא הבולט: <b>${bidiText(m.name)}</b> <bdi class="mono month-best-pct" dir="ltr">+${sum.best.pct}%</bdi> <span class="mono" style="color:var(--steel);">(${bidiUnit(set)})</span></div>`
+      : `<div class="month-best" style="margin-top:6px; font-size:13px;">הסט הכבד: <b>${bidiText(m.name)}</b> <span class="mono">${bidiUnit(set)}</span></div>`;
+  return `<div class="month-summary-block" data-month="${esc(sum.key)}">
+      <div class="stat-label">${esc(title)}</div>
+      <div class="flex gap-8" style="margin-top:4px; flex-wrap:wrap;">
+        <span><span class="mono month-workouts" style="font-weight:800; font-size:18px;">${sum.workouts}</span> ${sum.workouts === 1 ? "אימון" : "אימונים"}</span>
+        <span><span class="mono month-prs" style="font-weight:800; font-size:18px; color:var(--brass);">${sum.prs}</span> ${sum.prs === 1 ? "שיא" : "שיאים"}</span>
+      </div>
+      ${bestLine}
+    </div>`;
+}
+function renderMonthlySummary() {
+  const { last, current } = monthlySummaries();
+  const streak = weeklyStreak();
+  const streakText = streak.weeks === 0 ? "אין עדיין רצף שבועי" : streak.weeks === 1 ? "רצף של שבוע אחד" : `רצף של ${streak.weeks} שבועות`;
+  return `<div class="chart-card monthly-summary" id="monthlySummary" style="margin-bottom:16px; display:flex; flex-direction:column; gap:12px;">
+      <h2 class="section-label" style="margin:0;">סיכום חודשי</h2>
+      ${renderMonthBlock(last, false)}
+      ${renderMonthBlock(current, true)}
+      <div class="footer-note" style="margin:0;">${streakText}. אישי בלבד: לא נשלח לשום מקום.</div>
+    </div>`;
+}
 function renderHistoryTab() {
   const now = new Date();
   const monthPrefix = localISODate(now).slice(0, 7);
@@ -6186,6 +6256,7 @@ function renderHistoryTab() {
       <div class="stat-card" style="text-align:center;"><div class="stat-value mono" style="font-size:20px;">${totalSetsLogged}</div><div class="stat-label">סטים שנרשמו</div></div>
     </div>
     ${renderWeeklyStreak()}
+    ${renderMonthlySummary()}
 
     ${activeExercises().length > 0 ? `
     <h2 class="section-label">שיאים כלל-זמנים</h2>

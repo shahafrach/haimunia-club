@@ -1,3 +1,12 @@
+# 3.17.0 — A monthly personal summary on the progress screen — 2026-11-16
+
+- "סיכום חודשי" on התקדמות: the last full month and the current month so far (months by the date in
+  Asia/Jerusalem, Hebrew month names). For each: workouts (days with a lift or a WOD), PRs (the app's own
+  count, as in "שיאים החודש"), and the best lift: the month's PR with the largest gain by the PR card's rule
+  ("השיא הבולט: Back Squat +10% (110 ק״ג × 5)"), or the heaviest set when the month has no PR. Plus the
+  weekly streak from 3.16.0.
+- An empty month says so in one line. Computed on the phone at render; nothing stored, nothing sent.
+
 # 3.16.0 — A personal weekly streak on the progress screen — 2026-11-16
 
 - "רצף שבועי אישי" on התקדמות: the number of consecutive weeks (Sunday to Saturday, by the date in

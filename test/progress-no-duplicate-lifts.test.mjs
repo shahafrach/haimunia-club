@@ -42,8 +42,15 @@ test("a logged lift appears exactly once on the progress screen", async () => {
   const bodyweight = doc.getElementById("bodyweightArea");
 
   for (const mov of [squat, press]) {
-    assert.equal(occurrences(screen.textContent, mov.name), 1,
+    // 3.17.0: the monthly summary names the month's best lift in one line of prose ("השיא הבולט: ..."). That
+    // is a fact about the month, not a second list of lifts, so it is left out of this count; the summary
+    // has no row, button or data-id for a lift (asserted just below and in monthly-summary.test.mjs).
+    const summary = doc.getElementById("monthlySummary");
+    const outside = screen.textContent.replace(summary ? summary.textContent : "", "");
+    assert.equal(occurrences(outside, mov.name), 1,
       `${mov.name} is listed once on Progress, not once per section`);
+    assert.ok(!summary || occurrences(summary.textContent, mov.name) <= 1, "and at most once in the summary card");
+    assert.equal(summary ? summary.querySelectorAll("[data-id], button, a").length : 0, 0, "the summary card holds no lift rows or controls");
     assert.equal(screen.querySelectorAll(`[data-id="${mov.id}"], [data-id="lift:${mov.id}"]`).length, 1,
       `${mov.name} has one row on Progress`);
     const row = list.querySelector(`[data-action="select-history"][data-id="${mov.id}"]`);
