@@ -233,3 +233,35 @@ test("F-019: body weight, measurements, custom WODs or movements alone also coun
   const { window } = await boot({ installed: true });
   assert.equal(window.hasAnyMemberData(), false, "and an empty device still has none");
 });
+
+test("F-024: on the log screen the iOS banner is one line, steps aside once an exercise is picked, and keeps its full card one tap away", async () => {
+  const { window } = await boot({ iphone: true });
+  const banner = $(window, "#iosInstallBanner");
+  assert.equal(banner.style.display, "block", "F-001: shown on the first visit in a Safari tab");
+  window.render();
+  assert.ok(banner.classList.contains("install-dock--compact"), "log screen, nothing picked: one line");
+  assert.match(banner.querySelector(".install-dock-line").textContent, /קודם מגבים/);
+  assert.ok(banner.querySelector(".install-dock-line [data-action='ios-install-expand']"));
+  assert.ok(banner.querySelector(".install-dock-line [data-action='dismiss-ios-install-hint']"));
+
+  await window.addMovement("F024 Squat", "Squat"); // picks it, as the picker does
+  window.render();
+  assert.ok(banner.classList.contains("install-dock--tucked"), "an exercise picked: the dock steps aside");
+  const link = $(window, "#content #iosInstallInline [data-action='ios-install-expand']");
+  assert.ok(link, "and a link under the controls offers it");
+  link.click();
+  assert.ok(!banner.classList.contains("install-dock--compact") && !banner.classList.contains("install-dock--tucked"), "the full card, on request");
+  assert.ok(banner.querySelector("[data-action='open-transfer-create']") && banner.querySelector("[data-action='ios-install-backup']"), "with both buttons");
+  assert.equal($(window, "#iosInstallInline"), null);
+
+  window.document.getElementById("tabHistoryBtn").click();
+  assert.ok(!banner.classList.contains("install-dock--compact") && !banner.classList.contains("install-dock--tucked"), "other tabs: the full card, as before");
+  window.document.getElementById("tabAddBtn").click();
+  assert.ok(banner.classList.contains("install-dock--tucked"), "back on the log screen with the exercise still picked: aside again");
+  $(window, "#iosInstallInline [data-action='ios-install-expand']").click();
+  banner.querySelector("[data-action='dismiss-ios-install-hint']").click();
+  assert.equal(banner.style.display, "none");
+  window.render();
+  assert.equal($(window, "#iosInstallInline"), null, "dismissed: no link either");
+  assert.equal(window.localStorage.getItem("haimunia:iosInstallDismissed"), "1");
+});

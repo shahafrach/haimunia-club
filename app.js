@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.17.0";
+const APP_VERSION = "3.17.1";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -6806,6 +6806,7 @@ function render() {
     try { typed = document.activeElement.value; } catch (e) { typed = null; }
   }
   document.getElementById("content").innerHTML = content + renderAppConfirmSheet();
+  syncIOSInstallDock(); // after #content is written: it may add the in-flow install link (F-024)
   // The toast is NOT part of #content any more - it is painted into its own
   // dock inside #bottomNavWrap so that it can be positioned against the
   // bottom nav instead of against the viewport (finding 1; see
@@ -8197,10 +8198,53 @@ function maybeShowIOSInstallBanner() {
   // (a transfer code or a backup file), then add to the home screen.
   const el = document.getElementById("iosInstallBanner");
   if (el) el.style.display = "block";
+  syncIOSInstallDock();
+}
+// F-024 (3.17.1): on the log screen the dock is one line (F-001's point, back up first, then the
+// "איך מתקינים?" button and the close button), so the full two-step card never sits over the pick button,
+// the steppers or the plate picture. On an iPhone 13 Safari tab (390x664) the full card covered 200-596 px.
+// Tapping "איך מתקינים?" shows the full card until the member picks another exercise or changes tab. Other
+// tabs show the full card as before. Display only: nothing stored; F-001's first-visit rule is unchanged.
+let iosInstallExpandedFor = null;
+function iosInstallDockKey() { return tab + ":" + (movementExplicitlyChosen ? selectedId : ""); }
+// Once an exercise is picked, layout A fills a 664 px screen exactly, so even the one line would cover the
+// sets stepper: the dock steps aside (install-dock--tucked) and a small link in the page flow, under the
+// controls, opens the full card. Before an exercise is picked the one line shows.
+function syncIOSInstallDock() {
+  const el = document.getElementById("iosInstallBanner");
+  if (!el) return;
+  if (iosInstallExpandedFor !== null && iosInstallExpandedFor !== iosInstallDockKey()) iosInstallExpandedFor = null; // a new tab or exercise
+  const expanded = iosInstallExpandedFor !== null;
+  const onLog = tab === "add" && !expanded;
+  const tucked = onLog && movementExplicitlyChosen;
+  el.classList.toggle("install-dock--compact", onLog && !tucked);
+  el.classList.toggle("install-dock--tucked", tucked);
+  const showing = el.style.display === "block";
+  const content = document.getElementById("content");
+  let link = document.getElementById("iosInstallInline");
+  if (tucked && showing && content) {
+    if (!link) {
+      link = document.createElement("div");
+      link.id = "iosInstallInline";
+      link.className = "footer-note";
+      link.style.cssText = "text-align:center; margin:4px 0 12px;";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "link-btn link-btn--tap";
+      btn.dataset.action = "ios-install-expand";
+      btn.textContent = "איך מתקינים במסך הבית? קודם מגבים.";
+      link.appendChild(btn);
+    }
+    if (link.parentNode !== content) content.appendChild(link);
+  } else if (link) {
+    link.remove();
+  }
 }
 function dismissIOSInstallBanner() {
   const el = document.getElementById("iosInstallBanner");
   if (el) el.style.display = "none";
+  const link = document.getElementById("iosInstallInline");
+  if (link) link.remove();
   try { localStorage.setItem(IOS_INSTALL_DISMISS_KEY, "1"); } catch (e) {}
 }
 
@@ -8214,6 +8258,7 @@ document.addEventListener("click", (e) => {
   else if (action === "install-app") { installApp(); }
   else if (action === "dismiss-install-hint") { dismissInstallBanner(); }
   else if (action === "dismiss-ios-install-hint") { dismissIOSInstallBanner(); }
+  else if (action === "ios-install-expand") { iosInstallExpandedFor = iosInstallDockKey(); syncIOSInstallDock(); }
   else if (action === "switch-tab") { tab = el.dataset.tab; closeNavMenu(); render(); window.scrollTo(0, 0); }
   else if (action === "open-nav-menu") { openNavMenu(); }
   else if (action === "close-nav-menu") {
