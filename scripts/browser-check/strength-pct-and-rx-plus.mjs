@@ -121,7 +121,7 @@ const chipRow = await page.evaluate(() => {
     count: btns.length,
     docWidth,
     scrollWidth: document.documentElement.scrollWidth,
-    table: !!document.querySelector('[data-action="toggle-pct-table"]'),
+    tableExpanded: document.querySelector('[data-action="toggle-pct-table"]')?.getAttribute("aria-expanded") ?? "absent",
     boxes: btns.map((b) => {
       const r = b.getBoundingClientRect();
       return { pct: b.dataset.pct, kg: b.dataset.kg, w: Math.round(r.width), h: Math.round(r.height),
@@ -131,7 +131,10 @@ const chipRow = await page.evaluate(() => {
 });
 check("ten chips, 50 to 95 in fives", chipRow.count === 10,
   chipRow.boxes.map((b) => `${b.pct}%=${b.kg}`).join(" "));
-check("the table is gone - never two percentage surfaces on one screen", chipRow.table === false);
+// 3.15.0: the percentage chart (with plates) sits under the chips, collapsed, so the chips stay the one
+// surface on screen until the member asks for the plates. Chips and chart agreeing at the 2.5 kg increment
+// is pinned in test/percentage-chart.test.mjs.
+check("the percentage chart is under the chips, collapsed until asked for", chipRow.tableExpanded === "false", chipRow.tableExpanded);
 check("every chip is a >=44px tap target",
   chipRow.boxes.every((b) => b.h >= 44 && b.w >= 44),
   chipRow.boxes.map((b) => `${b.pct}:${b.w}x${b.h}`).join(" "));

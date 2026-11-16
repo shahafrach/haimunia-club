@@ -28,7 +28,7 @@ test("percentage weights are rounded to a step a barbell can actually hold", () 
     "2.5 kg is the smallest real jump - 1.25 kg a side. An unrounded 77.3 is a number nobody can load.");
   const roundToPlate = (kg) => Math.round(kg / 2.5) * 2.5;
   for (const est of [42.5, 60, 82.5, 100, 137.5]) {
-    for (const pct of [95, 90, 85, 80, 75, 70, 65, 60]) {
+    for (const pct of [95, 90, 85, 80, 75, 70, 65, 60, 55, 50]) {
       const v = roundToPlate(est * pct / 100);
       assert.equal((v * 10) % 25, 0, `${est} kg @ ${pct}% gave ${v}, which is not a 2.5 kg multiple`);
     }
@@ -38,7 +38,7 @@ test("percentage weights are rounded to a step a barbell can actually hold", () 
 test("the panel names its basis and never presents the estimate as a tested max", () => {
   assert.match(src, /הערכה מהסטים שרשמתם, לא מקס שנבדק/,
     "a member has to be able to tell an estimate from a measurement before loading a bar to it");
-  assert.match(src, /const PCT_STEPS = \[95, 90, 85, 80, 75, 70, 65, 60\];/,
+  assert.match(src, /const PCT_STEPS = \[95, 90, 85, 80, 75, 70, 65, 60, 55, 50\];/,
     "descending, so the heaviest - the one being planned around - is read first");
 });
 

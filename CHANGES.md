@@ -1,3 +1,14 @@
+# 3.15.0 — Percentage chart with plates on the exercise screen — 2026-11-16
+
+- Under the percentage chips, "טבלת אחוזים ופלטות" (collapsed): 95% down to 50% of the lift's estimated
+  1RM (bestEst1RM, the number on the "1RM משוער" card). Each row is the nearest weight the member's bar
+  plus whole 1.25 kg pairs can make, never under the empty bar, with the plates for one side ("לכל צד:
+  25 + 25 + 1.25", or "מוט ריק"). A non-barbell lift gets 2.5 kg rounding and no plates.
+- No 1RM yet (no set with weight): one line, "אין עדיין 1RM משוער לתרגיל הזה. טבלת האחוזים תופיע אחרי
+  הסט הראשון עם משקל.", and no chart.
+- Computed on the phone from logged sets; no new store, field or setting. At the 2.5 kg increment on a
+  20 or 15 kg bar the chart and the chips give the same weights.
+
 # 3.14.0 — Small fixes: first-launch import, feedback screen and refusals — 2026-11-16
 
 - F-019: the first-launch "יש לכם כבר נתונים?" sheet no longer shows on a device that has only body weight,
