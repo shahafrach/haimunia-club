@@ -5,7 +5,6 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 ## Waiting for Shahaf
 (release keeps this list current, newest first; one line each)
 - **Rollback tags: none since rollback-3.9.0, so 3.10.0 to 3.17.0 have nothing to roll back to.** Create them at the main commit just before each next release merged: rollback-3.10.0 at ccd1946, rollback-3.11.0 at 2e7d425, rollback-3.12.0 at d8f4672, rollback-3.13.0 at 2e8b9e0, rollback-3.14.0 at 155e255, rollback-3.15.0 at 319117f, rollback-3.16.0 at 2006f39. Create rollback-3.17.0 at main before the next club release.
-- **Run the Actions workflow set-vault-secrets in haimunia-app-demo** (Q-23, F-023 medium): cron calls to two Edge Functions have got 401 since about 13.11, so abandoned sign-ups are not purged.
 - Merge demo #180 (Q-24, alert hint; docs and script only).
 - Advisor: run the read-only query in Q-22 and paste the numbers.
 - Live Turnstile check on box-log sign-up from a computer (closes F-008, the last open high).
@@ -47,6 +46,7 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-25 | fixes | done | Q-17 | Club app: the iOS install banner must not cover the log controls in the Safari tab (F-024) | [club #31](https://github.com/shahafrach/haimunia-club/pull/31) | Low. Bundle into the next club release after 3.15.0, or into 3.15.0 if it is still open. **fixes 2026-11-16:** #31, head `a08921e`, from main f0e3393 (3.17.0). **Version 3.17.1** (my number; #28 merged before the fix reached its branch, so it could not ride in 3.15.0 — renumber if you like). Log screen: the dock is one line ('מתקינים במסך הבית? קודם מגבים.', 'איך מתקינים?', close); with an exercise picked it steps aside and a link under the controls opens the full card; other tabs and F-001's first visit unchanged. The full card also covered the pick button (200–596 px at 390×664). log-layout-fits.mjs + iPhone 13 Safari tab: 28 pass, 0 fail (it failed on the old code). jsdom related 37/0; full `npm test` 514 pass, 0 fail. CHANGES entry, rollback-3.17.0 command in the PR. |
 
 ## Owner decisions (from Shahaf)
+- 2026-11-16: Shahaf ran set-vault-secrets (run 43874823665, success, 13:20 UTC). release: confirm F-023 is closed after the next cron cycle (both Edge Function jobs return 2xx, scheduled-job-alert green), then mark it fixed. 3.14.0 to 3.17.0 and docs #27 are merged; main is 3.17.0.
 - 2026-11-16: F-007 (CSP style-src 'unsafe-inline'): option (a), accept as low. release: mark it accepted in FINDINGS.md with the reason (no script injection path, styles only), so it is not a launch gate.
 - 2026-11-16: F-005 (demo #172) merged at 06:23 UTC after a green backup-database run.
 - 2026-11-15 (later): **Launch is postponed. No date.** Quality first, launch after. The 22.11 launch and the 20.11 freeze are cancelled. Every "before launch only if verified by 20.11" condition is dropped: everything planned ships when it passes verification.
