@@ -21,7 +21,7 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 ## Open rows
 | ID | Owner | Status | After | Task | PR | Notes |
 |----|-------|--------|-------|------|----|-------|
-| Q-33 | fixes | todo | Q-32 merged | Release club #37 (F-025, F-026) as 3.18.1 | [club #37](https://github.com/shahafrach/haimunia-club/pull/37) | Verified in Q-30. Prompt below. |
+| Q-33 | fixes | doing | Q-32 merged | Release club #37 (F-025, F-026) as 3.18.1 | [club #37](https://github.com/shahafrach/haimunia-club/pull/37) | Verified in Q-30. Prompt below. |
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
 
