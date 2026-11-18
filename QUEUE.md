@@ -3,9 +3,9 @@
 Full history: QUEUE-archive.md on this branch. Do not read it unless a row points there.
 
 ## Waiting for Shahaf
-- F-023: advisor ran backup-database (green). Merge demo #181, then migration-status and deploy-edge-functions green, then run set-vault-secrets.
+- F-023: advisor ran backup-database (green). demo #181 is merged (3dfffc6). Next: confirm migration-status and deploy-edge-functions green, run set-vault-secrets, then write "continue" so release runs the Q-26 read-only checks.
 - F-028: after #181 is live, advisor runs backup-database again, then merge demo #182 (mark ready first), migration-status green.
-- Ship 3.18.0: merge club #33 (rollback-3.17.1 at dc02722 when at a computer).
+- 3.18.0 is live (club #33 merged, live sw.js 3.18.0, release 07:57 check). rollback-3.17.1 at dc02722 still to create from a computer.
 - Ship 3.18.1 after fixes does Q-33: merge club #37.
 - From a computer: Dependabot alerts on (F-030), rollback tags (list in archive), Turnstile check on box-log (F-008), empty template repo (Q-20).
 - From the phone: C4-2 on a real iPhone, G4 club message.
@@ -24,10 +24,6 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 | Q-33 | fixes | todo | Q-32 merged | Release club #37 (F-025, F-026) as 3.18.1 | [club #37](https://github.com/shahafrach/haimunia-club/pull/37) | Verified in Q-30. Prompt below. |
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
-
-## Q-32 prompt (fixes)
-
-On club #33's branch, after rebasing on main (3.17.1, 37e1920 or later): set APP_VERSION to 3.18.0 and run `npm run sync-version`; add the CHANGES.md entry at the top `# 3.18.0 — תמיכה ודיווח על תקלה דרך תיבת המשוב — <date>` (what changed: the menu row opens the feedback box; the WhatsApp/email support sheet and the duplicate Settings row are gone; privacy §8 updated); bump the privacy policy's "last updated" date to the release date, since §8 changed. Put in the PR body for Shahaf the rollback command for `rollback-3.17.1` at main (CLAUDE.md, "Releases"). Run the related tests and one full `npm test`; paste the numbers. Mark Q-32 done.
 
 ## Q-33 prompt (fixes)
 
