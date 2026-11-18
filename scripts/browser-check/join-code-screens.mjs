@@ -201,6 +201,7 @@ for (const scale of [1, 2]) {
     await page.waitForSelector("[data-action='switch-tab'][data-tab='club']:visible", { timeout: 15000 });
     await page.evaluate(() => document.querySelectorAll(".modal-overlay.open").forEach((o) => o.classList.remove("open")));
     await page.click("[data-action='switch-tab'][data-tab='club']:visible");
+    await page.click("#clubAdmin > summary"); // Q-43: staff tools are under ניהול המועדון
     await page.click("[data-club='rotate']");
     await page.click("[data-action='app-confirm-yes']");
     await page.waitForSelector("#clubInvite svg.join-qr", { timeout: 10000 });

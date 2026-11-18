@@ -435,8 +435,13 @@ test("the club tab is a scene like the other tabs: scene chrome, app chevron, sh
   toggle().click();
   await until(() => toggle().getAttribute("aria-expanded") === "true", "members open");
   assert.match(turn(), /rotate\(90deg\)/);
-  // Section headers use the app's .section-label, coach tools included.
-  assert.deepEqual($$(window, "#content h2.section-label").map((h) => h.textContent), ["הודעות", "הפיד", "כלי מאמן"]);
+  // Section headers use the app's .section-label. Q-43: pinned announcements, the feed, then (staff) the
+  // closed "ניהול המועדון" fold with the announcement tools and the join link.
+  assert.deepEqual($$(window, "#content h2.section-label").map((h) => h.textContent), ["הודעות", "הפיד"]);
+  const admin = $(window, "#clubAdmin");
+  assert.equal(admin.tagName, "DETAILS"); assert.equal(admin.open, false);
+  assert.match(admin.querySelector("summary").textContent, /ניהול המועדון/);
+  for (const sel of ["[data-club-form='ann']", "[data-club='pin']", "[data-club='del-ann']", "[data-club='rotate']"]) assert.ok(admin.querySelector(sel), sel + " is under ניהול המועדון");
   assert.equal($(window, "#content .settings-block-title"), null);
   // Publish is the app's primary button.
   assert.ok($(window, "[data-club-form='ann'] button[type='submit'].save-btn"));

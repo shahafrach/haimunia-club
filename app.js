@@ -221,9 +221,11 @@ function renderBottomTabBar() {
 // a normally-hidden container" treatment renderSettingsBody() already relies on
 // - so the tabAddBtn/tabHistoryBtn/etc. ids these rows carry stay resolvable
 // at all times, exactly like the old static tabbar's buttons always were.
-function renderNavWho() {
+function renderNavWho(opts) {
   const initial = userName ? userName.trim().charAt(0) : "";
   const streak = computeCurrentStreak();
+  // Q-43: on התקדמות the weekly streak card is the one streak, so this card names the medals instead.
+  const noStreak = !!(opts && opts.noStreak);
   // data-action="open-achievements" added here (2026-09-08, immersive
   // redesign): the ONLY two existing triggers for this
   // (#userGreeting/the "לכל המדליות..." link) both live inside the main
@@ -273,7 +275,7 @@ function renderNavWho() {
              who land here - someone who has never trained and someone whose
              streak lapsed - which "בואו נתחיל להתאמן" was not, and it leaves
              "בואו נתחיל" to the two buttons that actually ask for a tap. -->
-        <div class="who-sub">${streak > 0 ? `${streak} ${streak === 1 ? "יום" : "ימים"} ברצף` : "הרצף מתחיל באימון הבא"}</div>
+        <div class="who-sub">${noStreak ? "המדליות וההישגים שלי" : streak > 0 ? `${streak} ${streak === 1 ? "יום" : "ימים"} ברצף` : "הרצף מתחיל באימון הבא"}</div>
       </div>
       <div class="flex items-center gap-6" style="flex-shrink:0; color:var(--steel); font-size:12px; font-weight:700;" aria-hidden="true">
         <span>מדליות</span>
@@ -5771,6 +5773,7 @@ function renderBodyweightArea() {
   el.innerHTML = header + detail;
 }
 
+let measureFoldOpen = false;
 function renderMeasureArea() {
   const el = document.getElementById("measureArea");
   if (!el) return;
@@ -5789,7 +5792,7 @@ function renderMeasureArea() {
            <button data-action="cancel-add-measure-type" style="color:var(--steel); font-size:13px; padding:0 10px;">ביטול</button>
          </div>
        </div>`
-    : `<button class="link-btn" data-action="open-add-measure-type" style="margin-top:${types.length ? "8px" : "0"};">+ הוספת מדד חדש</button>`;
+    : `<button class="link-btn link-btn--tap" data-action="open-add-measure-type" style="margin-top:${types.length ? "8px" : "0"};">+ הוספת מדד חדש</button>`;
 
   const rows = types.map((t) => {
     const expanded = measureExpandedId === t.id;
@@ -5835,10 +5838,14 @@ function renderMeasureArea() {
     return header + detail;
   }).join("");
 
+  // Q-43: folded by default (most members never measure); open while adding a type, and as the member left it.
+  const open = measureFoldOpen || measureAddOpen;
   el.innerHTML = `
-    <h2 class="section-label" style="margin-top:4px;">מדדי גוף</h2>
+    <details class="measure-fold" id="measureFold"${open ? " open" : ""}>
+      <summary class="exercise-row"><h2 class="section-label" style="margin:0;">מדדי גוף</h2><span aria-hidden="true" style="display:inline-flex; flex-shrink:0; transition:transform .2s; transform:rotate(${open ? "90deg" : "180deg"});">${ICONS.chevron}</span></summary>
     ${rows}
     ${addRow}
+    </details>
   `;
   if (measureAddOpen) {
     const input = document.getElementById("measureTypeInput");
@@ -6148,13 +6155,12 @@ function renderMonthBlock(sum, current) {
 }
 function renderMonthlySummary() {
   const { last, current } = monthlySummaries();
-  const streak = weeklyStreak();
-  const streakText = streak.weeks === 0 ? "אין עדיין רצף שבועי" : streak.weeks === 1 ? "רצף של שבוע אחד" : `רצף של ${streak.weeks} שבועות`;
+  // Q-43: the streak is on its own card above (one streak card), not repeated here.
   return `<div class="chart-card monthly-summary" id="monthlySummary" style="margin-bottom:16px; display:flex; flex-direction:column; gap:12px;">
       <h2 class="section-label" style="margin:0;">סיכום חודשי</h2>
       ${renderMonthBlock(last, false)}
       ${renderMonthBlock(current, true)}
-      <div class="footer-note" style="margin:0;">${streakText}. אישי בלבד: לא נשלח לשום מקום.</div>
+      <div class="footer-note" style="margin:0;">אישי בלבד: לא נשלח לשום מקום.</div>
     </div>`;
 }
 function renderHistoryTab() {
@@ -6625,7 +6631,7 @@ function render() {
     } else if (tab === "history") {
       // Q-43a: the member's card (name, streak, the way to medals) heads התקדמות now that the header's medals
       // icon, its greeting and the ☰ menu are gone. The same component the desktop sidebar shows.
-      content = `<div id="progressWho" style="margin-bottom:12px;">${renderNavWho()}</div>` + renderHistoryTab();
+      content = `<div id="progressWho" style="margin-bottom:12px;">${renderNavWho({ noStreak: true })}</div>` + renderHistoryTab();
     } else if (tab === "calendar") {
       content = renderCalendarTab();
     } else if (tab === "club") {
@@ -8572,6 +8578,13 @@ document.addEventListener("keydown", (e) => {
   }
 });
 // "עוד אפשרויות" (log screen): remember the member's choice, so a re-render does not fold it back.
+// Q-43: the מדדי גוף fold keeps its state across re-renders.
+document.addEventListener("toggle", (e) => {
+  if (!e.target || e.target.id !== "measureFold") return;
+  measureFoldOpen = e.target.open;
+  const ch = e.target.querySelector("summary > span[aria-hidden='true']");
+  if (ch) ch.style.transform = `rotate(${e.target.open ? "90deg" : "180deg"})`;
+}, true);
 // Q-43: the save bar's "לשתף במועדון" box and its Settings default.
 document.addEventListener("change", (e) => {
   const t = e.target;

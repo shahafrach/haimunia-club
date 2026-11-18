@@ -26,7 +26,7 @@
     feed: { rows: [], loaded: false, loading: false, done: false, error: false },
     ann: { rows: [], loaded: false, loading: false, error: false },
     members: { rows: [], loaded: false, loading: false, error: false, open: false },
-    postDraft: "", postPinned: false, annError: "",
+    postDraft: "", postPinned: false, annError: "", adminOpen: false,
     newLink: "", newCode: "", qr: "", linkCopied: false, codeCopied: false, busy: {},
   };
 
@@ -262,30 +262,43 @@
   }
   function name(n) { return n ? bidiText(n) : "חבר/ה"; }
 
-  function announcementsHtml(staff) {
-    var a = C.ann, rows = a.rows.map(function (x) {
-      var tools = staff
-        ? '<div class="chip-row" style="margin-top:8px;">' +
-          '<button class="chip-btn" data-club="pin" data-id="' + esc(x.id) + '" data-pinned="' + (x.pinned ? "0" : "1") + '">' + (x.pinned ? "ביטול נעיצה" : "נעיצה") + "</button>" +
-          '<button class="chip-btn danger" data-club="del-ann" data-id="' + esc(x.id) + '">מחיקה</button></div>'
-        : "";
-      return '<div class="card" style="margin-bottom:10px;">' +
-        (x.pinned ? '<div style="color:var(--steel); font-size:11.5px; font-weight:700; margin-bottom:4px;">📌 נעוץ</div>' : "") +
-        '<div style="white-space:pre-wrap; font-size:14px; line-height:1.55;" dir="auto">' + bidiText(x.body) + "</div>" +
-        '<div style="color:var(--steel); font-size:11.5px; margin-top:6px;">' + esc(when(x.created_at)) + "</div>" + tools + "</div>";
-    }).join("");
-    var form = staff
-      ? '<form data-club-form="ann" class="card" style="margin-bottom:12px;" novalidate>' +
+  // Q-43 (owner approved 2026-11-18): the tab reads top to bottom as pinned announcements, the feed, one
+  // members row, and, for staff only, everything that changes the club behind "ניהול המועדון".
+  function annCard(x, tools) {
+    return '<div class="card" style="margin-bottom:10px;">' +
+      (x.pinned ? '<div style="color:var(--steel); font-size:11.5px; font-weight:700; margin-bottom:4px;">📌 נעוץ</div>' : "") +
+      '<div style="white-space:pre-wrap; font-size:14px; line-height:1.55;" dir="auto">' + bidiText(x.body) + "</div>" +
+      '<div style="color:var(--steel); font-size:11.5px; margin-top:6px;">' + esc(when(x.created_at)) + "</div>" + (tools || "") + "</div>";
+  }
+  // Decided by fixes, owner to confirm: the member view shows pinned announcements only; an unpinned one is
+  // the coach's to pin or delete, under ניהול המועדון.
+  function announcementsHtml() {
+    var a = C.ann;
+    if (a.error) return '<div style="color:var(--steel); font-size:13px; margin-bottom:12px;">לא הצלחנו לטעון הודעות.</div>';
+    var rows = a.rows.filter(function (x) { return x.pinned; }).map(function (x) { return annCard(x); }).join("");
+    return rows ? '<h2 class="section-label" style="margin-top:6px;">הודעות</h2>' + rows : "";
+  }
+  function annAdminHtml() {
+    var a = C.ann;
+    var form = '<form data-club-form="ann" class="card" style="margin-bottom:12px;" novalidate>' +
         '<label for="clubAnnBody" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">הודעה חדשה לכל המועדון (עד 500 תווים, בלי התראה)</label>' +
         '<textarea id="clubAnnBody" name="body" class="text-input" rows="3" maxlength="500" dir="auto" style="margin-bottom:8px;">' + esc(C.postDraft) + "</textarea>" +
         '<label class="flex items-center gap-8" style="font-size:13px; min-height:44px;"><input type="checkbox" name="pinned"' + (C.postPinned ? " checked" : "") + " /> לנעוץ בראש הדף</label>" +
         (C.annError ? '<div role="alert" style="color:var(--red-text); font-size:12.5px; margin-bottom:8px;">' + esc(C.annError) + "</div>" : "") +
-        '<button type="submit" class="save-btn" style="max-width:none;"' + (C.busy.ann ? " disabled" : "") + ">" + (C.busy.ann ? "רגע…" : "פרסום") + "</button></form>"
-      : "";
-    var body = a.error ? '<div style="color:var(--steel); font-size:13px; margin-bottom:12px;">לא הצלחנו לטעון הודעות.</div>'
-      : (a.loaded && !rows ? "" : rows);
-    if (!form && !body) return "";
-    return '<h2 class="section-label" style="margin-top:6px;">הודעות</h2>' + form + body;
+        '<button type="submit" class="save-btn" style="max-width:none;"' + (C.busy.ann ? " disabled" : "") + ">" + (C.busy.ann ? "רגע…" : "פרסום") + "</button></form>";
+    var rows = a.rows.map(function (x) {
+      return annCard(x, '<div class="chip-row" style="margin-top:8px;">' +
+        '<button class="chip-btn" data-club="pin" data-id="' + esc(x.id) + '" data-pinned="' + (x.pinned ? "0" : "1") + '">' + (x.pinned ? "ביטול נעיצה" : "נעיצה") + "</button>" +
+        '<button class="chip-btn danger" data-club="del-ann" data-id="' + esc(x.id) + '">מחיקה</button></div>');
+    }).join("");
+    return '<h3 class="section-label">הודעות</h3>' + form + rows;
+  }
+  function adminHtml() {
+    // Open when the member left it open, and whenever a new join link is showing (it is shown once only).
+    var open = C.adminOpen || !!C.newLink;
+    return '<details class="club-admin" id="clubAdmin"' + (open ? " open" : "") + '>' +
+      '<summary class="exercise-row"><span style="font-weight:700; font-size:13.5px;">ניהול המועדון</span>' + chevron(open) + "</summary>" +
+      annAdminHtml() + linkToolHtml() + "</details>";
   }
 
   function reactionsHtml(r) {
@@ -355,7 +368,7 @@
         '<button class="link-btn link-btn--tap" data-club="hide-link">סגירה</button></div></div>' +
         printCardHtml()
       : "";
-    return '<h2 class="section-label" style="margin-top:16px;">כלי מאמן</h2>' + out +
+    return '<h3 class="section-label" style="margin-top:16px;">קישור הצטרפות</h3>' + out +
       '<button class="exercise-row" data-club="rotate"><div style="text-align:right;"><div style="font-weight:700; font-size:13.5px;">קישור הצטרפות חדש</div>' +
       '<div style="color:var(--steel); font-size:12px; margin-top:2px;">מחליף את הקישור הקבוע. הישן מפסיק לעבוד.</div></div></button>';
   }
@@ -386,7 +399,7 @@
       '<div class="scene-page__intro"><div class="scene-page__brand">' + esc(typeof brandWordmark === "function" ? brandWordmark() : "") + "</div>" +
       '<h1 id="pageTitle-club" class="scene-page__title">' + esc(i.clubName || "המועדון") + "</h1></div>" +
       '<div class="scene-sheet"><div class="stripe-ribbon" aria-hidden="true"></div>' +
-      announcementsHtml(i.staff) + feedHtml(i.staff) + membersHtml(i) + (i.staff ? linkToolHtml() : "") +
+      announcementsHtml() + feedHtml(i.staff) + membersHtml(i) + (i.staff ? adminHtml() : "") +
       "</div></section>";
   }
 
@@ -580,6 +593,13 @@
   function init() {
     document.addEventListener("click", onClick);
     document.addEventListener("submit", onSubmit);
+    document.addEventListener("toggle", function (e) {
+      if (e.target && e.target.id === "clubAdmin") {
+        C.adminOpen = e.target.open;
+        var ch = e.target.querySelector("summary > span[aria-hidden='true']");
+        if (ch) ch.style.transform = "rotate(" + (e.target.open ? "90deg" : "180deg") + ")";
+      }
+    }, true);
     if (connect()) connect().onChange(function () {
       var i = info();
       if (C.clubId !== i.clubId) reset();

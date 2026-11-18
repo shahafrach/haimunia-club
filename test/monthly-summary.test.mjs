@@ -57,7 +57,8 @@ test("last full month and this month so far: workouts, PRs by the app's own rule
   assert.equal(oct.querySelector(".month-workouts").textContent, "4");
   assert.equal(oct.querySelector(".month-prs").textContent, "2");
   assert.match(oct.querySelector(".month-best").textContent, /השיא הבולט:.*Back Squat.*\+10%.*110 ק״ג × 5/);
-  assert.match(card.textContent, /רצף של/, "the weekly streak is on the card");
+  assert.doesNotMatch(card.textContent, /רצף/, "Q-43: one streak card; the weekly streak is not repeated here");
+  assert.ok(window.document.getElementById("weeklyStreak"), "it is on its own card");
   const pct = oct.querySelector(".month-best-pct");
   assert.equal(pct.getAttribute("dir"), "ltr", "+10% is isolated left to right, so the sign stays in front in the RTL line");
   assert.equal(pct.textContent, "+10%");
@@ -79,7 +80,7 @@ test("an empty month says so in one line", async () => {
   const c2 = none.document.getElementById("monthlySummary");
   assert.match(c2.textContent, /עדיין לא נרשמו אימונים החודש\./);
   assert.match(c2.textContent, /לא נרשמו אימונים ב/);
-  assert.match(c2.textContent, /אין עדיין רצף שבועי/);
+  assert.match(none.document.getElementById("weeklyStreak").textContent, /אין עדיין רצף/, "the streak card says it, once");
   assert.equal(plain(none.monthlySummaries(at("2026-11-16T10:00:00Z"))).last.best, null);
 });
 
