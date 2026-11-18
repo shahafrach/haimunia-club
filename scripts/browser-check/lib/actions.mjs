@@ -68,8 +68,11 @@ export async function dismissWelcomeModal(page, name = "בדיקה") {
   // First run now also asks once: connect with a username, or stay offline.
   // Scenarios run offline, so they answer "stay offline".
   try {
-    await page.waitForSelector("#connectOverlay.open [data-connect='offline']", { timeout: 2000 });
-    await page.click("[data-connect='offline']");
+    await page.waitForSelector("#connectOverlay.open [data-connect='offline']", { state: "attached", timeout: 2000 });
+    // Q-42: "להישאר בלי חיבור" sits under the closed "אפשרויות נוספות" fold; open it as a member would.
+    const fold = page.locator("#connectMoreOptions:not([open]) > summary");
+    if (await fold.count()) await fold.click();
+    await page.click("#connectOverlay [data-connect='offline']");
     await page.waitForFunction(
       () => !document.getElementById("connectOverlay")?.classList.contains("open"),
       { timeout: 10000 },
