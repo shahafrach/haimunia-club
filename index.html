@@ -2676,9 +2676,38 @@
     .invite-print-title{ font-size:15pt; }
     .invite-print-qr{ width:78mm; height:78mm; }
     .invite-print-steps{ font-size:12pt; line-height:1.9; text-align:right; direction:rtl; padding-inline-start:20px; margin:0; }
-    .invite-print-code-label{ font-size:10pt; }
-    .invite-print-code{ font-family:'JetBrains Mono', monospace; font-size:9pt; word-break:break-all; max-width:120mm; }
+    .invite-print-code-label{ font-size:12pt; }
+    /* Q-37: the 8-character code, large enough to read off the wall and type. */
+    .invite-print-code{ font-family:ui-monospace, 'JetBrains Mono', monospace; font-size:34pt; font-weight:800; letter-spacing:4pt; max-width:160mm; }
+    .invite-print-link{ font-family:ui-monospace, monospace; font-size:13pt; }
+    .invite-print-qr .join-qr{ width:78mm; height:78mm; }
   }
+  /* ---- Joining with the short code (Q-37) ------------------------------
+     The staff card (club.js linkToolHtml), the code screen a link opens in a browser and the installed
+     app's join field (connect.js). Sizes are for older members: the code is the largest text on the
+     screen, and it is two groups of four that wrap onto two lines rather than overflow at 200% text. */
+  .join-qr-wrap{ display:flex; justify-content:center; margin:4px 0 12px; }
+  .join-qr{ width:220px; max-width:100%; height:auto; aspect-ratio:1; display:block; border-radius:10px; }
+  .join-qr-bg{ fill:var(--p-ffffff); }
+  .join-qr-fg{ fill:var(--p-000000); }
+  .join-code-label{ text-align:center; color:var(--steel); font-size:14px; font-weight:700; margin-bottom:4px; }
+  .join-code-big{ display:flex; flex-wrap:wrap; justify-content:center; column-gap:0.5em; text-align:center;
+    font-family:ui-monospace, 'JetBrains Mono', monospace; font-weight:800; font-size:40px; line-height:1.15;
+    letter-spacing:3px; padding:12px 8px; margin-bottom:12px; border:2px solid var(--border); border-radius:14px;
+    background:var(--surface2); user-select:all; overflow-wrap:anywhere; }
+  .join-link-text{ text-align:center; font-family:ui-monospace, monospace; font-size:14px; overflow-wrap:anywhere; user-select:all; margin-bottom:12px; }
+  .join-field-label{ display:block; font-size:17px; font-weight:700; margin-bottom:8px; }
+  .join-field{ width:100%; box-sizing:border-box; min-height:64px; font-size:30px; font-weight:800; text-align:center; letter-spacing:3px;
+    font-family:ui-monospace, 'JetBrains Mono', monospace; text-transform:uppercase; margin-bottom:12px; }
+  .join-field::placeholder{ font-size:20px; letter-spacing:1px; font-weight:600; text-transform:none; }
+  .join-err{ color:var(--red-text); font-size:17px; font-weight:700; line-height:1.5; margin-bottom:14px; }
+  .join-lead{ font-size:16px; line-height:1.6; margin-bottom:14px; text-align:center; }
+  .join-steps{ list-style:none; margin:0 0 14px; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .join-step{ display:flex; align-items:center; gap:12px; font-size:16px; line-height:1.5; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); }
+  .join-step-pic{ flex-shrink:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--surface); color:var(--blue); }
+  .join-step-pic img{ width:36px; height:36px; border-radius:8px; }
+  .join-step-num{ font-weight:800; }
+  .join-after{ font-size:17px; font-weight:700; line-height:1.6; text-align:center; margin-bottom:14px; }
   /* Approved immersive composition — shared by the existing render paths. */
   :root{ --club-coral:var(--p-f0443e); --club-blue:var(--p-1455b8); }
   /* THE SAME REDUCTION THE ADD SCREEN ALREADY HAD, on the three screens that

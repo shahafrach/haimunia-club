@@ -46,6 +46,7 @@ const OPTIONAL_ASSETS = [
   "./src/errors.js",
   "./src/feedback.js",
   "./vendor/supabase.js",
+  "./vendor/qrcode.js",
   "./privacy.html",
   "./manifest.json",
   "./apple-touch-icon.png",

@@ -8708,6 +8708,9 @@ async function init() {
   // grandfathered member can still set a name any time via Settings' edit
   // icon (openWelcomeModal(true)).
   if (maybeOfferFirstImport()) { /* F-001: the import comes first; "start fresh" opens the welcome sheet */ }
+  // Q-37: a short join link opened in Safari shows the code and the install steps; the welcome sheet would
+  // cover them, and the name typed into a Safari tab would not reach the installed app anyway.
+  else if (window.haimuniaConnect && window.haimuniaConnect.opensInstall()) { /* connect.js shows the code screen */ }
   else if (userName === null && isFreshInstall) openWelcomeModal();
   else openNotifications({ onlyIfUnseen: true });
 

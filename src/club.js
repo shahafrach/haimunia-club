@@ -27,7 +27,7 @@
     ann: { rows: [], loaded: false, loading: false, error: false },
     members: { rows: [], loaded: false, loading: false, error: false, open: false },
     postDraft: "", postPinned: false, annError: "",
-    newLink: "", linkCopied: false, busy: {},
+    newLink: "", newCode: "", qr: "", linkCopied: false, codeCopied: false, busy: {},
   };
 
   function connect() { return window.haimuniaConnect; }
@@ -38,7 +38,7 @@
     C.clubId = null; C.feed = { rows: [], loaded: false, loading: false, done: false, error: false };
     C.ann = { rows: [], loaded: false, loading: false, error: false };
     C.members = { rows: [], loaded: false, loading: false, error: false, open: false };
-    C.postDraft = ""; C.postPinned = false; C.annError = ""; C.newLink = ""; C.linkCopied = false; C.busy = {};
+    C.postDraft = ""; C.postPinned = false; C.annError = ""; clearLink(); C.busy = {};
   }
   function again() { if (typeof render === "function" && typeof tab !== "undefined" && tab === "club") render(); }
   function toast(t) { if (typeof showToast === "function") showToast(t); }
@@ -165,13 +165,67 @@
   function setPinned(id, pinned) {
     simpleRpc("club_announcement_set_pinned", { p_id: id, p_pinned: pinned }, null, function () { C.ann.loaded = false; loadAnnouncements(); });
   }
-  async function rotateLink() {
-    await simpleRpc("rotate_club_link", { p_club_id: C.clubId }, null, function (token) {
-      if (typeof token === "string" && /^[0-9a-f]{64}$/.test(token)) {
-        C.newLink = location.origin + location.pathname + "#join=" + token; C.linkCopied = false;
-      }
-    });
+  // Q-37: the join link is short (#j=<8-character code>), with a QR of it and the code in large type, so a
+  // member can scan it, tap it, or type the code into the installed app. rotate_club_invite (backend
+  // 202611180002) returns {token, code} once; before that backend is live the long link still works.
+  var CODE_RE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/;
+  function clearLink() { C.newLink = ""; C.newCode = ""; C.qr = ""; C.linkCopied = false; C.codeCopied = false; }
+  function setLink(token, code) {
+    clearLink();
+    var base = location.origin + location.pathname;
+    if (typeof code === "string" && CODE_RE.test(code)) { C.newCode = code; C.newLink = base + "#j=" + code; }
+    else if (typeof token === "string" && /^[0-9a-f]{64}$/.test(token)) C.newLink = base + "#join=" + token;
+    if (!C.newLink) return;
+    var link = C.newLink;
+    loadQr().then(function () {
+      if (C.newLink !== link) return;
+      try { C.qr = qrSvg(link); } catch (e) { C.qr = ""; }
+      again();
+    }, function () {});
   }
+  function missingFunction(err) { return !!err && (err.code === "PGRST202" || /could not find the function/i.test(String(err.message || ""))); }
+  async function rotateLink() {
+    try {
+      var c = await client();
+      var r = await c.rpc("rotate_club_invite", { p_club_id: C.clubId });
+      if (r.error && missingFunction(r.error)) {
+        r = await c.rpc("rotate_club_link", { p_club_id: C.clubId });
+        if (r.error) throw r.error;
+        setLink(r.data, "");
+      } else {
+        if (r.error) throw r.error;
+        setLink(r.data && r.data.token, r.data && r.data.code);
+      }
+    } catch (e) { toast(errText(e, "הפעולה נכשלה, נסו שוב")); }
+    again();
+  }
+
+  // The QR encoder (vendor/qrcode.js, qrcode-generator 1.4.4, MIT) loads only when staff makes a link.
+  var qrPromise = null;
+  function loadQr() {
+    if (typeof window.qrcode === "function") return Promise.resolve();
+    if (qrPromise) return qrPromise;
+    qrPromise = new Promise(function (ok, no) {
+      var s = document.createElement("script");
+      s.src = "./vendor/qrcode.js";
+      s.onload = function () { typeof window.qrcode === "function" ? ok() : no(); };
+      s.onerror = function () { qrPromise = null; no(); };
+      document.head.appendChild(s);
+    });
+    return qrPromise;
+  }
+  // Dark modules on a light ground in both schemes (a QR does not scan inverted on every phone), with the
+  // four-module quiet zone the standard asks for.
+  function qrSvg(text) {
+    var q = window.qrcode(0, "M");
+    q.addData(text);
+    q.make();
+    var n = q.getModuleCount(), quiet = 4, size = n + quiet * 2, d = "";
+    for (var r = 0; r < n; r++) for (var col = 0; col < n; col++) if (q.isDark(r, col)) d += "M" + (col + quiet) + " " + (r + quiet) + "h1v1h-1z";
+    return '<svg class="join-qr" viewBox="0 0 ' + size + " " + size + '" role="img" aria-label="קוד QR של קישור ההצטרפות" shape-rendering="crispEdges">' +
+      '<rect class="join-qr-bg" width="' + size + '" height="' + size + '"/><path class="join-qr-fg" d="' + d + '"/></svg>';
+  }
+  function codeGroups(code) { return code.slice(0, 4) + " " + code.slice(4); }
 
   // Destructive actions go through the app's own confirm sheet.
   function askConfirm(opts) {
@@ -286,14 +340,41 @@
   }
 
   function linkToolHtml() {
+    var code = C.newCode;
     var out = C.newLink
-      ? '<div class="card" style="margin-bottom:10px;"><div style="color:var(--steel); font-size:12.5px; margin-bottom:6px;">הקישור החדש. הוא מוצג פעם אחת בלבד, והקישור הישן כבר לא עובד.</div>' +
-        '<div dir="ltr" style="word-break:break-all; font-family:ui-monospace,monospace; font-size:12px; user-select:all; margin-bottom:8px;">' + esc(C.newLink) + "</div>" +
-        '<button class="chip-btn" data-club="copy-link">' + (C.linkCopied ? "הועתק" : "העתקה") + '</button> <button class="link-btn link-btn--tap" data-club="hide-link">סגירה</button></div>'
+      ? '<div class="card join-invite" id="clubInvite" style="margin-bottom:10px;">' +
+        '<div style="font-weight:700; font-size:14px; margin-bottom:4px;">קישור ההצטרפות החדש</div>' +
+        '<div style="color:var(--steel); font-size:12.5px; margin-bottom:10px;">מוצג פעם אחת בלבד, והקישור הישן כבר לא עובד. שולחים אותו עכשיו, או מדפיסים.</div>' +
+        (C.qr ? '<div class="join-qr-wrap">' + C.qr + "</div>" : "") +
+        (code ? '<div class="join-code-label">קוד הצטרפות</div><div class="join-code-big" dir="ltr" id="clubInviteCode" aria-label="' + esc(code.split("").join(" ")) + '">' + esc(codeGroups(code)) + "</div>" : "") +
+        '<div dir="ltr" class="join-link-text" id="clubInviteLink">' + esc(C.newLink) + "</div>" +
+        '<div class="chip-row" style="justify-content:center;">' +
+        '<button class="chip-btn" data-club="copy-link">' + (C.linkCopied ? "הקישור הועתק" : "העתקת הקישור") + "</button>" +
+        (code ? '<button class="chip-btn" data-club="copy-code">' + (C.codeCopied ? "הקוד הועתק" : "העתקת הקוד") + "</button>" : "") +
+        '<button class="chip-btn" data-club="print-link">הדפסה</button>' +
+        '<button class="link-btn link-btn--tap" data-club="hide-link">סגירה</button></div></div>' +
+        printCardHtml()
       : "";
     return '<h2 class="section-label" style="margin-top:16px;">כלי מאמן</h2>' + out +
       '<button class="exercise-row" data-club="rotate"><div style="text-align:right;"><div style="font-weight:700; font-size:13.5px;">קישור הצטרפות חדש</div>' +
       '<div style="color:var(--steel); font-size:12px; margin-top:2px;">מחליף את הקישור הקבוע. הישן מפסיק לעבוד.</div></div></button>';
+  }
+
+  // The printed sheet for the front desk: the QR, three steps and the code, black on white. index.html's
+  // print stylesheet shows only this (.invite-print-card) and hides the rest of the app.
+  function printCardHtml() {
+    var name = info().clubName || "האימוניה";
+    return '<div class="invite-print-card" data-invite-print aria-hidden="true">' +
+      '<div class="invite-print-club">' + esc(name) + "</div>" +
+      '<div class="invite-print-title">הצטרפות למועדון באפליקציית האימוניה</div>' +
+      (C.qr ? '<div class="invite-print-qr">' + C.qr + "</div>" : "") +
+      '<ol class="invite-print-steps">' +
+      "<li>סורקים את הקוד במצלמה של הטלפון, או נכנסים לכתובת שמתחת.</li>" +
+      "<li>מוסיפים את האפליקציה למסך הבית ופותחים אותה מהאייקון.</li>" +
+      "<li>מקלידים את קוד ההצטרפות.</li></ol>" +
+      '<div class="invite-print-link" dir="ltr">' + esc(C.newLink) + "</div>" +
+      (C.newCode ? '<div class="invite-print-code-label">קוד הצטרפות</div><div class="invite-print-code" dir="ltr">' + esc(codeGroups(C.newCode)) + "</div>" : "") +
+      "</div>";
   }
 
   function renderTab() {
@@ -480,7 +561,12 @@
     else if (a === "rotate") askConfirm({ title: "קישור הצטרפות חדש", message: "הקישור הנוכחי יפסיק לעבוד ולא יהיה אפשר לשחזר אותו.", confirmLabel: "יצירת קישור חדש", payload: { op: "rotate" } });
     else if (a === "members") { C.members.open = !C.members.open; if (C.members.open && !C.members.loaded) loadMembers(); again(); }
     else if (a === "members-retry") { C.members.error = false; loadMembers(); }
-    else if (a === "hide-link") { C.newLink = ""; again(); }
+    else if (a === "hide-link") { clearLink(); again(); }
+    else if (a === "print-link") { try { window.print(); } catch (err) {} }
+    else if (a === "copy-code") {
+      var doneCode = function (ok) { C.codeCopied = !!ok; again(); };
+      try { navigator.clipboard.writeText(C.newCode).then(function () { doneCode(true); }, function () { doneCode(false); }); } catch (err) { doneCode(false); }
+    }
     else if (a === "copy-link") {
       var done = function (ok) { C.linkCopied = !!ok; again(); };
       try { navigator.clipboard.writeText(C.newLink).then(function () { done(true); }, function () { done(false); }); } catch (err) { done(false); }
