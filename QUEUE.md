@@ -5,7 +5,6 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 ## Waiting for Shahaf
 - F-023: set-vault-secrets ran 2026-11-18 14:14 UTC (green, Vault cron secret 64 chars). Still broken, see Q-34.
 - F-028: demo #182 merged 11:49 UTC, migration 202611180001 applied, main test and migration-status green. Closed.
-- F-028: #181 is live and a backup-database ran after it (10:08, green), so demo #182 can go now: mark it ready, merge, wait for migration-status green. It does not depend on set-vault-secrets.
 - 3.18.0 is live (club #33 merged, live sw.js 3.18.0, release 07:57 check). rollback-3.17.1 at dc02722 still to create from a computer.
 - 3.18.1 is live (club #37 merged 4edb53a, live sw.js 3.18.1, release check 2026-11-18). F-025 and F-026 closed. rollback-3.18.0 at 9594a13 still to create from a computer.
 - From a computer: Dependabot alerts on (F-030), rollback tags (list in archive), Turnstile check on box-log (F-008), empty template repo (Q-20).
