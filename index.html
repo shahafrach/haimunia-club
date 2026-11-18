@@ -271,6 +271,7 @@
     --p-ff7869: #FF7869;
     --p-ff7869-107: #ff7869;
     --p-ff7f53: #FF7F53;
+    --p-ff9470: #FF9470;
     --p-ff8f6b: #FF8F6B;
     --p-ff9488: #FF9488;
     --p-ffae8c-a55: rgba(255,174,140,.55);
@@ -370,6 +371,11 @@
        destructive chip's text: dark --red-text (#FF7869) measured 4.12:1 on
        the settings card, #FF9488 is 4.98:1 and the same red family. */
     --on-energy:var(--p-1a0d08); --danger-text:var(--red-text);
+    /* Q-44 (owner approved 2026-11-18): one scale for type, space, buttons and tap targets. Type is in rem so
+       iOS Dynamic Type (html's -apple-system-body below) moves it; six steps, 12/14/16/18/22/30 at 16px. */
+    --fs-1:.75rem; --fs-2:.875rem; --fs-3:1rem; --fs-4:1.125rem; --fs-5:1.375rem; --fs-6:1.875rem;
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
+    --tap-min:44px; --btn-height:44px; --btn-height-lg:52px; --btn-radius:14px;
 }
   
   :root[data-scheme="dark"]{
@@ -383,7 +389,7 @@
     --stripe-a:var(--energy); --stripe-b:#ffffff;
     --shadow-card: 0 1px 0 rgba(255,255,255,.04) inset, 0 14px 28px -18px rgba(0,0,0,.65);
     --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
-      --energy-text:#FF7F53; --red-text:#FF7869; --green-text:#5CBB74; --red:#D2433A;
+      --energy-text:var(--p-ff9470); --red-text:#FF7869; --green-text:#5CBB74; --red:#D2433A;
       --danger-text:var(--p-ff9488);
   }
   /* ---- Immersive club scene layer (2026-09-08 handoff) ------------------
@@ -468,6 +474,8 @@
      text-scale.mjs's existing "no horizontal overflow" check (unaffected
      by this removal) still guards against anything actually bleeding past
      the viewport. */
+  /* Q-44: iOS Dynamic Type. The shorthand sets html's size from the system text size; the family is set again. */
+  html{ font:-apple-system-body; }
   html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; overscroll-behavior-y:contain; touch-action:pan-y; width:100%; }
   /* svh, not dvh: reported live as "the screen vibrates when you switch
      tabs" - the switch-tab handler (app.js) resets scroll to top on every
@@ -815,7 +823,7 @@
   }
   :root[data-scheme="dark"] .scene-sheet{
     --surface:var(--p-1f3057); --surface2:var(--p-2a3d6b); --border:var(--p-425481); --chalk:var(--p-f2ece1); --steel:var(--p-a8b3c9);
-    --brass:var(--p-e8b98a); --energy-text:var(--p-ff7f53); --red-text:var(--p-ff7869); --green-text:var(--p-5cbb74);
+    --brass:var(--p-e8b98a); --energy-text:var(--p-ff9470); --red-text:var(--p-ff7869); --green-text:var(--p-5cbb74);
     background:var(--p-081523-a96); color:var(--chalk);
   }
   
@@ -1188,7 +1196,7 @@
      .chip-btn or .save-btn instead; the two places where a .link-btn was
      genuinely standing in for a CONTROL (appearance, text size) get the
      segmented treatment just below. */
-  .link-btn{ color:var(--steel); font-size:13px; text-decoration:underline;
+  .link-btn{ min-height:var(--tap-min); color:var(--steel); font-size:13px; text-decoration:underline;
     display:inline-flex; align-items:center; min-height:36px; padding:4px 6px; }
   /* UX review, finding 4. The 36px floor above is right for the INLINE
      idiom it was written for - two or three links on one line, one of them

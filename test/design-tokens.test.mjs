@@ -112,3 +112,20 @@ test("the resolved scheme is stamped before first paint and kept in step with th
   assert.match(app, /if \(themePref === "auto"\) applyThemePref\(\);/, "an OS switch in auto mode re-stamps the scheme");
   assert.match(app, /getPropertyValue\("--meta-theme-color"\)/, "the browser bar color comes from the tokens");
 });
+
+// Q-44 (owner approved 2026-11-18): one scale, Dynamic Type, tap targets, and dark --energy-text on --surface2.
+test("Q-44: type, space, button and tap tokens; Dynamic Type on html; .link-btn is a 44px target", () => {
+  const t = scheme(false);
+  assert.deepEqual(["fs-1", "fs-2", "fs-3", "fs-4", "fs-5", "fs-6"].map((k) => t[k]), [".75rem", ".875rem", "1rem", "1.125rem", "1.375rem", "1.875rem"]);
+  assert.deepEqual(["space-1", "space-2", "space-3", "space-4", "space-5", "space-6"].map((k) => t[k]), ["4px", "8px", "12px", "16px", "24px", "32px"]);
+  assert.equal(t["tap-min"], "44px"); assert.equal(t["btn-height"], "44px"); assert.equal(t["btn-height-lg"], "52px");
+  assert.match(html, /html\{ font:-apple-system-body; \}/);
+  assert.match(html, /\.link-btn\{ min-height:var\(--tap-min\);/);
+});
+test("Q-44: --energy-text clears 4.5:1 on --surface2 in both schemes", () => {
+  for (const dark of [false, true]) {
+    const t = scheme(dark);
+    const r = ratio(t["energy-text"], t.surface2);
+    assert.ok(r >= 4.5, `${dark ? "dark" : "light"} --energy-text (${t["energy-text"]}) on --surface2 (${t.surface2}) is ${r.toFixed(2)}:1`);
+  }
+});
