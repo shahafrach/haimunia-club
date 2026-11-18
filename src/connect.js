@@ -24,7 +24,9 @@
   // Q-37: the club link's short code (backend 202611180002): 8 of 31 characters, no 0, O, 1, I, L.
   var CODE_RE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/;
   var USERNAME_RULE = "3 עד 24 אותיות אנגליות קטנות, ספרות או קו תחתון";
-  var PASSWORD_RULE = "לפחות 10 תווים, עם אות גדולה, אות קטנה וספרה";
+  // Q-38g (owner, 2026-11-18): length is the whole rule, the same on the server (haimunia-app-demo #189).
+  var PASSWORD_RULE = "לפחות 10 תווים";
+  var RECOVERY_CODE_KEY = "haimunia:recoveryCode";
   var APP_NAME = "club";
 
   var S = {
@@ -154,7 +156,6 @@
     if (!p) return "יש להזין סיסמה";
     if (p.length < 10) return "הסיסמה קצרה מדי. צריך " + PASSWORD_RULE + ".";
     if (p.length > 72) return "הסיסמה ארוכה מדי. אפשר עד 72 תווים.";
-    if (!/[a-z]/.test(p) || !/[A-Z]/.test(p) || !/[0-9]/.test(p)) return "הסיסמה צריכה לכלול אות גדולה, אות קטנה וספרה באנגלית.";
     return "";
   }
   function toEmail(u) { return u + "@members.haimuniya.invalid"; }
@@ -257,6 +258,7 @@
       var r = await c.functions.invoke("issue-recovery-code", { body: {} });
       if (r.error || !r.data || typeof r.data.recovery_code !== "string") throw new Error("no code");
       S.code = r.data.recovery_code;
+      keepRecoveryCode(S.code);
       S.busy = false; paint();
     } catch (e) {
       // The account exists; only the code failed. Say so and let the member retry or carry on.
@@ -362,7 +364,7 @@
     var ok = await signInAfterReset(username, password);
     S.busy = false; S.drafts = {}; S.error = ""; S.errors = {};
     if (!ok) { S.drafts = { username: username }; S.view = "login"; paint(); if (typeof showToast === "function") showToast("הסיסמה הוחלפה. נכנסים עם הסיסמה החדשה."); return; }
-    if (newRecoveryCode) { S.code = newRecoveryCode; S.saved = false; S.copied = false; S.view = "code"; paint(); return; }
+    if (newRecoveryCode) { S.code = newRecoveryCode; keepRecoveryCode(S.code); S.saved = false; S.copied = false; S.view = "code"; paint(); return; }
     S.view = nextView(); paint();
     if (typeof showToast === "function") showToast("הסיסמה הוחלפה. אתם מחוברים.");
     if (S.view === "join" && joinToken) joinWithToken(joinToken);
@@ -380,6 +382,51 @@
     var r = await invokeFn("recover-password", { username: username, recovery_code: code, new_password: pw });
     if (!r.ok) return fail("forgot", {}, r.network ? NET_FAIL : "שם המשתמש או קוד השחזור לא נכונים.");
     await afterReset(username, pw, typeof r.data.recovery_code === "string" ? r.data.recovery_code : "");
+  }
+
+  // Q-38g (owner): the recovery code can be seen again while signed in on this phone. It is kept in the app's
+  // own settings (IndexedDB), never sent anywhere, and forgotten on sign-out, account deletion or "delete
+  // everything". Whoever holds this unlocked, signed-in phone already holds the account.
+  function keepRecoveryCode(code) { try { dbSetSetting(RECOVERY_CODE_KEY, code || null).catch(function () {}); } catch (e) {} }
+  function dropRecoveryCode() { keepRecoveryCode(null); }
+  async function readRecoveryCode() { try { var v = await dbGetSetting(RECOVERY_CODE_KEY); return typeof v === "string" ? v : ""; } catch (e) { return ""; } }
+  // One tap: a picture of the code, to the phone's share sheet (save to Photos, send to oneself); where files
+  // cannot be shared, the picture downloads; with no canvas at all, the text is shared.
+  function cssVar(name) { try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch (e) { return ""; } }
+  function codeImageBlob(code, username) {
+    return new Promise(function (resolve) {
+      var c = document.createElement("canvas");
+      var g = c.getContext && c.getContext("2d");
+      if (!g || !c.toBlob) return resolve(null);
+      c.width = 1080; c.height = 600;
+      g.fillStyle = cssVar("--surface"); g.fillRect(0, 0, c.width, c.height);
+      g.fillStyle = cssVar("--chalk"); g.textAlign = "center"; g.direction = "rtl";
+      g.font = "700 46px Rubik, system-ui, sans-serif"; g.fillText("קוד השחזור של האימוניה", 540, 120);
+      if (username) { g.font = "400 36px Rubik, system-ui, sans-serif"; g.fillText("שם המשתמש: " + username, 540, 200); }
+      g.direction = "ltr"; g.font = "800 72px ui-monospace, monospace"; g.fillText(code, 540, 330);
+      g.direction = "rtl"; g.fillStyle = cssVar("--steel"); g.font = "400 32px Rubik, system-ui, sans-serif";
+      g.fillText("שומרים במקום בטוח. בעזרתו מחליפים סיסמה שנשכחה.", 540, 450);
+      c.toBlob(function (b) { resolve(b); }, "image/png");
+    });
+  }
+  async function shareRecoveryCode() {
+    var code = S.code;
+    if (!code) return;
+    var uname = S.user && S.user.email ? String(S.user.email).split("@")[0] : "";
+    var blob = await codeImageBlob(code, uname);
+    try {
+      if (blob && typeof File === "function") {
+        var file = new File([blob], "haimunia-recovery-code.png", { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) { await navigator.share({ files: [file], title: "קוד השחזור של האימוניה" }); return; }
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = "haimunia-recovery-code.png";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 10000);
+        return;
+      }
+      if (navigator.share) { await navigator.share({ title: "קוד השחזור של האימוניה", text: "קוד השחזור של האימוניה" + (uname ? " (" + uname + ")" : "") + ": " + code }); return; }
+    } catch (e) { /* the member closed the share sheet */ return; }
+    if (typeof showToast === "function") showToast("אפשר להעתיק את הקוד ולשמור אותו.");
   }
 
   function passkeyReady() { return !!(window.PublicKeyCredential && navigator.credentials); }
@@ -472,6 +519,7 @@
 
   async function doSignOut() {
     try { var c = await getClient(); await c.auth.signOut(); } catch (e) {}
+    dropRecoveryCode();
     S.user = null; S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.drafts = {};
     changed();
     setChoice("offline");
@@ -522,6 +570,7 @@
     try { var c2 = await getClient(); await c2.auth.signOut({ scope: "local" }); } catch (e) {}
     try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
     S.busy = false;
+    dropRecoveryCode();
     S.user = null; S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.clubName = ""; S.drafts = {}; joinToken = null;
     setChoice("offline");
     changed();
@@ -535,17 +584,25 @@
   function forget() {
     try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) {}
     S.user = null; S.profile = null; S.inClub = null; S.clubId = null; S.role = null; S.choice = null; joinToken = null;
+    dropRecoveryCode();
     changed();
   }
 
   // ---- Screens -----------------------------------------------------------------------
-  function fieldHtml(name, label, type, extra) {
+  // Q-38g: a rule is visible text under the field (a placeholder disappears as soon as one types), and every
+  // password field has a show-password button.
+  function fieldHtml(name, label, type, extra, hint) {
     var err = S.errors[name];
     var val = type === "password" ? "" : (S.drafts[name] || "");
-    return '<label for="connect-' + name + '" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">' + esc(label) + "</label>" +
-      '<input id="connect-' + name + '" name="' + name + '" class="text-input" type="' + type + '" value="' + esc(val) + '" ' + (extra || "") +
-      (err ? ' aria-invalid="true" aria-describedby="connect-' + name + '-err"' : "") + ' style="margin-bottom:' + (err ? "6" : "14") + 'px;" />' +
-      (err ? '<div id="connect-' + name + '-err" role="alert" style="color:var(--red-text); font-size:12.5px; margin-bottom:14px;">' + esc(err) + "</div>" : "");
+    var id = "connect-" + name;
+    var described = [hint ? id + "-hint" : "", err ? id + "-err" : ""].filter(Boolean).join(" ");
+    var gap = err || hint || type === "password" ? "6" : "14";
+    return '<label for="' + id + '" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">' + esc(label) + "</label>" +
+      '<input id="' + id + '" name="' + name + '" class="text-input" type="' + type + '" value="' + esc(val) + '" ' + (extra || "") +
+      (err ? ' aria-invalid="true"' : "") + (described ? ' aria-describedby="' + described + '"' : "") + ' style="margin-bottom:' + gap + 'px;" />' +
+      (hint ? '<div id="' + id + '-hint" class="join-hint">' + esc(hint) + "</div>" : "") +
+      (type === "password" ? '<button type="button" class="link-btn link-btn--tap pw-toggle" data-connect="toggle-pw" data-for="' + id + '" aria-controls="' + id + '" aria-pressed="false">הצגת הסיסמה</button>' : "") +
+      (err ? '<div id="' + id + '-err" role="alert" style="color:var(--red-text); font-size:12.5px; margin-bottom:14px;">' + esc(err) + "</div>" : (type === "password" || hint ? '<div style="height:8px;"></div>' : ""));
   }
   function errorHtml() { return S.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(S.error) + "</span></div>" : ""; }
   // Q-37: the join screens are for older members: one large field, large error text.
@@ -561,7 +618,7 @@
   }
   function newPasswordFields() {
     // The rule is in the label, not a placeholder: at 17px a placeholder this long is cut off on a phone.
-    return fieldHtml("password", "סיסמה חדשה: " + PASSWORD_RULE, "password", 'autocomplete="new-password" dir="ltr" maxlength="72"') +
+    return fieldHtml("password", "סיסמה חדשה", "password", 'autocomplete="new-password" dir="ltr" maxlength="72"', PASSWORD_RULE) +
       fieldHtml("passwordConfirm", "הסיסמה החדשה שוב", "password", 'autocomplete="new-password" dir="ltr" maxlength="72"');
   }
   function forgotLink() { return '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap join-forgot" data-connect="go-forgot">שכחתי סיסמה</button></div>'; }
@@ -620,8 +677,8 @@
     if (v === "signup") {
       return head("יצירת חשבון", "שם וסיסמה לכניסה מכל מכשיר. שם הכניסה הוא רק בשבילכם. אין צורך באימייל או בטלפון.") + errorHtml() +
         '<form id="connectForm" data-connect-form="signup" novalidate>' +
-        fieldHtml("username", "שם לכניסה", "text", 'autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24" placeholder="' + esc(USERNAME_RULE) + '"') +
-        fieldHtml("password", "סיסמה", "password", 'autocomplete="new-password" dir="ltr" maxlength="72" placeholder="' + esc(PASSWORD_RULE) + '"') +
+        fieldHtml("username", "שם לכניסה", "text", 'autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24"', USERNAME_RULE + ", בלי עברית") +
+        fieldHtml("password", "סיסמה", "password", 'autocomplete="new-password" dir="ltr" maxlength="72"', PASSWORD_RULE) +
         fieldHtml("passwordConfirm", "סיסמה שוב", "password", 'autocomplete="new-password" dir="ltr" maxlength="72"') +
         submitBtn("יצירת חשבון") + "</form>" +
         (joinToken ? '<div style="text-align:center;">' + linkBtn("כבר יש לי חשבון", 'data-connect="go-login"') + "</div>" : "") +
@@ -657,11 +714,22 @@
     if (v === "code") {
       if (S.busy) return head("רגע, מכינים קוד שחזור…");
       if (!S.code) return head("קוד שחזור") + errorHtml() + btn("ניסיון חוזר", 'data-connect="retry-code"') + '<div style="text-align:center;">' + linkBtn("להמשיך בלי קוד", 'data-connect="after-code"') + "</div>";
-      return head("קוד השחזור שלכם", "שומרים אותו במקום בטוח. הוא מוצג פעם אחת בלבד, ובלעדיו אי אפשר לשחזר סיסמה שאבדה.") +
-        '<div dir="ltr" style="text-align:center; font-family:ui-monospace,monospace; font-weight:800; font-size:20px; letter-spacing:1px; padding:14px 8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); margin-bottom:12px; user-select:all;">' + esc(S.code) + "</div>" +
+      return head("קוד השחזור שלכם", "שומרים אותו במקום בטוח: בעזרתו מחליפים סיסמה שנשכחה. אפשר לראות אותו שוב במסך המועדון כל עוד מחוברים בטלפון הזה.") +
+        '<div dir="ltr" id="connectRecoveryCode" style="text-align:center; font-family:ui-monospace,monospace; font-weight:800; font-size:20px; letter-spacing:1px; padding:14px 8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); margin-bottom:12px; user-select:all;">' + esc(S.code) + "</div>" +
+        btn("שמירה כתמונה או שליחה", 'data-connect="share-code"') +
         '<div style="text-align:center; margin-bottom:12px;">' + btn(S.copied ? "הועתק" : "העתקה", 'data-connect="copy-code"', "chip-btn") + "</div>" +
         '<label class="flex items-center gap-8" style="font-size:13.5px; margin-bottom:14px; min-height:44px;"><input type="checkbox" id="connectSaved" data-connect-saved' + (S.saved ? " checked" : "") + " /> שמרתי את הקוד</label>" +
         '<button type="button" class="save-btn" data-connect="after-code" style="max-width:none;"' + (S.saved ? "" : " disabled") + ">המשך</button>";
+    }
+    if (v === "code-view") {
+      return head("קוד השחזור שלכם", "שמור בטלפון הזה כל עוד מחוברים. בעזרתו מחליפים סיסמה שנשכחה.") +
+        (S.code
+          ? '<div dir="ltr" id="connectRecoveryCode" style="text-align:center; font-family:ui-monospace,monospace; font-weight:800; font-size:20px; letter-spacing:1px; padding:14px 8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); margin-bottom:12px; user-select:all;">' + esc(S.code) + "</div>" +
+            btn("שמירה כתמונה או שליחה", 'data-connect="share-code"') +
+            '<div style="text-align:center; margin-bottom:12px;">' + btn(S.copied ? "הועתק" : "העתקה", 'data-connect="copy-code"', "chip-btn") + "</div>"
+          : '<div class="join-lead">הקוד לא שמור בטלפון הזה. אפשר ליצור קוד חדש; הקודם יפסיק לעבוד.</div>') +
+        '<div style="text-align:center;">' + linkBtn(S.code ? "קוד חדש במקומו" : "יצירת קוד חדש", 'data-connect="retry-code"') + "</div>" +
+        '<div style="text-align:center;">' + linkBtn("חזרה", 'data-connect="go-status"') + "</div>";
     }
     if (v === "join") {
       if (S.busy) return head("מצטרפים למועדון…");
@@ -715,11 +783,12 @@
       (S.inClub === false ? btn("הצטרפות למועדון", 'data-connect="go-join"') : "") +
       (S.inClub ? '<div style="text-align:center;">' + linkBtn("שינוי השם והאימוג'י במועדון", 'data-connect="go-profile"') + "</div>" : "") +
       (signedIn() && passkeyReady() ? '<div style="text-align:center;">' + linkBtn("הפעלת כניסה עם Face ID", 'data-connect="passkey-register-status"') + "</div>" : "") +
+      (signedIn() ? '<div style="text-align:center;">' + linkBtn("קוד השחזור שלי", 'data-connect="go-code-view"') + "</div>" : "") +
       '<div style="text-align:center;">' + linkBtn("התנתקות", 'data-connect="signout"') + "</div>" +
       (signedIn() ? '<div style="text-align:center; margin-top:14px;">' + btn("מחיקת החשבון", 'data-connect="go-delete"', "chip-btn danger") + "</div>" : "");
   }
 
-  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", forgot: "שכחתי סיסמה", passkey: "Face ID", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
+  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", "code-view": "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", forgot: "שכחתי סיסמה", passkey: "Face ID", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
   function paint() {
     var body = el("connectBody");
     if (!body) return;
@@ -777,6 +846,17 @@
     else if (a === "go-choice") { S.view = "choice"; paint(); }
     else if (a === "go-join") { S.view = "join"; paint(); }
     else if (a === "go-forgot") { S.drafts = {}; S.view = "forgot"; paint(); }
+    else if (a === "go-code-view") { if (signedIn()) readRecoveryCode().then(function (c) { S.code = c; S.copied = false; S.view = "code-view"; paint(); }); }
+    else if (a === "share-code") { shareRecoveryCode(); }
+    else if (a === "toggle-pw") {
+      var inp = el(t.getAttribute("data-for") || "");
+      if (inp) {
+        var show = inp.type === "password";
+        inp.type = show ? "text" : "password";
+        t.setAttribute("aria-pressed", show ? "true" : "false");
+        t.textContent = show ? "הסתרת הסיסמה" : "הצגת הסיסמה";
+      }
+    }
     else if (a === "passkey-signin") { doPasskeySignIn(); }
     else if (a === "passkey-register") { doPasskeyRegister(afterCodeScreen); }
     else if (a === "passkey-skip") { afterCodeScreen(); }

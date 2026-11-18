@@ -201,7 +201,9 @@ test("a device that chose to be connected restores its session on open; an offli
   assert.ok(row, "Settings has the club row");
 });
 
-test("the code never reaches storage, and no private-log data is part of any call", async () => {
+// Q-38g: the recovery code is kept on purpose now, in the app's IndexedDB settings only (tested below), never in
+// localStorage or sessionStorage.
+test("no web storage for codes, and no private-log data is part of any call", async () => {
   const src = readFileSync(path.join(root, "src/connect.js"), "utf8");
   assert.doesNotMatch(src, /localStorage\.setItem|sessionStorage|private_records|bodyweight|entries/i);
   assert.match(src, /"haimunia:auth"/);
@@ -443,5 +445,64 @@ test("the client opts in to Supabase's experimental passkeys", () => {
   const src = readFileSync(path.join(root, "src/connect.js"), "utf8");
   assert.match(src, /experimental: \{ passkey: true \}/);
   assert.doesNotMatch(src, /request-reset|reset_code|club_issue_reset_code/, "no self-service request, no coach code");
+});
+
+// ---- Q-38g: sign-up and the recovery code -------------------------------------------------------------------
+
+test("sign-up: the rules are visible text, the password needs only 10 characters, and it can be shown", async () => {
+  const { window, log } = await boot();
+  await firstRunName(window);
+  $(window, "[data-connect='go-signup']").click();
+  assert.match($(window, "#connect-username-hint").textContent, /אותיות אנגליות קטנות.*בלי עברית/);
+  assert.equal($(window, "#connect-password-hint").textContent, "לפחות 10 תווים");
+  assert.equal($(window, "#connect-password").getAttribute("placeholder"), null, "not a placeholder that vanishes");
+  assert.match($(window, "#connect-password").getAttribute("aria-describedby"), /connect-password-hint/);
+  // Show the password, and hide it again.
+  const eye = $(window, "[data-connect='toggle-pw'][data-for='connect-password']");
+  eye.click();
+  assert.equal($(window, "#connect-password").type, "text");
+  assert.equal(eye.getAttribute("aria-pressed"), "true");
+  eye.click();
+  assert.equal($(window, "#connect-password").type, "password");
+  // 9 characters: refused, nothing sent.
+  setVal(window, "username", "dana_k"); setVal(window, "password", "abcdefghi"); setVal(window, "passwordConfirm", "abcdefghi");
+  submit(window);
+  assert.match($(window, "#connectBody").textContent, /קצרה מדי/);
+  assert.equal(log.update, null);
+  // 10 lowercase letters: enough.
+  setVal(window, "username", "dana_k"); setVal(window, "password", "abcdefghij"); setVal(window, "passwordConfirm", "abcdefghij");
+  submit(window);
+  await until(() => $(window, "#connectSaved"), "recovery code");
+  assert.equal(log.update.a.password, "abcdefghij");
+});
+
+test("the recovery code: one tap to share, kept on this phone while signed in, seen again from status, gone on sign-out", async () => {
+  const { window } = await boot({ backend: { member: true, profile: { display_name: "דנה", emoji: "💪" } } });
+  await firstRunName(window);
+  $(window, "[data-connect='go-signup']").click();
+  setVal(window, "username", "dana_k"); setVal(window, "password", "abcdefghij"); setVal(window, "passwordConfirm", "abcdefghij");
+  submit(window);
+  await until(() => $(window, "#connectRecoveryCode"), "code");
+  // jsdom has no canvas, so the text goes to the share sheet; a phone gets the picture.
+  const shared = [];
+  Object.defineProperty(window.navigator, "share", { value: async (d) => { shared.push(d); }, configurable: true });
+  $(window, "[data-connect='share-code']").click();
+  await until(() => shared.length === 1, "shared");
+  assert.match(shared[0].text, /ABCD-EFGH-JKLM-NPQR/);
+  assert.equal(await window.dbGetSetting("haimunia:recoveryCode"), "ABCD-EFGH-JKLM-NPQR", "kept on this phone");
+  const cb = $(window, "#connectSaved"); cb.checked = true; cb.dispatchEvent(new window.Event("change", { bubbles: true }));
+  $(window, "[data-connect='after-code']").click();
+  window.haimuniaConnect.open("status");
+  await until(() => $(window, "[data-connect='go-code-view']"), "status");
+  $(window, "[data-connect='go-code-view']").click();
+  await until(() => $(window, "#connectRecoveryCode"), "seen again");
+  assert.equal($(window, "#connectRecoveryCode").textContent, "ABCD-EFGH-JKLM-NPQR");
+  assert.ok($(window, "[data-connect='go-status']"), "a way back");
+  window.haimuniaConnect.open("status");
+  await until(() => $(window, "[data-connect='signout']"), "status again");
+  $(window, "[data-connect='signout']").click();
+  await until(async () => true, "tick");
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(await window.dbGetSetting("haimunia:recoveryCode"), null, "forgotten on sign-out");
 });
 
