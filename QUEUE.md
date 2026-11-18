@@ -6,7 +6,7 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 - F-023: #181 is live (migration 202611160001 applied, migration-status and deploy-edge-functions green 07:42). **Only step left: run set-vault-secrets** in haimunia-app-demo Actions. Release check 11:10 UTC (read only): the Vault cron secret is still the placeholder, notif_push_send answered 401 to all 60 calls in the last 3 h (last 11:09), job_health_state failing = [edge: notif_push_send]. Write "continue" after the run.
 - F-028: #181 is live and a backup-database ran after it (10:08, green), so demo #182 can go now: mark it ready, merge, wait for migration-status green. It does not depend on set-vault-secrets.
 - 3.18.0 is live (club #33 merged, live sw.js 3.18.0, release 07:57 check). rollback-3.17.1 at dc02722 still to create from a computer.
-- Ship 3.18.1 after fixes does Q-33: merge club #37.
+- Ship 3.18.1: merge club #37 (Q-33 verified on a8cb22d). Then rollback-3.18.0 from a computer.
 - From a computer: Dependabot alerts on (F-030), rollback tags (list in archive), Turnstile check on box-log (F-008), empty template repo (Q-20).
 - From the phone: C4-2 on a real iPhone, G4 club message.
 
@@ -21,11 +21,5 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 ## Open rows
 | ID | Owner | Status | After | Task | PR | Notes |
 |----|-------|--------|-------|------|----|-------|
-| Q-33 | fixes | done | Q-32 merged | Release club #37 (F-025, F-026) as 3.18.1 | [club #37](https://github.com/shahafrach/haimunia-club/pull/37) | Verified in Q-30. Prompt below. **fixes 2026-11-18:** #37 rebased on main 9594a13 (3.18.0), head `a8cb22d`. 3.18.1 (check-version OK), CHANGES `# 3.18.1 — כפתור העדכון בביקור ראשון, ושם נגיש לכפתור תצוגת היומן — 2026-11-18`, rollback-3.18.0 command in the PR. Related 19/0; full `npm test` 519 pass, 0 fail, 1 skipped (Cursor's opt-in audit test). Also: demo #182 marked ready (#181 merged), text updated. |
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
-
-## Q-33 prompt (fixes)
-
-After club #33 (3.18.0) is merged to main: rebase #37 on main, set APP_VERSION to 3.18.1 and run `npm run sync-version`, add the CHANGES.md entry `# 3.18.1 — כפתור העדכון בביקור ראשון, ושם נגיש לכפתור תצוגת היומן — <date>` (F-025: in a first visit the update banner tap reloads; F-026: the calendar view button's accessible name starts with the visible word). Put the rollback-3.18.0 command in the PR body for Shahaf. Related tests and one full `npm test`; paste the numbers. Mark Q-33 done.
-
