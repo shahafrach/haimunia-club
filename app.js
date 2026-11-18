@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.17.1";
+const APP_VERSION = "3.18.0";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -372,10 +372,8 @@ function renderNavSettingsRow() {
          many for the one thing a member does when the app is misbehaving. The
          moment you most need to report a fault is the moment you are least
          inclined to go looking for where to do it.
-         It STAYS in Settings as well. This is not a move: the two places
-         answer different questions - "something is broken right now" belongs
-         on the menu you already have open, and "where do I get help" belongs
-         under עזרה with the rest of it. Both routes call the same openSupport().
+         Q-27 (2026-11-16): it opens the in-app feedback box, the one feedback
+         screen; Settings keeps its "שליחת משוב" row to the same box.
          In renderNavSettingsRow rather than renderNavMenuList so the desktop
          sidebar gets it too - they share this function, and a desktop user
          reporting a fault should not have to find a hamburger that is not
@@ -1728,132 +1726,20 @@ function closeNotifications() {
 }
 
 // ---------- Support and bug reporting ----------
-// Added 2026-09-15, straight out of the first real-phone session this app
-// ever had. Four things were reported as "not working" that day, and the
-// only reason they reached anybody is that the person holding the phone was
-// also the person who could fix them. A member has no such channel: the app
-// has never had a single route for "this is broken" or "I need help", so
-// every one of those reports would have ended as a shrug, or as a message in
-// the club WhatsApp group that nobody with the code ever reads.
+// Q-27 (owner request 2026-11-16): "תמיכה ודיווח על תקלה" opens the in-app feedback box (src/feedback.js,
+// feedback_submit), the one feedback screen. The old report that was composed here and handed to WhatsApp,
+// e-mail or the clipboard is gone. The box sends without a name, waits offline (at most 5) and goes when the
+// app is online again; the automatic error reports (src/errors.js) are unchanged.
 //
-// WHY THIS LIVES IN app.js AND NOT cloud.js. Community is opt-in, and the
-// training log works with no account, no network and no Supabase at all. A
-// member who never joined Community is exactly as entitled to report a bug as
-// one who did - more so, since the offline log is the part they use daily.
-// Putting this in cloud.js would have made "can I ask for help" depend on
-// having said yes to a social feed.
-//
-// WHY IT HANDS OFF INSTEAD OF WRITING TO THE DATABASE. Reporting a bug is
-// precisely the moment the app might be the broken thing. A table write needs
-// a live client, a network, a valid session and an intact RLS path - four
-// things a bug report should never be gated on. Composing the text locally
-// and handing it to WhatsApp or mail costs none of them, works in airplane
-// mode, and leaves the member holding their own copy of what they sent.
-// See cloud-config.js's supportWhatsApp/supportEmail for the routing.
-function supportConfig() {
-  const c = (typeof window !== "undefined" && window.HAIMUNIA_CONFIG) || {};
-  const digits = String(c.supportWhatsApp || "").replace(/[^0-9]/g, "");
-  return { whatsapp: digits, email: String(c.supportEmail || "").trim() };
-}
-// What the developer needs and the member should not have to be asked for.
-// Deliberately contains nothing personal: no name, no handle, no training
-// data, no invite code. Version + platform + the three state bits that
-// change how the app behaves are what actually narrow a bug down, and every
-// one of them is about the DEVICE, not the person. The member can read the
-// whole block before sending it - it is rendered on screen, not attached
-// invisibly, because a report that quietly ships facts about someone's phone
-// without showing them is not something this app should do.
-function supportDiagnostics() {
-  const online = typeof navigator !== "undefined" && "onLine" in navigator ? (navigator.onLine ? "מקוון" : "לא מקוון") : "לא ידוע";
-  return [
-    `גרסה: ${APP_VERSION}`,
-    `מותקן במסך הבית: ${isStandalone() ? "כן" : "לא"}`,
-    `חיבור: ${online}`,
-    `דפדפן: ${typeof navigator !== "undefined" ? String(navigator.userAgent || "").slice(0, 160) : "לא ידוע"}`,
-  ].join("\n");
-}
-function supportReportText() {
-  const typed = (document.getElementById("supportMessage") || {}).value || "";
-  return `דיווח על תקלה — ${brandName()}\n\n${typed.trim() || "(לא נכתב תיאור)"}\n\n--- פרטים טכניים ---\n${supportDiagnostics()}`;
-}
-function renderSupportContent() {
-  const cfg = supportConfig();
-  // No configured channel is not a dead end: the member still writes the
-  // report and copies it, which is strictly better than a screen that says
-  // "contact support" and offers no way to.
-  const routes = [];
-  if (cfg.whatsapp) routes.push(`<button class="chip-btn primary" data-action="support-send-whatsapp">שליחה בוואטסאפ</button>`);
-  if (cfg.email) routes.push(`<button class="chip-btn" data-action="support-send-email">שליחה במייל</button>`);
-  routes.push(`<button class="chip-btn" data-action="support-copy">העתקת הדיווח</button>`);
-  return `
-    <div class="settings-block">
-      <div class="settings-block-title">מה קרה?</div>
-      <div class="footer-note" style="margin-bottom:8px;">כתבו מה ניסיתם לעשות ומה קרה בפועל. ככל שיהיה מדויק יותר, כך יהיה קל יותר לתקן.</div>
-      <label class="field"><span class="field-label">תיאור התקלה</span>
-        <textarea class="text-input" id="supportMessage" rows="5" dir="auto" placeholder="למשל: לחצתי על שמירת סט ולא קרה כלום"></textarea>
-      </label>
-      <div class="chip-row">${routes.join("")}</div>
-      <div class="footer-note" id="supportSendNote" role="status" aria-live="polite" style="margin-bottom:0;"></div>
-    </div>
-    <div class="settings-block">
-      <div class="settings-block-title">פרטים טכניים שיישלחו</div>
-      <div class="footer-note" style="margin-bottom:6px;">אלה פרטים על המכשיר בלבד — בלי השם שלכם, בלי יומן האימונים ובלי שום נתון אישי.</div>
-      <pre class="mono" style="white-space:pre-wrap;word-break:break-word;font-size:11.5px;color:var(--steel);margin:0;">${esc(supportDiagnostics())}</pre>
-    </div>`;
-}
-let supportOpenerEl = null;
+// The screen the member came from is preselected under "איפה זה קרה?": Settings when it is open, otherwise
+// the tab underneath the menu.
 function openSupport() {
+  const settingsOpen = !!document.getElementById("settingsOverlay")?.classList.contains("open");
+  const screen = settingsOpen ? "settings" : tab;
   closeNavMenu();
-  supportOpenerEl = document.activeElement;
-  document.getElementById("supportBody").innerHTML = renderSupportContent();
-  document.body.style.overflow = "hidden";
-  document.getElementById("supportOverlay").classList.add("open");
-  setTimeout(() => focusFirstAppDialogEl("supportOverlay"), 50);
-}
-function closeSupport() {
-  nudgeViewportAfterModalClose();
-  document.getElementById("supportOverlay").classList.remove("open");
-  // After the class is removed, so this dialog no longer counts as open.
-  // Support is reachable from a row INSIDE the still-open Settings sheet, and
-  // clearing the lock unconditionally let the page scroll behind it.
-  releaseScrollLockIfLastDialog();
-  if (supportOpenerEl && typeof supportOpenerEl.focus === "function") supportOpenerEl.focus();
-  supportOpenerEl = null;
-}
-function supportNote(text) {
-  const el = document.getElementById("supportSendNote");
-  if (el) el.textContent = text;
-}
-// window.open(..., "_blank") rather than assigning location: a wa.me or
-// mailto: handoff that fails to resolve should leave the member on their
-// half-written report, not navigate the app away from it.
-function supportHandoff(url, failText) {
-  try {
-    const w = window.open(url, "_blank");
-    if (!w) supportNote(failText);
-  } catch (e) { supportNote(failText); }
-}
-function supportSendWhatsApp() {
-  const cfg = supportConfig();
-  if (!cfg.whatsapp) return supportNote("לא הוגדר מספר וואטסאפ לתמיכה. אפשר להעתיק את הדיווח ולשלוח אותו ידנית.");
-  supportHandoff(`https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(supportReportText())}`,
-    "לא הצלחנו לפתוח את וואטסאפ. אפשר להעתיק את הדיווח ולשלוח אותו ידנית.");
-}
-function supportSendEmail() {
-  const cfg = supportConfig();
-  if (!cfg.email) return supportNote("לא הוגדרה כתובת מייל לתמיכה. אפשר להעתיק את הדיווח ולשלוח אותו ידנית.");
-  supportHandoff(`mailto:${encodeURIComponent(cfg.email)}?subject=${encodeURIComponent("דיווח על תקלה — " + brandName())}&body=${encodeURIComponent(supportReportText())}`,
-    "לא הצלחנו לפתוח את אפליקציית המייל. אפשר להעתיק את הדיווח ולשלוח אותו ידנית.");
-}
-function supportCopyReport() {
-  const text = supportReportText();
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text)
-      .then(() => supportNote("הדיווח הועתק. אפשר להדביק אותו בוואטסאפ, במייל או בכל מקום אחר."))
-      .catch(() => supportNote("ההעתקה נכשלה. אפשר לסמן את הטקסט ולהעתיק ידנית."));
-    return;
-  }
-  supportNote("ההעתקה לא נתמכת בדפדפן הזה. אפשר לסמן את הטקסט ולהעתיק ידנית.");
+  if (window.HaimuniaFeedback) { window.HaimuniaFeedback.open(screen); return; }
+  // feedback.js is an optional asset: if it did not load, say so instead of opening nothing.
+  showToast("תיבת המשוב לא נטענה. נסו שוב כשיש חיבור.");
 }
 
 // ---------- First-time onboarding ----------
@@ -6375,23 +6261,10 @@ function renderSettingsBody() {
           </div>
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
         </button>
-        <!-- Real device report, 2026-09-15. Until this row existed the app
-             had no route at all for "this is broken" or "I need help" - the
-             four defects found in the first real-phone session reached a
-             developer only because the tester happened to be one. Filed
-             under עזרה rather than as its own block: a member looking for
-             help looks here first, and a fifth top-level settings card for
-             one row would bury it further down the same screen. -->
-        <button class="exercise-row" data-action="open-support" style="margin-bottom:0;">
-          <div style="text-align:right;">
-            <div style="font-weight:700; font-size:13.5px;">תמיכה ודיווח על תקלה</div>
-            <div style="color:var(--steel); font-size:12px; margin-top:2px;">משהו לא עובד? ספרו לנו</div>
-          </div>
-          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
-        </button>
         <!-- 3.12.0: the feedback box (src/feedback.js). Anonymous: the typed text, the screen, the version
-             and the device type; no name or username. Opened from here it is about Settings (3.14.0). -->
-        <button class="exercise-row" data-feedback-open="settings" style="margin:8px 0 0;">
+             and the device type; no name or username. Opened from here it is about Settings (3.14.0). Since
+             Q-27 it is also where the menu's "תמיכה ודיווח על תקלה" leads: one feedback screen. -->
+        <button class="exercise-row" data-feedback-open="settings" style="margin:0;">
           <div style="text-align:right;">
             <div style="font-weight:700; font-size:13.5px;">שליחת משוב</div>
             <div style="color:var(--steel); font-size:12px; margin-top:2px;">מה לא עובד טוב? בלי שם, בכמה מילים</div>
@@ -7494,13 +7367,12 @@ document.addEventListener("keydown", (e) => {
 // always a modal-on-modal - it can fire while the WOD picker or Settings is
 // still up. Escape has to close the confirm, not the thing underneath it.
 registerAppDialog("appConfirm", { overlayId: "appConfirmOverlay", isOpen: () => !!appConfirmDialog, close: closeAppConfirm });
-// Second, and for the same reason: support is opened FROM the Settings sheet
-// and sits on top of it, so while it is up BOTH are open. currentAppDialog()
-// returns the first open entry in insertion order, so registering support
-// after "settings" below would make Escape and the phone's back button close
-// the sheet underneath and leave the visible one - which is the exact defect
-// openAchievements()'s own comment above describes, reached a second way.
-registerAppDialog("support", { overlayId: "supportOverlay", isOpen: () => document.getElementById("supportOverlay").classList.contains("open"), close: closeSupport });
+// Second, and for the same reason: the feedback box (which is also the menu's
+// "תמיכה ודיווח על תקלה" since Q-27) can be opened FROM the Settings sheet and
+// sits on top of it, so while it is up BOTH are open. currentAppDialog()
+// returns the first open entry in insertion order, so registering it after
+// "settings" below would make Escape and the phone's back button close the
+// sheet underneath and leave the visible one.
 registerAppDialog("feedback", { overlayId: "feedbackOverlay", isOpen: () => !!(window.HaimuniaFeedback && window.HaimuniaFeedback.isOpen()), close: () => window.HaimuniaFeedback.close(), escapable: true });
 
 // COMM-358. Every role="tablist" group in this app (the fixed bottom tab
@@ -8585,28 +8457,11 @@ document.addEventListener("click", (e) => {
     if (el.id === "connectOverlay" && e.target !== el) return;
     if (window.haimuniaConnect) window.haimuniaConnect.close();
   }
-  else if (action === "close-support") {
-    // THE BACKDROP GUARD, missing when this shipped and reported from a real
-    // phone the same day: "trying to put text it closes page". #supportOverlay
-    // carries data-action="close-support" so a tap on the dim area behind the
-    // sheet dismisses it - but the handler above resolves an action with
-    // e.target.closest("[data-action]"), which walks UP from whatever was
-    // tapped. Nothing inside the sheet carries its own data-action, so a tap
-    // on the textarea found the overlay and closed the dialog the instant the
-    // member tried to type. Every other overlay-level close in this file
-    // already had this exact line (close-settings, close-notifications,
-    // close-nav-menu); this one was written without it.
-    if (el.id === "supportOverlay" && e.target !== el) return;
-    closeSupport();
-  }
   else if (action === "close-feedback") {
     // The same backdrop guard as support: a tap inside the sheet (the text box) must not close it.
     if (el.id === "feedbackOverlay" && e.target !== el) return;
     if (window.HaimuniaFeedback) window.HaimuniaFeedback.close();
   }
-  else if (action === "support-send-whatsapp") { supportSendWhatsApp(); }
-  else if (action === "support-send-email") { supportSendEmail(); }
-  else if (action === "support-copy") { supportCopyReport(); }
   else if (action === "close-notifications") {
     if (el.id === "notificationsOverlay" && e.target !== el) return;
     closeNotifications();

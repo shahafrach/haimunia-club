@@ -1258,7 +1258,7 @@
      appConfirmOverlay is not a permanent top-level overlay like the others.
      renderAppConfirmSheet() injects it INSIDE #content, which is inside #app
      (this file, line ~2287) - while settingsOverlay, wodPickerOverlay,
-     supportOverlay and the rest are declared AFTER #app closes. With every
+     feedbackOverlay and the rest are declared AFTER #app closes. With every
      one of them at the same z-index:50, DOM order decides paint order, and
      the nested one loses that tie to every later sibling.
 
@@ -3634,28 +3634,7 @@
   </div>
 </div>
 
-<!-- Support and bug reporting (2026-09-15). Same shell as the notifications
-     overlay above - modal-overlay > modal-sheet > modal-head + modal-list,
-     backdrop click and close button both data-action="close-support" - so it
-     inherits the Escape/Tab-trap wiring from registerAppDialog() and the
-     history-anchor back-button handling every other app.js dialog already
-     gets, rather than inventing a fourth dialog shape. Body is rendered into
-     #supportBody by renderSupportContent() so the diagnostics block is
-     regenerated fresh on every open (a report composed from a stale snapshot
-     is worse than no diagnostics). -->
-<div class="modal-overlay" id="supportOverlay" data-action="close-support" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
-  <div class="modal-sheet">
-    <div class="modal-head">
-      <h2 class="modal-title" id="supportTitle">תמיכה ודיווח על תקלה</h2>
-      <button data-action="close-support" class="icon-btn" aria-label="סגירה" style="color:var(--steel);">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="modal-list" id="supportBody"></div>
-  </div>
-</div>
-
-<!-- The feedback box (src/feedback.js, 3.12.0). Built from the same sheet parts as the support dialog. -->
+<!-- The feedback box (src/feedback.js, 3.12.0): also what the menu's "תמיכה ודיווח על תקלה" opens (Q-27). modal-overlay > modal-sheet > modal-head + modal-list. -->
 <div class="modal-overlay" id="feedbackOverlay" data-action="close-feedback" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
   <div class="modal-sheet">
     <div class="modal-head">
@@ -3668,7 +3647,7 @@
   </div>
 </div>
 
-<!-- Connected mode (src/connect.js). Built from the same sheet parts as the support dialog. -->
+<!-- Connected mode (src/connect.js). Built from the same sheet parts as the feedback box. -->
 <div class="modal-overlay" id="connectOverlay" role="dialog" aria-modal="true" aria-labelledby="connectTitle">
   <div class="modal-sheet">
     <div class="modal-head">
@@ -3697,7 +3676,7 @@
   </div>
 </div>
 
-<!-- Transfer code (src/transfer.js): same sheet parts as the connect and support dialogs. -->
+<!-- Transfer code (src/transfer.js): same sheet parts as the connect and feedback dialogs. -->
 <div class="modal-overlay" id="transferOverlay" role="dialog" aria-modal="true" aria-labelledby="transferTitle">
   <div class="modal-sheet">
     <div class="modal-head">

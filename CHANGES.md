@@ -1,3 +1,15 @@
+# 3.18.0 — תמיכה ודיווח על תקלה דרך תיבת המשוב — 2026-11-18
+
+- The menu row "תמיכה ודיווח על תקלה" opens the in-app feedback box (feedback_submit), the one feedback
+  screen: "מה לא עובד טוב, או מה היה עוזר לכם?", the text box, "איפה זה קרה? (לא חובה)" with the screen the
+  member came from preselected, and send. Same offline queue (5 at most) and the same thank-you text.
+- The old support sheet that copied a report or sent it by WhatsApp or e-mail is gone, with its device-details
+  block and the supportWhatsApp/supportEmail settings in app-config.js. The duplicate support row in Settings is
+  gone; Settings keeps "שליחת משוב", which opens the same box.
+- privacy.html §8 "דיווח על תקלה": the report goes through the feedback box and is kept like feedback (§7).
+  "עודכן לאחרונה" is 18 בנובמבר 2026.
+- The automatic error reports are unchanged.
+
 # 3.17.1 — The iOS install banner never covers the log controls — 2026-11-16
 
 - F-024: in an iPhone Safari tab (390×664) the two-step install banner covered the log controls (the

@@ -194,7 +194,7 @@ test("the privacy page says the same: pseudonymous, linked across days, IP logs,
   assert.match(section, /רק לסיכומים כלליים/);
   assert.match(html, /ספקי השרת שומרים לזמן קצר יומני בקשות עם כתובת IP וסוג דפדפן/);
   assert.doesNotMatch(html, /אנונימי(?!ות מלאה)/, "nowhere claims the counts are anonymous");
-  assert.match(html, /עודכן לאחרונה: 15 בנובמבר 2026/);
+  assert.match(html, /עודכן לאחרונה: 18 בנובמבר 2026/); // 3.18.0: §8 changed (Q-27/Q-32)
   assert.doesNotMatch(html, /\[\[/, "no placeholder left");
   assert.match(html, /<a href="mailto:haimuniya@gmail\.com" dir="ltr">haimuniya@gmail\.com<\/a>/);
 });

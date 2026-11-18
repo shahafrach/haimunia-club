@@ -1,4 +1,5 @@
-// THE FEEDBACK BOX: "מה לא עובד טוב?" (3.12.0).
+// THE FEEDBACK BOX: "מה לא עובד טוב?" (3.12.0). Since Q-27 also the menu's "תמיכה ודיווח על תקלה": the one
+// feedback screen. The old WhatsApp / e-mail / copy bug report is gone.
 //
 // A sheet with one text box. What is sent: the text the member typed, the screen it is about, the app
 // version, the device type (ios, android, desktop, other) and whether the app is installed. Never a name or a
@@ -133,8 +134,9 @@
   function sheetHtml() {
     var esc_ = typeof esc === "function" ? esc : function (s) { return String(s); }; // eslint-disable-line no-undef
     var draft = el("feedbackText") ? el("feedbackText").value : "";
-    return '<div style="color:var(--steel); font-size:13px; line-height:1.6; margin-bottom:12px;">ספרו מה לא נוח, מה חסר או מה נשבר. נשלח בלי שם ובלי שם משתמש, ורק מפעיל האפליקציה קורא.</div>' +
-      '<div class="settings-block-title" id="feedbackScreenLabel">על איזה מסך?</div>' +
+    return '<div style="color:var(--chalk); font-size:15px; font-weight:700; line-height:1.5; margin-bottom:4px;">מה לא עובד טוב, או מה היה עוזר לכם?</div>' +
+      '<div style="color:var(--steel); font-size:13px; line-height:1.6; margin-bottom:12px;">נשלח בלי שם ובלי שם משתמש, ורק מפעיל האפליקציה קורא.</div>' +
+      '<div class="settings-block-title" id="feedbackScreenLabel">איפה זה קרה? (לא חובה)</div>' +
       '<div class="chip-row" role="radiogroup" aria-labelledby="feedbackScreenLabel" style="flex-wrap:wrap; margin-bottom:12px;">' +
       SCREENS.map(function (x) {
         var on = S.screen === x[0];
