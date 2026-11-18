@@ -3,7 +3,8 @@
 Full history: QUEUE-archive.md on this branch. Do not read it unless a row points there.
 
 ## Waiting for Shahaf
-- F-023: #181 is live (migration 202611160001 applied, migration-status and deploy-edge-functions green 07:42). **Only step left: run set-vault-secrets** in haimunia-app-demo Actions. Release check 11:10 UTC (read only): the Vault cron secret is still the placeholder, notif_push_send answered 401 to all 60 calls in the last 3 h (last 11:09), job_health_state failing = [edge: notif_push_send]. Write "continue" after the run.
+- F-023: set-vault-secrets ran 2026-11-18 14:14 UTC (green, Vault cron secret 64 chars). Still broken, see Q-34.
+- F-028: demo #182 merged 11:49 UTC, migration 202611180001 applied, main test and migration-status green. Closed.
 - F-028: #181 is live and a backup-database ran after it (10:08, green), so demo #182 can go now: mark it ready, merge, wait for migration-status green. It does not depend on set-vault-secrets.
 - 3.18.0 is live (club #33 merged, live sw.js 3.18.0, release 07:57 check). rollback-3.17.1 at dc02722 still to create from a computer.
 - 3.18.1 is live (club #37 merged 4edb53a, live sw.js 3.18.1, release check 2026-11-18). F-025 and F-026 closed. rollback-3.18.0 at 9594a13 still to create from a computer.
@@ -21,5 +22,6 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 ## Open rows
 | ID | Owner | Status | After | Task | PR | Notes |
 |----|-------|--------|-------|------|----|-------|
+| Q-34 | fixes | open | – | F-023 regression: cron calls to notif_push_send get 401 UNAUTHORIZED_INVALID_JWT_FORMAT from the Supabase gateway (every 3 min since #181, still after set-vault-secrets 14:14). The cron now sends EDGE_CRON_SECRET, not a JWT, and supabase/config.toml has no verify_jwt = false for the two functions that call isScheduledCaller. | – | In haimunia-app-demo: add [functions.notif_push_send] and [functions.purge_abandoned_profiles] with verify_jwt = false (the function's own isScheduledCaller check stays the gate). Check deploy-edge-functions.yml honours config.toml (or passes --no-verify-jwt). Add a test that every function using isScheduledCaller has verify_jwt = false. Sibling twins: grep isScheduledCaller and cron_invoke_edge_function. No migration. After merge, release verifies net._http_response shows 200 for notif_push_send. |
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
