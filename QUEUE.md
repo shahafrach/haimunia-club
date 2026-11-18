@@ -55,6 +55,7 @@ Branch `coord` in shahafrach/haimunia-club. **Never merge it to main.** It holds
 | Q-32 | fixes | doing | Q-27 | Release details for club #33 as 3.18.0 | [club #33](https://github.com/shahafrach/haimunia-club/pull/33) | Functionally verified (Q-27). Prompt below. |
 
 ## Owner decisions (from Shahaf)
+- 2026-11-18: F-029 (username enumeration on sign-up) accepted as low, as release proposed (Q-31). Not a launch gate. Club #36 merged.
 - 2026-11-18: F-023 (cron Edge Function 401s) is NOT a launch blocker. Keep fixing it (demo #181), but the launch does not wait for a clean cron cycle. Launch blockers now: F-028, F-025, F-026, plus C4-2, G4 and the Turnstile check. Keep one fixes session and the Cursor retest of the fixed findings.
 - 2026-11-16: Cursor finished gate 5 (club #34) and the security assessment (club #35). One high (F-028 after renumbering). Rows Q-28 to Q-31 added by the advisor. Launch stays blocked until F-028, F-025, F-026 and F-023 are closed.
 - 2026-11-16 17:08 UTC, advisor reran the Q-22 query after Shahaf sent a test feedback: errors=0, feedback=1, ip_counters=1, keyed_unknown=0. Real IPs reach the per-IP limit. release: mark Q-22 done and delete Shahaf's test feedback row only if the purge will not.
