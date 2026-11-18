@@ -73,12 +73,15 @@ Tests boot the real `index.html` in jsdom with fake-indexeddb via
 ## Connected mode (src/connect.js)
 
 - Optional. A member chooses at first run to connect with a username or stay offline; opening the app
-  never touches the network for an offline device. `vendor/supabase.js` and Turnstile load only on demand.
+  never touches the network for an offline device. `vendor/supabase.js`, Turnstile and `vendor/qrcode.js`
+  (the staff link card) load only on demand.
 - Private log stays on the phone. No cloud copy, no email, phone, payment or health data. Body weight
   never leaves the device, except inside the encrypted transfer code (phase 3).
 - Always send `app = "club"` where the backend asks (push subscriptions, `notif_list` /
   `notif_unread_count` `p_app`, bug reports).
-- The club is joined by one fixed link (`#join=<64 hex>`, read from the fragment only).
+- The club is joined by one fixed link: the short `#j=<8-character code>` (Q-37), or the older `#join=<64 hex>`,
+  read from the fragment only. The code can also be typed (any case, spaces and dashes ignored). Backend:
+  `rotate_club_invite` / `join_circle` (sibling migration 202611180002).
 - The design is this app's own: reuse its components and tokens, never BOX-LOG's.
 
 ## Sibling repo

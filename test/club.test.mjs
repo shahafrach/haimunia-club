@@ -18,7 +18,7 @@ function post(i, extra = {}) {
     result_text: "20 דקות", body: null, metadata: {}, occurred_on: "2026-11-10", published_at: `2026-11-${String(30 - i).padStart(2, "0")}T10:00:00Z`,
     reaction_counts: { fire: 1 }, my_reactions: [], unreacted_pr: false, ...extra };
 }
-function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, shareDefaults = {}, upsertFail = null } = {}) {
+function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, shareDefaults = {}, upsertFail = null, inviteMissing = false } = {}) {
   const calls = [];
   const members = [
     { user_id: OWNER, role: "owner", joined_at: "2026-11-01", profiles: { display_name: "בעלים", emoji: "👑" } },
@@ -39,6 +39,10 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, sha
       if (n === "circle_feed") return { data: a.p_cursor ? [] : feed, error: null };
       if (n === "toggle_reaction") return { data: true, error: null };
       if (n === "rotate_club_link") return { data: "cd".repeat(32), error: null };
+      if (n === "rotate_club_invite") {
+        if (inviteMissing) return { data: null, error: { code: "PGRST202", message: "Could not find the function public.rotate_club_invite(p_club_id) in the schema cache" } };
+        return { data: { token: "cd".repeat(32), code: "ABCD2345" }, error: null };
+      }
       if (n === "post_delete") {
         const p = state.posts.find((x) => x.id === a.post_id);
         if (p) { state.posts = state.posts.filter((x) => x !== p); state.removed.push(p.source_record_id); }
@@ -78,7 +82,11 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, sha
 
 async function boot(opts = {}) {
   const be = backend(opts);
-  const window = await bootApp({ beforeScripts: (w) => { w.supabase = { createClient: () => be.client }; w.scrollTo = () => {}; } });
+  const window = await bootApp({ beforeScripts: (w) => {
+    w.supabase = { createClient: () => be.client }; w.scrollTo = () => {};
+    // jsdom loads no injected <script>; the QR encoder club.js would load on demand is put in place here.
+    if (opts.qr) w.eval(readFileSync(path.join(root, "vendor/qrcode.js"), "utf8"));
+  } });
   if (opts.connected !== false) {
     await window.dbSetSetting("haimunia:connectChoice", "connected");
     await window.haimuniaConnect.init();
@@ -185,17 +193,53 @@ test("a coach sees the tools; members' roster hides remove for the owner, and th
   assert.deepEqual(rpcs(calls, "remove_member")[0][1], { p_club_id: "c1", p_user_id: OTHER });
 });
 
-test("rotating the link asks first, then shows the new link once", async () => {
-  const { window, calls } = await boot({ role: "coach" });
+test("rotating the link asks first, then shows the short link, its QR and the code once (Q-37)", async () => {
+  const { window, calls } = await boot({ role: "coach", qr: true });
   await openClub(window);
   $(window, "[data-club='rotate']").click();
-  assert.equal(rpcs(calls, "rotate_club_link").length, 0);
+  assert.equal(rpcs(calls, "rotate_club_invite").length, 0);
   $(window, "[data-action='app-confirm-yes']").click();
-  await until(() => /#join=/.test($(window, "#content").textContent), "link shown");
-  assert.match($(window, "#content").textContent, /#join=(cd){32}/);
-  assert.deepEqual(rpcs(calls, "rotate_club_link")[0][1], { p_club_id: "c1" });
+  await until(() => $(window, "#clubInviteCode"), "code shown");
+  assert.deepEqual(rpcs(calls, "rotate_club_invite")[0][1], { p_club_id: "c1" });
+  assert.equal(rpcs(calls, "rotate_club_link").length, 0, "the new function, not the old one");
+  const link = $(window, "#clubInviteLink").textContent;
+  assert.match(link, /#j=ABCD2345$/, "the short link carries the code, never the long token");
+  assert.doesNotMatch($(window, "#content").textContent, /(cd){32}/);
+  assert.equal($(window, "#clubInviteCode").textContent, "ABCD 2345", "the code in two groups of four");
+  assert.equal($(window, "#clubInviteCode").getAttribute("dir"), "ltr");
+  await until(() => $(window, "#clubInvite svg.join-qr"), "QR");
+  // The QR is the library's own matrix for the short link: one square per dark module, nothing else.
+  const q = window.qrcode(0, "M"); q.addData(link); q.make();
+  let dark = 0;
+  for (let r = 0; r < q.getModuleCount(); r++) for (let c = 0; c < q.getModuleCount(); c++) if (q.isDark(r, c)) dark++;
+  const d = $(window, "#clubInvite svg.join-qr path").getAttribute("d");
+  assert.equal((d.match(/M/g) || []).length, dark);
+  assert.equal($(window, "#clubInvite svg.join-qr").getAttribute("viewBox"), `0 0 ${q.getModuleCount() + 8} ${q.getModuleCount() + 8}`, "a four-module quiet zone");
+  // The printed card: the QR, the steps, the link and the code.
+  const card = $(window, "[data-invite-print]");
+  assert.ok(card && card.querySelector("svg.join-qr"), "print card has the QR");
+  assert.match(card.textContent, /ABCD 2345/);
+  assert.match(card.textContent, /#j=ABCD2345/);
+  let printed = 0; window.print = () => { printed++; };
+  $(window, "[data-club='print-link']").click();
+  assert.equal(printed, 1);
+  let copied = ""; Object.defineProperty(window.navigator, "clipboard", { value: { writeText: async (t) => { copied = t; } }, configurable: true });
+  $(window, "[data-club='copy-code']").click();
+  await until(() => copied === "ABCD2345", "code copied");
   $(window, "[data-club='hide-link']").click();
-  assert.doesNotMatch($(window, "#content").textContent, /#join=/);
+  assert.equal($(window, "#clubInvite"), null);
+  assert.equal($(window, "[data-invite-print]"), null, "closing drops the card too");
+});
+
+test("before the backend has rotate_club_invite, the long link still works", async () => {
+  const { window, calls } = await boot({ role: "owner", inviteMissing: true });
+  await openClub(window);
+  $(window, "[data-club='rotate']").click();
+  $(window, "[data-action='app-confirm-yes']").click();
+  await until(() => $(window, "#clubInviteLink"), "link shown");
+  assert.match($(window, "#clubInviteLink").textContent, /#join=(cd){32}$/);
+  assert.equal($(window, "#clubInviteCode"), null, "no code to show");
+  assert.equal(rpcs(calls, "rotate_club_link").length, 1);
 });
 
 test("an empty announcement never reaches the server", async () => {

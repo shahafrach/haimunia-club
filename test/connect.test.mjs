@@ -50,7 +50,9 @@ async function boot(opts = {}) {
   const window = await bootApp({
     url: opts.url,
     seed: opts.seed,
+    matchMedia: opts.standalone ? (q) => /display-mode: standalone/.test(q) : undefined,
     beforeScripts: (w) => {
+      if (opts.ios) Object.defineProperty(w.navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Safari/604.1", configurable: true });
       w.supabase = { createClient: () => be.client };
       w.turnstile = { render: (_h, o) => { w.__ts = o; }, execute: () => { w.__ts.callback("ts-token"); } };
       w.scrollTo = () => {};
@@ -114,14 +116,13 @@ test("sign-up: anonymous session with a captcha token, username becomes a synthe
   await until(() => $(window, "#connectBody [name='link']"), "paste link");
   setVal(window, "link", `https://haimunia.pages.dev/#join=${TOKEN}`);
   submit(window);
-  await until(() => $(window, "#connectBody [name='displayName']"), "profile");
+  // Q-37: the name given on first run becomes the club name, so the profile screen is skipped.
+  await until(() => /חברים במועדון/.test($(window, "#connectBody").textContent), "status");
   assert.deepEqual(log.rpc, [["join_circle", { p_token: TOKEN }]]);
   assert.equal(state.member, true);
-  assert.equal($(window, "#connectBody [name='displayName']").value, "דנה", "the name given on first run is the default");
-  submit(window);
-  await until(() => /חברים במועדון/.test($(window, "#connectBody").textContent), "status");
+  assert.equal($(window, "#connectBody [name='displayName']"), null, "no profile screen");
   assert.equal(state.profile.display_name, "דנה");
-  assert.ok(Array.from(state.profile.emoji).length >= 1);
+  assert.equal(state.profile.emoji, "💪");
   assert.equal(await window.dbGetSetting("haimunia:connectChoice"), "connected");
 });
 
@@ -164,7 +165,7 @@ test("a dead link is dropped and the member is told; a full club says so", async
   await until(() => $(window, "#connectBody [name='link']"), "paste");
   setVal(window, "link", TOKEN);
   submit(window);
-  await until(() => /לא תקף/.test($(window, "#connectBody").textContent), "invalid text");
+  await until(() => /לא תקפים/.test($(window, "#connectBody").textContent), "invalid text");
   assert.equal(log.rpc.length, 1);
 });
 
@@ -181,4 +182,122 @@ test("the code never reaches storage, and no private-log data is part of any cal
   const src = readFileSync(path.join(root, "src/connect.js"), "utf8");
   assert.doesNotMatch(src, /localStorage\.setItem|sessionStorage|private_records|bodyweight|entries/i);
   assert.match(src, /"haimunia:auth"/);
+});
+
+// ---- Q-37: the short join code ---------------------------------------------------------------------
+
+// The installed app's first run: the import offer ("start fresh"), then the name, then the connect screen.
+async function firstRunInstalled(window) {
+  await until(() => $(window, "#firstImportOverlay").classList.contains("open"), "import offer");
+  $(window, "[data-action='first-import-fresh']").click();
+  await firstRunName(window);
+}
+
+test("the short code: #j= links, typed in any case with spaces or dashes; anything else is refused", async () => {
+  const { window } = await boot();
+  const p = window.haimuniaConnect.parseToken;
+  assert.equal(p("https://haimunia.pages.dev/#j=ABCD2345"), "ABCD2345");
+  assert.equal(p("#j=abcd-2345"), "ABCD2345");
+  assert.equal(p("abcd2345"), "ABCD2345");
+  assert.equal(p(" ABCD 2345 "), "ABCD2345");
+  assert.equal(p("ab cd-23 45"), "ABCD2345");
+  assert.equal(p("ABCD–2345"), "ABCD2345", "an en dash, as a phone may type it");
+  assert.equal(p(`#join=${TOKEN}`), TOKEN, "the long link still works");
+  for (const bad of ["ABCD234", "ABCD23456", "ABCD2340", "ABCDO345", "ABCD1345", "ABCDI345", "ABCDL345", "#join=ABCD2345", "#j=" + TOKEN, "hello world", "https://haimunia.pages.dev/"]) {
+    assert.equal(p(bad), null, bad);
+  }
+});
+
+test("a short link opened in Safari: the code in large type, a copy button and the iPhone install steps; nothing is sent", async () => {
+  const { window, log } = await boot({ url: "https://haimunia.pages.dev/#j=abcd2345", ios: true });
+  await until(() => open(window) && $(window, "#connectJoinCode"), "install screen");
+  assert.equal($(window, "#welcomeOverlay").classList.contains("open"), false, "the welcome sheet does not cover the code");
+  assert.equal(window.location.hash, "", "the code is out of the address bar");
+  assert.equal($(window, "#connectJoinCode").textContent, "ABCD 2345");
+  assert.equal($(window, "#connectJoinCode").getAttribute("dir"), "ltr");
+  const t = $(window, "#connectBody").textContent;
+  assert.match(t, /כפתור השיתוף/);
+  assert.match(t, /הוספה למסך הבית/);
+  assert.match($(window, "#connectInstallAfter").textContent, /פותחים את האימוניה מהאייקון.*ומקלידים את הקוד/);
+  assert.equal(window.document.querySelectorAll("#connectInstallSteps li").length, 3);
+  assert.equal($(window, "[data-connect='install-skip']"), null, "on an iPhone there is no 'continue in the browser': it would strand the account in Safari");
+  let copied = ""; Object.defineProperty(window.navigator, "clipboard", { value: { writeText: async (x) => { copied = x; } }, configurable: true });
+  $(window, "[data-connect='copy-join-code']").click();
+  await until(() => copied === "ABCD2345", "copied");
+  assert.equal(log.signIn, 0);
+  assert.deepEqual(log.rpc, []);
+});
+
+test("the same link in a browser that is not an iPhone: its own steps, and it may go on in the browser", async () => {
+  const { window, log } = await boot({ url: "https://haimunia.pages.dev/#j=ABCD2345" });
+  await until(() => $(window, "#connectJoinCode"), "install screen");
+  assert.match($(window, "#connectBody").textContent, /שלוש הנקודות/);
+  $(window, "[data-connect='install-skip']").click();
+  await until(() => $(window, "#connectBody [name='username']"), "sign-up");
+  assert.deepEqual(log.rpc, []);
+});
+
+test("installed app, first run: the code is asked first, then the account; join and name need no screen of their own", async () => {
+  const { window, log, state } = await boot({ standalone: true });
+  await firstRunInstalled(window);
+  assert.ok($(window, "#connectBody input.join-field[name='link']"), "the first screen is one large code field");
+  // A wrong-looking code: a large, plain Hebrew error and nothing sent.
+  setVal(window, "link", "ABC");
+  submit(window);
+  await until(() => $(window, "#connect-link-err"), "format error");
+  assert.match($(window, "#connect-link-err").className, /join-err/);
+  assert.match($(window, "#connect-link-err").textContent, /8 אותיות באנגלית וספרות/);
+  assert.equal($(window, "#connect-link").getAttribute("aria-invalid"), "true");
+  assert.equal(log.signIn, 0);
+  setVal(window, "link", "abcd-2345");
+  submit(window);
+  await until(() => $(window, "#connectBody [name='username']"), "sign-up");
+  setVal(window, "username", "dana_k"); setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window);
+  await until(() => $(window, "#connectSaved"), "recovery code");
+  const cb = $(window, "#connectSaved"); cb.checked = true; cb.dispatchEvent(new window.Event("change", { bubbles: true }));
+  $(window, "[data-connect='after-code']").click();
+  await until(() => /חברים במועדון/.test($(window, "#connectBody").textContent), "status");
+  assert.deepEqual(log.rpc, [["join_circle", { p_token: "ABCD2345" }]], "the normalised code, once");
+  assert.deepEqual([state.profile.display_name, state.profile.emoji], ["דנה", "💪"], "the first-run name is the club name");
+  // The status screen can still change it.
+  $(window, "[data-connect='go-profile']").click();
+  await until(() => $(window, "#connectBody [name='displayName']"), "profile");
+  assert.equal($(window, "#connectBody [name='displayName']").value, "דנה");
+  setVal(window, "displayName", "דנה כהן"); setVal(window, "emoji", "🔥");
+  submit(window);
+  await until(() => /חברים במועדון/.test($(window, "#connectBody").textContent), "status again");
+  assert.deepEqual([state.profile.display_name, state.profile.emoji], ["דנה כהן", "🔥"]);
+});
+
+test("a wrong code from the server: the join screen says so in large text and keeps one field to try again", async () => {
+  const { window, log } = await boot({ standalone: true, backend: { joinStatus: "invalid" } });
+  await firstRunInstalled(window);
+  setVal(window, "link", "ZZZZ2345"); submit(window);
+  await until(() => $(window, "#connectBody [name='username']"), "sign-up");
+  setVal(window, "username", "dana_k"); setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window);
+  await until(() => $(window, "#connectSaved"), "recovery code");
+  const cb = $(window, "#connectSaved"); cb.checked = true; cb.dispatchEvent(new window.Event("change", { bubbles: true }));
+  $(window, "[data-connect='after-code']").click();
+  await until(() => $(window, "#connect-join-error"), "server error");
+  assert.match($(window, "#connect-join-error").textContent, /לא תקפים.*8 התווים/);
+  assert.ok($(window, "#connectBody input.join-field[name='link']"), "one large field to type it again");
+  assert.equal(log.rpc.length, 1);
+});
+
+test("a member with no first-run name still gets the profile screen after joining", async () => {
+  const { window, state } = await boot({ standalone: true, backend: { user: { id: "u1", is_anonymous: false } } });
+  await window.dbSetSetting("haimunia:connectChoice", "connected");
+  await window.haimuniaConnect.init();
+  window.haimuniaConnect.open("join");
+  setVal(window, "link", "https://haimunia.pages.dev/#j=ABCD2345"); submit(window);
+  await until(() => $(window, "#connectBody [name='displayName']"), "profile");
+  assert.equal(state.member, true);
+});
+
+test("a link opened before any choice goes straight to the account: the choice screen is not asked again", async () => {
+  const { window } = await boot({ url: `https://haimunia.pages.dev/#join=${TOKEN}` });
+  await until(() => open(window) && $(window, "#connectBody [name='username']"), "sign-up");
+  assert.ok($(window, "[data-connect='go-login']"), "an existing account can still sign in");
 });
