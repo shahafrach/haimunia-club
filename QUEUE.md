@@ -9,7 +9,8 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 - 3.18.0 is live (club #33 merged, live sw.js 3.18.0, release 07:57 check). rollback-3.17.1 at dc02722 still to create from a computer.
 - 3.18.1 is live (club #37 merged 4edb53a, live sw.js 3.18.1, release check 2026-11-18). F-025 and F-026 closed. rollback-3.18.0 at 9594a13 still to create from a computer.
 - From a computer: Dependabot alerts on (F-030), rollback tags (list in archive), Turnstile check on box-log (F-008), empty template repo (Q-20).
-- From the phone: C4-2 on a real iPhone, G4 club message.
+- C4-2: iPhone Safari code -> installed app redeem passed (owner, 2026-11-18). Used-code retry still to confirm.
+- G4: owner hands the launch message to the club manager, who writes it. Not a blocker for us (owner, 2026-11-18).
 
 ## Rules (owner, 2026-11-18, to save tokens)
 1. Work only when Shahaf writes "continue". No send_later check-ins, no scheduled wake-ups.
@@ -17,7 +18,7 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 3. haimunia-app-demo has CI: run only the related test files locally, and let CI run the full suites. haimunia-club has no CI: one full `npm test` at the end of a code task.
 4. Browser checks only for UI changes, and only the related check. No re-run of a suite that passed.
 5. Reports: at most 8 lines. No restating the diff.
-6. Launch blockers: F-028, C4-2, G4, Turnstile. F-023, F-029, F-007 are not blockers.
+6. Launch blockers: C4-2 used-code retry, Turnstile. F-028 closed, G4 with the club manager. F-023, F-029, F-007 are not blockers.
 
 ## Open rows
 | ID | Owner | Status | After | Task | PR | Notes |
