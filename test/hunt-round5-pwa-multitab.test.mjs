@@ -29,7 +29,7 @@ test("a controller swap is recorded even when this tab did not ask for it", () =
   const at = appJs.indexOf('addEventListener("controllerchange"');
   assert.ok(at > -1, "the listener exists");
   const body = appJs.slice(at, appJs.indexOf("});", at));
-  const flagAt = body.indexOf("if (hadControllerAtBoot) controllerAlreadySwapped = true;");
+  const flagAt = body.indexOf("if (hadController) controllerAlreadySwapped = true;");
   const guardAt = body.indexOf("if (!swapRequested) return;");
   assert.ok(flagAt > -1, "the swap is recorded");
   assert.ok(guardAt > -1, "the do-not-reload-unasked guard is still there");
@@ -83,9 +83,13 @@ test("the first-ever claim is not mistaken for a swap", () => {
   // source-level test that only knows the shape I had in mind.
   const at = appJs.indexOf('addEventListener("controllerchange"');
   const before = appJs.slice(appJs.lastIndexOf("let reloading = false;", at), at);
-  assert.match(before, /const hadControllerAtBoot = !!navigator\.serviceWorker\.controller;/,
-    "whether this tab was already controlled is read once, before any event can fire");
+  // F-025: read at boot AND updated on every change, so a first visit's later genuine swap counts too
+  // (test/update-check.test.mjs drives that case end to end).
+  assert.match(before, /let knownController = navigator\.serviceWorker\.controller;/,
+    "the controller is read at boot, before any event can fire");
   const body = appJs.slice(at, appJs.indexOf("});", at));
-  assert.match(body, /if \(hadControllerAtBoot\) controllerAlreadySwapped = true;/,
+  assert.match(body, /const hadController = !!knownController;\s*knownController = navigator\.serviceWorker\.controller;/,
+    "each change compares with the controller just before it, then remembers the new one");
+  assert.match(body, /if \(hadController\) controllerAlreadySwapped = true;/,
     "and only a tab that was already controlled can have been SWAPPED");
 });

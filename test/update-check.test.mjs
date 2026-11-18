@@ -59,6 +59,8 @@ function fakeServiceWorker(opts = {}) {
     },
   };
   sw.register = async () => { log.registered = true; return reg; };
+  // A worker taking control without being asked (clients.claim() after skipWaiting() on install).
+  sw._claim = (w) => { sw.controller = w; (swListeners.controllerchange || []).forEach((f) => f()); };
   sw.getRegistration = async () => reg;
   return { sw, reg, log };
 }
@@ -216,4 +218,40 @@ test("F-020: a save tried during \"מעדכנים…\" is held back with a toast
   assert.equal(reload.calls, 0);
   window.dbIdle = realIdle;
   await until(() => reload.calls === 1, "the update goes on once the write is done", 400);
+});
+
+test("F-025: first visit (no controller at boot), a new worker activates on install: tapping the banner reloads", async () => {
+  const { window, sw, reg, log, reload } = await boot({ noControllerAtBoot: true, newVersion: "3.18.0" });
+  // The first worker claims the page: that is not an update, nothing reloads.
+  sw._claim({ state: "activated" });
+  await wait(20);
+  assert.equal(reload.calls, 0, "the first-ever claim does not reload");
+  // A new version arrives while the page is visible: the banner is offered.
+  Object.defineProperty(window.document, "visibilityState", { configurable: true, get: () => "visible" });
+  await reg.update();
+  await until(() => window.document.getElementById("updateBanner").style.display === "block", "the update banner");
+  // sw.js calls skipWaiting() on install: the new worker activates and claims the page before any tap.
+  sw._claim(reg.waiting);
+  await wait(20);
+  assert.equal(reload.calls, 0, "that swap alone never reloads an active session");
+  // The tap now reloads (it used to post SKIP_WAITING to an active worker and wait forever).
+  window.document.getElementById("updateBanner").click();
+  await until(() => reload.calls === 1, "a reload after the tap");
+  assert.ok(!log.messages.includes("SKIP_WAITING"), "nothing left to hand-shake with: it reloads directly");
+});
+
+test("F-025 keeps F-020: on that first visit, the tap waits for a running save before it reloads", async () => {
+  const { window, sw, reg, reload } = await boot({ noControllerAtBoot: true, newVersion: "3.18.0" });
+  sw._claim({ state: "activated" });
+  Object.defineProperty(window.document, "visibilityState", { configurable: true, get: () => "visible" });
+  await reg.update();
+  await until(() => window.document.getElementById("updateBanner").style.display === "block", "the update banner");
+  sw._claim(reg.waiting);
+  const realIdle = window.dbIdle;
+  window.dbIdle = () => false; // an IndexedDB write is in progress
+  window.document.getElementById("updateBanner").click();
+  await wait(400);
+  assert.equal(reload.calls, 0, "no reload while a save is running");
+  window.dbIdle = realIdle;
+  await until(() => reload.calls === 1, "the reload once the save finished");
 });

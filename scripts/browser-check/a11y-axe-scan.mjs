@@ -48,7 +48,9 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 async function scan(page, label) {
   await page.evaluate(axeSource);
   const results = await page.evaluate(
-    async (tags) => await window.axe.run(document, { runOnly: { type: "tag", values: tags } }),
+    // label-content-name-mismatch (WCAG 2.5.3) is tagged experimental in axe, so the tag list alone never runs
+    // it. Enabled explicitly since F-026: it is the rule that caught the calendar toggle.
+    async (tags) => await window.axe.run(document, { runOnly: { type: "tag", values: tags }, rules: { "label-content-name-mismatch": { enabled: true } } }),
     TAGS,
   );
   const blocking = results.violations.filter((v) => BLOCKING_IMPACTS.has(v.impact));

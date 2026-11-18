@@ -1,3 +1,12 @@
+# 3.18.1 — כפתור העדכון בביקור ראשון, ושם נגיש לכפתור תצוגת היומן — 2026-11-18
+
+- F-025: on a first visit (no service worker in control when the page opened), tapping the update banner now
+  reloads. A new worker activates on install (sw.js skipWaiting) and claims the page before the tap; the page
+  now records that swap by comparing with the controller just before each change, not only with the one at
+  boot. The first-ever claim still is not a swap, and the reload still waits for running saves (F-020).
+- F-026: the calendar view button's accessible name starts with its visible word ("רשימה" / "לוח", then a
+  hidden description); aria-label and aria-pressed are gone. The axe scan now runs label-content-name-mismatch.
+
 # 3.18.0 — תמיכה ודיווח על תקלה דרך תיבת המשוב — 2026-11-18
 
 - The menu row "תמיכה ודיווח על תקלה" opens the in-app feedback box (feedback_submit), the one feedback

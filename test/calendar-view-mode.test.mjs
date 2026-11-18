@@ -18,3 +18,21 @@ test('calendar/list switching preserves month, selected date and editable workou
  assert.equal(w.document.querySelector('.cal-cell.selected').dataset.date,selected);
  assert.equal(w.document.getElementById('calDetail').hidden,false);
 });
+
+// F-026 (axe label-content-name-mismatch, serious): the visible word must be inside the accessible name, at its
+// start. The name is the button's text, since it has no aria-label: the visible word plus a visually hidden part.
+test('F-026: the calendar/list toggle\'s accessible name starts with its visible label', async () => {
+  const w = await bootApp();
+  w.document.getElementById('tabCalendarBtn').click();
+  for (const [visible, rest] of [['רשימה', 'הצגת רשימת אימונים'], ['לוח', 'הצגת לוח שנה']]) {
+    const b = w.document.querySelector('[data-action="cal-toggle-view"]');
+    assert.equal(b.getAttribute('aria-label'), null, 'no aria-label to drift from the text');
+    assert.equal(b.getAttribute('aria-pressed'), null, 'no pressed state that contradicts the label');
+    const hidden = b.querySelector('.sr-only');
+    const shown = [...b.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
+    assert.equal(shown, visible, 'the visible text');
+    assert.equal(hidden.textContent.trim(), '— ' + rest, 'the hidden description');
+    assert.ok(b.textContent.trim().startsWith(visible), 'the accessible name starts with the visible label');
+    b.click();
+  }
+});

@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.18.0";
+const APP_VERSION = "3.18.1";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -5681,7 +5681,10 @@ function renderCalendarTab() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chalk)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
         </button>
         <span class="cal-month-label" id="calMonthLabel"></span>
-        <button class="cal-view-btn" data-action="cal-toggle-view" aria-pressed="${calView === "list"}" aria-label="${calView === "list" ? "הצגת לוח שנה" : "הצגת רשימת אימונים"}">${calView === "list" ? "לוח" : "רשימה"}</button>
+        <!-- F-026 (axe label-content-name-mismatch, WCAG 2.5.3): the accessible name starts with the visible word,
+             so someone using voice control can say what they see; the hidden part says what the tap does. No
+             aria-pressed: the label names the view a tap switches TO, so "pressed" contradicted it. -->
+        <button class="cal-view-btn" data-action="cal-toggle-view">${calView === "list" ? "לוח<span class=\"sr-only\"> — הצגת לוח שנה</span>" : "רשימה<span class=\"sr-only\"> — הצגת רשימת אימונים</span>"}</button>
         <button class="cal-nav-btn" data-action="cal-next" aria-label="חודש הבא">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chalk)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </button>
@@ -8743,10 +8746,15 @@ function setUpServiceWorker() {
     }).catch((e) => console.warn("sw registration failed:", e));
 
     let reloading = false;
-    // Whether this tab was ALREADY under a service worker when it booted.
-    // Read once, before any controllerchange can fire.
-    const hadControllerAtBoot = !!navigator.serviceWorker.controller;
+    // The controller this tab was under just BEFORE each controllerchange: read at boot, then updated on
+    // every change. F-025: this used to be read once, at boot (hadControllerAtBoot). On a first visit there
+    // is no controller at boot, so a later genuine swap in the same session - sw.js calls skipWaiting() on
+    // install, so a new worker activates and claims the page before anyone taps the banner - was never
+    // recorded, and the tap waited for a second controllerchange that never came.
+    let knownController = navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
+      const hadController = !!knownController;
+      knownController = navigator.serviceWorker.controller;
       // ANOTHER TAB APPLIED THE UPDATE. Live bug hunt, fresh round 5
       // (2026-09-15). sw.js's activate handler calls self.clients.claim(),
       // which reassigns the controller of EVERY open tab - not just the one
@@ -8769,8 +8777,9 @@ function setUpServiceWorker() {
       // reload WITHOUT posting SKIP_WAITING, so the waiting worker never
       // activated and the reload served the old version again - caught
       // immediately by update-flow.mjs's "banner does NOT show while hidden".
-      // hadControllerAtBoot is what tells the two apart.
-      if (hadControllerAtBoot) controllerAlreadySwapped = true;
+      // hadController - was there a controller just before this change? - is what tells the two apart, for
+      // every change in the session, not only the first.
+      if (hadController) controllerAlreadySwapped = true;
       if (!swapRequested) return; // e.g. the first-ever clients.claim() — nothing to reload for
       if (reloading) return;
       reloading = true;
