@@ -39,6 +39,7 @@ function backend({ role = "member", feed = [post(1), post(2)], rpcFail = {}, sha
       if (n === "circle_feed") return { data: a.p_cursor ? [] : feed, error: null };
       if (n === "toggle_reaction") return { data: true, error: null };
       if (n === "rotate_club_link") return { data: "cd".repeat(32), error: null };
+      if (n === "club_issue_reset_code") return { data: "ABCD2345", error: null };
       if (n === "rotate_club_invite") {
         if (inviteMissing) return { data: null, error: { code: "PGRST202", message: "Could not find the function public.rotate_club_invite(p_club_id) in the schema cache" } };
         return { data: { token: "cd".repeat(32), code: "ABCD2345" }, error: null };
@@ -501,4 +502,29 @@ test("F-018: a PR share that fails paints its toast too", async () => {
   assert.equal(await window.haimuniaClub.postPr("e1", "סקוואט", 5), false, "the share failed");
   assert.equal(rpcs(calls, "pr_share").length, 1);
   await until(() => /השיא נשמר בטלפון\. השיתוף במועדון לא הצליח הפעם\./.test(dockText(window)), "the PR failure toast in the dock");
+});
+
+test("staff give a member a password reset code (Q-38): never for the owner or themself; the code is shown once, large", async () => {
+  for (const role of ["coach", "owner"]) {
+    const { window, calls } = await boot({ role });
+    await openClub(window);
+    $(window, "[data-club='members']").click();
+    await until(() => $$(window, "[data-club='reset-pw']").length > 0, "roster");
+    const ids = $$(window, "[data-club='reset-pw']").map((b) => b.dataset.id);
+    assert.ok(!ids.includes(OWNER), `${role}: never the owner`);
+    assert.ok(!ids.includes(ME), `${role}: never oneself`);
+    assert.ok(ids.includes(OTHER), `${role}: a plain member`);
+    $(window, `[data-club='reset-pw'][data-id='${OTHER}']`).click();
+    await until(() => $(window, "#clubResetCode"), "code");
+    assert.deepEqual(rpcs(calls, "club_issue_reset_code")[0][1], { p_club_id: "c1", p_user_id: OTHER });
+    assert.equal($(window, "#clubResetCode").textContent, "ABCD 2345");
+    assert.match($(window, "#clubResetCard").textContent, /24 שעות ולפעם אחת/);
+    assert.match($(window, "#clubResetCard").textContent, /שכחתי סיסמה/);
+    let copied = "";
+    Object.defineProperty(window.navigator, "clipboard", { value: { writeText: async (t) => { copied = t; } }, configurable: true });
+    $(window, "[data-club='copy-reset']").click();
+    await until(() => copied === "ABCD2345", "copied");
+    $(window, "[data-club='hide-reset']").click();
+    assert.equal($(window, "#clubResetCard"), null);
+  }
 });

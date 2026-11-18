@@ -28,6 +28,7 @@
     members: { rows: [], loaded: false, loading: false, error: false, open: false },
     postDraft: "", postPinned: false, annError: "",
     newLink: "", newCode: "", qr: "", linkCopied: false, codeCopied: false, busy: {},
+    reset: null, // Q-38: { id, name, code, copied } after "איפוס סיסמה", shown once under that member
   };
 
   function connect() { return window.haimuniaConnect; }
@@ -38,7 +39,7 @@
     C.clubId = null; C.feed = { rows: [], loaded: false, loading: false, done: false, error: false };
     C.ann = { rows: [], loaded: false, loading: false, error: false };
     C.members = { rows: [], loaded: false, loading: false, error: false, open: false };
-    C.postDraft = ""; C.postPinned = false; C.annError = ""; clearLink(); C.busy = {};
+    C.postDraft = ""; C.postPinned = false; C.annError = ""; clearLink(); C.busy = {}; C.reset = null;
   }
   function again() { if (typeof render === "function" && typeof tab !== "undefined" && tab === "club") render(); }
   function toast(t) { if (typeof showToast === "function") showToast(t); }
@@ -333,10 +334,37 @@
     return toggle + m.rows.map(function (x) {
       // The server refuses what the role may not do; the button is only drawn where it can work.
       var canRemove = i.staff && x.user_id !== i.userId && x.role !== "owner" && (x.role !== "coach" || i.role === "owner");
-      return '<div class="who" style="margin:8px 0;"><div class="who-avatar" aria-hidden="true">' + esc(x.emoji) + "</div>" +
+      // Q-38: never the owner (a coach must not take the owner's account) and never oneself (signed in already).
+      var canReset = i.staff && x.user_id !== i.userId && x.role !== "owner";
+      var r = C.reset && C.reset.id === x.user_id ? C.reset : null;
+      return '<div class="who" style="margin:8px 0; flex-wrap:wrap;"><div class="who-avatar" aria-hidden="true">' + esc(x.emoji) + "</div>" +
         '<div style="flex:1; min-width:0;"><div class="who-name">' + name(x.name) + "</div>" + (ROLE_LABEL[x.role] ? '<div class="who-sub">' + esc(ROLE_LABEL[x.role]) + "</div>" : "") + "</div>" +
-        (canRemove ? '<button class="chip-btn danger" data-club="rm-member" data-id="' + esc(x.user_id) + '" data-name="' + esc(x.name) + '">הסרה</button>' : "") + "</div>";
+        '<div class="chip-row" style="margin-top:0;">' +
+        (canReset ? '<button class="chip-btn" data-club="reset-pw" data-id="' + esc(x.user_id) + '" data-name="' + esc(x.name) + '"' + (C.busy.reset ? " disabled" : "") + ">איפוס סיסמה</button>" : "") +
+        (canRemove ? '<button class="chip-btn danger" data-club="rm-member" data-id="' + esc(x.user_id) + '" data-name="' + esc(x.name) + '">הסרה</button>' : "") + "</div>" +
+        (r ? resetCardHtml(r) : "") + "</div>";
     }).join("");
+  }
+
+  function resetCardHtml(r) {
+    return '<div class="card join-invite" id="clubResetCard" style="flex-basis:100%; margin-top:8px;">' +
+      '<div style="font-weight:700; font-size:14px; margin-bottom:4px;">קוד איפוס סיסמה ל' + name(r.name) + "</div>" +
+      '<div style="color:var(--steel); font-size:13px; margin-bottom:10px;">מוסרים אותו רק ל' + name(r.name) + '. במסך הכניסה: "שכחתי סיסמה", מקלידים את הקוד ובוחרים סיסמה חדשה. הקוד תקף 24 שעות ולפעם אחת.</div>' +
+      '<div class="join-code-big" dir="ltr" id="clubResetCode" aria-label="' + esc(r.code.split("").join(" ")) + '">' + esc(codeGroups(r.code)) + "</div>" +
+      '<div class="chip-row" style="justify-content:center;"><button class="chip-btn" data-club="copy-reset">' + (r.copied ? "הקוד הועתק" : "העתקת הקוד") + "</button>" +
+      '<button class="link-btn link-btn--tap" data-club="hide-reset">סגירה</button></div></div>';
+  }
+  async function issueReset(id, who) {
+    if (C.busy.reset) return;
+    C.busy.reset = true; C.reset = null; again();
+    try {
+      var c = await client();
+      var r = await c.rpc("club_issue_reset_code", { p_club_id: C.clubId, p_user_id: id });
+      if (r.error) throw r.error;
+      if (typeof r.data === "string" && CODE_RE.test(r.data)) C.reset = { id: id, name: who, code: r.data, copied: false };
+      else toast("הפעולה נכשלה, נסו שוב");
+    } catch (e) { toast(errText(e, "הפעולה נכשלה, נסו שוב")); }
+    delete C.busy.reset; again();
   }
 
   function linkToolHtml() {
@@ -562,6 +590,12 @@
     else if (a === "members") { C.members.open = !C.members.open; if (C.members.open && !C.members.loaded) loadMembers(); again(); }
     else if (a === "members-retry") { C.members.error = false; loadMembers(); }
     else if (a === "hide-link") { clearLink(); again(); }
+    else if (a === "reset-pw") issueReset(id, t.getAttribute("data-name") || "");
+    else if (a === "hide-reset") { C.reset = null; again(); }
+    else if (a === "copy-reset") {
+      var doneR = function (ok) { if (C.reset) C.reset.copied = !!ok; again(); };
+      try { navigator.clipboard.writeText(C.reset ? C.reset.code : "").then(function () { doneR(true); }, function () { doneR(false); }); } catch (err) { doneR(false); }
+    }
     else if (a === "print-link") { try { window.print(); } catch (err) {} }
     else if (a === "copy-code") {
       var doneCode = function (ok) { C.codeCopied = !!ok; again(); };

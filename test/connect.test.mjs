@@ -22,10 +22,22 @@ function fakeBackend(opts = {}) {
       signInAnonymously: async (o) => { log.signIn++; log.captchaTokens.push(o && o.options && o.options.captchaToken); state.user = { id: "u1", is_anonymous: true }; return { data: { user: state.user }, error: null }; },
       updateUser: async (a, o) => { log.update = { a, o }; state.user = { id: "u1", is_anonymous: false, email: a.email }; return { data: { user: state.user }, error: null }; },
       refreshSession: async () => ({ data: { session: { user: state.user } } }),
-      signInWithPassword: async (a) => { log.login = a; state.user = { id: "u1", is_anonymous: false }; return { data: {}, error: null }; },
+      signInWithPassword: async (a) => { log.login = a; state.user = { id: "u1", is_anonymous: false, email: a.email }; return { data: {}, error: null }; },
       signOut: async () => { state.user = null; },
     },
-    functions: { invoke: async (n) => { log.invoke.push(n); return { data: { recovery_code: "ABCD-EFGH-JKLM-NPQR" }, error: null }; } },
+    functions: {
+      invoke: async (n, o) => {
+        log.invoke.push(n);
+        const b = (o && o.body) || {};
+        log.bodies = log.bodies || []; log.bodies.push([n, b]);
+        const no = { data: null, error: { name: "FunctionsHttpError", message: "Edge Function returned a non-2xx status code" } };
+        if (n === "recover-password" && "reset_code" in b) return b.reset_code === "ABCD2345" ? { data: { ok: true, username: "dana_k" }, error: null } : no;
+        if (n === "recover-password") return b.recovery_code === "7K2M-QX9D-4HNC-WB8F" ? { data: { ok: true, recovery_code: "NEWC-ODEN-EWCO-DE22" }, error: null } : no;
+        if (n === "request-reset" && b.action === "request") return { data: { ok: true, request_token: "ef".repeat(32), request_ref: "A1B2C3", ready_at: "2026-11-18T20:00:00Z" }, error: null };
+        if (n === "request-reset" && b.action === "complete") return state.resetReady ? { data: { ok: true, recovery_code: "NEWC-ODEN-EWCO-DE22" }, error: null } : no;
+        return { data: { recovery_code: "ABCD-EFGH-JKLM-NPQR" }, error: null };
+      },
+    },
     rpc: async (n, a) => {
       log.rpc.push([n, a]);
       if (n === "join_circle") { if (state.joinStatus === "joined") state.member = true; return { data: { status: state.joinStatus }, error: null }; }
@@ -300,4 +312,97 @@ test("a link opened before any choice goes straight to the account: the choice s
   const { window } = await boot({ url: `https://haimunia.pages.dev/#join=${TOKEN}` });
   await until(() => open(window) && $(window, "#connectBody [name='username']"), "sign-up");
   assert.ok($(window, "[data-connect='go-login']"), "an existing account can still sign in");
+});
+
+// ---- Q-38 / Q-38b: forgot password ------------------------------------------------------------------
+
+const tap = (w, sel) => { $(w, sel).click(); return 1; };
+
+test("forgot password, the coach's code: one screen, the code and the new password twice; signed in, username shown; 3 taps", async () => {
+  const { window, log } = await boot({ backend: { member: true, profile: { display_name: "דנה", emoji: "💪" } } });
+  await firstRunName(window);
+  let taps = 0;
+  taps += tap(window, "[data-connect='go-login']");
+  assert.ok($(window, "button.join-forgot[data-connect='go-forgot']"), "a large forgot link on the login screen");
+  taps += tap(window, "[data-connect='go-forgot']");
+  const fields = [...window.document.querySelectorAll("#connectBody form input")].map((i) => i.name);
+  assert.deepEqual(fields, ["resetCode", "password", "passwordConfirm"], "one code field and the new password twice");
+  assert.ok($(window, "#connectBody input.join-field[name='resetCode']"), "the code field is the large one");
+  assert.equal($(window, "#connect-password").getAttribute("autocomplete"), "new-password");
+  // A malformed code or a weak password: said on the phone, nothing sent.
+  setVal(window, "resetCode", "ABC"); setVal(window, "password", "short"); setVal(window, "passwordConfirm", "short");
+  submit(window);
+  await until(() => $(window, "#connect-resetCode-err"), "format error");
+  assert.ok($(window, "#connect-password-err"));
+  assert.equal(log.invoke.length, 0);
+  // A wrong code: the server's one answer, in large text.
+  setVal(window, "resetCode", "ZZZZ2345"); setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window);
+  await until(() => $(window, "#connect-join-error"), "server error");
+  assert.match($(window, "#connect-join-error").textContent, /מבקשים מהמאמן קוד חדש/);
+  // The right code, typed in lower case with a dash.
+  setVal(window, "resetCode", "abcd-2345"); setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  taps += 1; submit(window);
+  await until(() => $(window, "#connectUsername"), "signed in");
+  const last = log.bodies.filter(([n]) => n === "recover-password").pop()[1];
+  assert.deepEqual(last, { reset_code: "ABCD2345", new_password: "Abcdefghi1" }, "no username is asked or sent");
+  assert.equal(log.login.email, "dana_k@members.haimuniya.invalid", "signed in with the username the server gave back");
+  assert.equal($(window, "#connectUsername").textContent, "dana_k", "and the username is shown");
+  assert.equal(await window.dbGetSetting("haimunia:connectChoice"), "connected");
+  assert.equal(taps, 3, "login, forgot, save");
+});
+
+test("a device that chose to connect and lost its session says so, with sign-in and forgot one tap away", async () => {
+  const { window, log } = await boot();
+  await window.dbSetSetting("haimunia:connectChoice", "connected");
+  await window.haimuniaConnect.init();
+  window.haimuniaConnect.open();
+  await until(() => $(window, "#connectSignedOut"), "notice");
+  assert.ok($(window, "[data-connect='go-login']"));
+  assert.ok($(window, "[data-connect='go-forgot']"));
+  assert.match(window.haimuniaConnect.statusLabel().sub, /לא מחוברים/);
+  assert.equal(log.signIn, 0, "no new anonymous account behind the member's back");
+});
+
+test("the recovery code stays as a smaller way: username, code, new password; the new recovery code is shown once", async () => {
+  const { window, log } = await boot();
+  await firstRunName(window);
+  $(window, "[data-connect='go-login']").click();
+  $(window, "[data-connect='go-forgot']").click();
+  $(window, "[data-connect='go-recover']").click();
+  setVal(window, "username", "Dana_K"); setVal(window, "recoveryCode", "7K2M-QX9D-4HNC-WB8F");
+  setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window);
+  await until(() => /NEWC-ODEN-EWCO-DE22/.test($(window, "#connectBody").textContent), "new recovery code");
+  assert.deepEqual(log.bodies.filter(([n]) => n === "recover-password").pop()[1], { username: "dana_k", recovery_code: "7K2M-QX9D-4HNC-WB8F", new_password: "Abcdefghi1" });
+});
+
+test("no coach: the self-service request shows its reference, keeps it on this phone, and completes after approval", async () => {
+  const { window, log, state } = await boot();
+  await firstRunName(window);
+  $(window, "[data-connect='go-login']").click();
+  $(window, "[data-connect='go-forgot']").click();
+  $(window, "[data-connect='go-self']").click();
+  await until(() => $(window, "#connectBody [name='username']"), "username");
+  setVal(window, "username", "shahaf_x");
+  submit(window);
+  await until(() => $(window, "#connectResetRef"), "reference");
+  assert.equal($(window, "#connectResetRef").textContent, "A1B2C3");
+  assert.match($(window, "#connectBody").textContent, /approve_reset/);
+  const saved = await window.dbGetSetting("haimunia:resetRequest");
+  assert.deepEqual([saved.username, saved.ref], ["shahaf_x", "A1B2C3"], "kept in the app's own settings for the hour");
+  // Too early: said plainly, the request kept.
+  setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window);
+  await until(() => $(window, "#connect-join-error"), "too early");
+  assert.match($(window, "#connect-join-error").textContent, /עוד לא אפשר/);
+  // After the owner's approve_reset (or the hour): done, signed in, the new recovery code shown once.
+  state.resetReady = true;
+  setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window);
+  await until(() => /NEWC-ODEN-EWCO-DE22/.test($(window, "#connectBody").textContent), "done");
+  const complete = log.bodies.filter(([n, b]) => n === "request-reset" && b.action === "complete").pop()[1];
+  assert.deepEqual(complete, { action: "complete", username: "shahaf_x", request_token: "ef".repeat(32), new_password: "Abcdefghi1" });
+  assert.equal(await window.dbGetSetting("haimunia:resetRequest"), null, "the request is gone once used");
+  assert.equal(log.login.email, "shahaf_x@members.haimuniya.invalid");
 });

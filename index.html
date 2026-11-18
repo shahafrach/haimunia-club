@@ -2707,6 +2707,9 @@
   .join-step-pic{ flex-shrink:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--surface); color:var(--blue); }
   .join-step-pic img{ width:36px; height:36px; border-radius:8px; }
   .join-step-num{ font-weight:800; }
+  /* Q-38b: every field in the connect dialog (sign-up, login, forgot) is at least 48px tall with 17px text. */
+  #connectBody .text-input:not(.join-field){ min-height:48px; font-size:17px; }
+  .join-forgot{ font-size:17px; font-weight:700; min-height:44px; padding:8px 12px; }
   .join-after{ font-size:17px; font-weight:700; line-height:1.6; text-align:center; margin-bottom:14px; }
   /* Approved immersive composition — shared by the existing render paths. */
   :root{ --club-coral:var(--p-f0443e); --club-blue:var(--p-1455b8); }
