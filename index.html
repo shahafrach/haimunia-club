@@ -2711,6 +2711,8 @@
   #connectBody .text-input:not(.join-field){ min-height:48px; font-size:17px; }
   .join-hint{ color:var(--steel); font-size:14px; line-height:1.5; margin-bottom:6px; }
   .pw-toggle{ display:inline-flex; align-items:center; min-height:44px; font-size:15px; padding:4px 0; }
+  .more-options{ margin-top:8px; text-align:center; }
+  .more-options > summary{ display:inline-flex; align-items:center; min-height:44px; padding:0 8px; cursor:pointer; color:var(--steel); font-size:15px; font-weight:700; }
   .join-forgot{ font-size:17px; font-weight:700; min-height:44px; padding:8px 12px; }
   .join-after{ font-size:17px; font-weight:700; line-height:1.6; text-align:center; margin-bottom:14px; }
   /* Approved immersive composition — shared by the existing render paths. */
@@ -3699,13 +3701,16 @@
 <div class="modal-overlay" id="firstImportOverlay" role="dialog" aria-modal="true" aria-labelledby="firstImportTitle">
   <div class="modal-sheet">
     <div class="modal-head">
-      <h2 class="modal-title" id="firstImportTitle">יש לכם כבר נתונים?</h2>
+      <h2 class="modal-title" id="firstImportTitle">מגיעים מהאפליקציה הישנה?</h2>
     </div>
     <div class="modal-list" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);">
-      <div style="color:var(--steel); font-size:13px; line-height:1.55; text-align:center; margin-bottom:16px;">האפליקציה במסך הבית מתחילה ריקה. רשמתם אימונים בדפדפן או באפליקציה הישנה? מייבאים אותם עכשיו.</div>
-      <button type="button" class="save-btn" data-action="first-import-code" style="max-width:none; margin-bottom:10px;">יש לי קוד העברה</button>
-      <button type="button" class="chip-btn" data-action="first-import-file" style="width:100%; min-height:44px; margin-bottom:10px;">יש לי קובץ גיבוי</button>
-      <div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-action="first-import-fresh">מתחילים מאפס</button></div>
+      <!-- Q-42: the guided first run, step 1 of 3 (transfer, then the join code, then the account). -->
+      <div class="join-lead">מעבירים לכאן את כל האימונים עם קוד העברה: 21 תווים שיוצרים באפליקציה הישנה. אחר כך מצטרפים למועדון.</div>
+      <button type="button" class="save-btn" data-action="first-import-code" style="max-width:none; margin-bottom:10px;">יש לי קוד העברה (21 תווים)</button>
+      <div style="text-align:center; margin-bottom:6px;"><button type="button" class="chip-btn" data-action="first-import-fresh" style="min-height:44px;">אני חדש/ה כאן</button></div>
+      <details class="more-options"><summary>אפשרויות נוספות</summary>
+        <button type="button" class="chip-btn" data-action="first-import-file" style="width:100%; min-height:44px; margin-top:8px;">יש לי קובץ גיבוי</button>
+      </details>
     </div>
   </div>
 </div>

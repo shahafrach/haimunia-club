@@ -282,13 +282,15 @@
       S.drafts = {};
       setChoice("connected");
       await loadAccount();
-      S.busy = false; S.view = nextView(); paint();
+      S.busy = false;
+      if (await shouldOfferRestore()) { S.view = "restore-offer"; paint(); return; }
+      S.view = nextView(); paint();
       if (S.view === "join" && joinToken) joinWithToken(joinToken);
     } catch (e) { fail("login", {}, authErrorText(e) || "לא ניתן להתחבר כרגע, נסו שוב"); }
   }
 
   var JOIN_TEXT = {
-    invalid: "הקוד או הקישור לא תקפים. בודקים את 8 התווים ומנסים שוב, או מבקשים קוד חדש מהמאמן.",
+    invalid: "הקוד או הקישור לא תקפים. בודקים את 8 התווים ומנסים שוב. הקוד העדכני נמצא בקבוצת המועדון, או ב-QR במכון.",
     circle_full: "המועדון מלא כרגע.",
     too_many_circles: "החשבון כבר חבר במספר המקסימלי של מעגלים.",
     rate_limited: "ניסיתם יותר מדי פעמים בשעה האחרונה. אפשר לנסות שוב בעוד שעה.",
@@ -448,7 +450,9 @@
       if (r.error) return fail(from, {}, passkeyError(r.error));
       setChoice("connected");
       await loadAccount();
-      S.busy = false; S.drafts = {}; S.view = nextView(); paint();
+      S.busy = false; S.drafts = {};
+      if (await shouldOfferRestore()) { S.view = "restore-offer"; paint(); return; }
+      S.view = nextView(); paint();
       if (S.view === "join" && joinToken) joinWithToken(joinToken);
     } catch (e) { fail(from, {}, passkeyError(e)); }
   }
@@ -469,11 +473,32 @@
     if (S.view === "join" && joinToken) { joinWithToken(joinToken); } else paint();
   }
 
+  // Q-42: a 21-character transfer code typed where the join code goes is taken to the transfer screen.
+  function routeTransferCode(raw) {
+    var tr = window.haimuniaTransfer;
+    if (tr && tr.looksLikeTransferCode && tr.looksLikeTransferCode(raw)) { close(); tr.open("take", raw); return true; }
+    return false;
+  }
+  // Q-42: from the transfer screen, an 8-character join code: on to joining with it.
+  function joinWith(code) {
+    if (!isCode(code)) return;
+    joinToken = code;
+    if (signedIn() && S.inClub === false) { open("join", false); joinWithToken(code); return; }
+    open(signedIn() ? nextView() : "signup", false);
+  }
+  // Q-42: the first sign-in on an empty installed app offers the old log back (once per device).
+  var RESTORE_OFFERED_KEY = "haimunia:restoreOffered";
+  async function shouldOfferRestore() {
+    if (!installed() || typeof hasAnyMemberData !== "function" || hasAnyMemberData()) return false; // eslint-disable-line no-undef
+    try { return !(await dbGetSetting(RESTORE_OFFERED_KEY)); } catch (e) { return false; }
+  }
+
   var CODE_FORMAT_ERROR = "זה לא קוד הצטרפות. הקוד הוא 8 אותיות באנגלית וספרות, למשל ABCD 2345.";
   async function doJoinForm(form) {
     var raw = formValue(form, "link");
     S.drafts = { link: raw };
     var t = parseToken(raw);
+    if (!t && routeTransferCode(raw)) return;
     if (!t) return fail("join", { link: CODE_FORMAT_ERROR });
     joinWithToken(t);
   }
@@ -483,6 +508,7 @@
     var raw = formValue(form, "link");
     S.drafts = { link: raw };
     var t = parseToken(raw);
+    if (!t && routeTransferCode(raw)) return;
     if (!t) return fail("choice", { link: CODE_FORMAT_ERROR });
     joinToken = t; S.drafts = {};
     if (signedIn()) { setChoice("connected"); joinWithToken(t); return; }
@@ -630,8 +656,36 @@
     dots: '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
     icon: '<img src="./icon-192.png" alt="" width="36" height="36" />',
   };
+  // Q-42: which browser is this? An in-app browser (WhatsApp, Instagram, Facebook) cannot install at all;
+  // iOS 26 Safari keeps Share behind ⋯; Samsung Internet has its own menu; Chrome-like browsers that fired
+  // beforeinstallprompt get one install button.
+  function browserKind() {
+    var ua = String((navigator && navigator.userAgent) || "");
+    if (/WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Line\/|MicroMessenger/i.test(ua)) return "inapp";
+    if (onIOS()) { var m = ua.match(/OS (\d+)_/); return m && Number(m[1]) >= 26 ? "ios26" : "ios"; }
+    if (/SamsungBrowser/i.test(ua)) return "samsung";
+    if (/Android/i.test(ua)) return "android";
+    return "other";
+  }
+  function canPromptInstall() { try { return typeof deferredInstallPrompt !== "undefined" && !!deferredInstallPrompt; } catch (e) { return false; } } // eslint-disable-line no-undef
   function stepsHtml(ios) {
-    var steps = ios
+    var kind = browserKind();
+    if (kind === "inapp") {
+      return '<div class="join-err" id="connectInAppWarning" role="note">הדפדפן של WhatsApp או Instagram לא יכול להתקין אפליקציות. פותחים את הקישור ב-Safari או ב-Chrome:</div>' +
+        '<ol class="join-steps" id="connectInstallSteps">' +
+        '<li class="join-step"><span class="join-step-pic">' + PIC.dots + '</span><span><span class="join-step-num">1. לוחצים על ⋯ או על התפריט</span><br>בפינה של המסך.</span></li>' +
+        '<li class="join-step"><span class="join-step-pic">' + PIC.share + '</span><span><span class="join-step-num">2. בוחרים "פתיחה בדפדפן"</span><br>או "פתיחה ב-Safari" / "פתיחה ב-Chrome".</span></li>' +
+        '<li class="join-step"><span class="join-step-pic">' + PIC.icon + '</span><span><span class="join-step-num">3. שם ממשיכים להתקנה</span><br>המסך הזה יופיע שוב עם השלבים.</span></li></ol>';
+    }
+    var steps = kind === "ios26"
+      ? [[PIC.dots, "לוחצים על ⋯ (שלוש הנקודות)", "בסרגל של Safari, ואז על \"שיתוף\"."],
+         [PIC.add, "בוחרים \"הוספה למסך הבית\"", "אם לא רואים, גוללים מעט למטה ברשימה."],
+         [PIC.icon, "לוחצים \"הוספה\"", "האייקון של האימוניה יופיע במסך הבית."]]
+      : kind === "samsung"
+      ? [[PIC.dots, "לוחצים על התפריט ☰", "בסרגל התחתון של הדפדפן."],
+         [PIC.add, "בוחרים \"הוספת דף ל\"", "ואז \"מסך הבית\"."],
+         [PIC.icon, "מאשרים", "האייקון של האימוניה יופיע במסך הבית."]]
+      : ios
       ? [[PIC.share, "לוחצים על כפתור השיתוף", "בסרגל של Safari, בתחתית המסך."],
          [PIC.add, "בוחרים \"הוספה למסך הבית\"", "אם לא רואים, גוללים מעט למטה ברשימה."],
          [PIC.icon, "לוחצים \"הוספה\"", "האייקון של האימוניה יופיע במסך הבית."]]
@@ -654,13 +708,16 @@
     var v = S.view || "choice";
     if (v === "choice") {
       // Q-37: the code is the first thing asked. A link already carries it, so the button goes on.
-      return head("הצטרפות למועדון", "האימונים שלכם נשמרים רק בטלפון, גם בלי חיבור. כדי להצטרף למועדון, מקלידים את הקוד שקיבלתם מהמאמן.") +
+      // Q-42: one primary action (the code) and one secondary (an existing account); the rest is folded.
+      return head("הצטרפות למועדון", "האימונים שלכם נשמרים רק בטלפון, גם בלי חיבור. כדי להצטרף, מקלידים את קוד ההצטרפות. הקוד נמצא בקבוצת המועדון, או ב-QR במכון.") +
         (joinToken
           ? '<div class="join-lead">קוד ההצטרפות מוכן.</div>' + btn("המשך", 'data-connect="go-signup"')
-          : '<form id="connectForm" data-connect-form="code-first" novalidate>' + codeFieldHtml("קוד הצטרפות") + submitBtn("המשך") + "</form>") +
+          : '<form id="connectForm" data-connect-form="code-first" novalidate>' + codeFieldHtml("קוד הצטרפות (8 תווים)") + submitBtn("המשך") + "</form>") +
         '<div style="text-align:center;">' + linkBtn("כבר יש לי חשבון", 'data-connect="go-login"') + "</div>" +
+        '<details class="more-options" id="connectMoreOptions"><summary>אפשרויות נוספות</summary>' +
         '<div style="text-align:center;">' + linkBtn("להישאר בלי חיבור", 'data-connect="offline"') + "</div>" +
-        (joinToken ? "" : '<div style="text-align:center;">' + linkBtn("יצירת חשבון בלי קוד", 'data-connect="go-signup"') + "</div>");
+        (joinToken ? "" : '<div style="text-align:center;">' + linkBtn("יצירת חשבון בלי קוד", 'data-connect="go-signup"') + "</div>") +
+        "</details>";
     }
     if (v === "install") {
       var jc = isCode(joinToken) ? joinToken : "";
@@ -669,10 +726,13 @@
         '<div class="join-code-label">קוד ההצטרפות שלכם</div>' +
         '<div class="join-code-big" dir="ltr" id="connectJoinCode" aria-label="' + esc(jc.split("").join(" ")) + '">' + esc(codeGroups(jc)) + "</div>" +
         '<div style="text-align:center; margin-bottom:16px;">' + btn(S.copied ? "הקוד הועתק" : "העתקת הקוד", 'data-connect="copy-join-code"', "chip-btn") + "</div>" +
-        '<div class="join-field-label">איך מתקינים</div>' + stepsHtml(ios) +
+        (canPromptInstall() && browserKind() !== "inapp"
+          ? btn("התקנה", 'data-connect="install-prompt"')
+          : '<div class="join-field-label">איך מתקינים</div>' + stepsHtml(ios)) +
         '<div class="join-after" id="connectInstallAfter">אחרי ההתקנה: פותחים את האימוניה מהאייקון במסך הבית, ומקלידים את הקוד.</div>' +
         // An iPhone's home-screen app has its own storage, so joining in Safari would leave the app signed out.
-        (ios ? "" : '<div style="text-align:center;">' + linkBtn("להמשיך כאן בדפדפן", 'data-connect="install-skip"') + "</div>");
+        // Q-42: on Android too the installed app is where the member should be; only a computer may go on here.
+        (ios || /Android/i.test(String(navigator.userAgent || "")) ? "" : '<div style="text-align:center;">' + linkBtn("להמשיך כאן בדפדפן", 'data-connect="install-skip"') + "</div>");
     }
     if (v === "signup") {
       return head("יצירת חשבון", "שם וסיסמה לכניסה מכל מכשיר. שם הכניסה הוא רק בשבילכם. אין צורך באימייל או בטלפון.") + errorHtml() +
@@ -700,11 +760,17 @@
         '<div class="join-lead">' + (passkeyReady() ? "או: " : "") + "שם המשתמש, קוד השחזור ששמרתם בהרשמה, וסיסמה חדשה.</div>" +
         '<form id="connectForm" data-connect-form="recover" novalidate>' +
         fieldHtml("username", "שם משתמש", "text", 'autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24"') +
-        fieldHtml("recoveryCode", "קוד שחזור", "text", 'autocomplete="off" autocapitalize="characters" spellcheck="false" dir="ltr" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX"') +
+        fieldHtml("recoveryCode", "קוד שחזור (16 תווים)", "text", 'autocomplete="off" autocapitalize="characters" spellcheck="false" dir="ltr" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX"') +
         newPasswordFields() + submitBtn("שמירה וכניסה") + "</form>" +
         '<div class="join-after" id="connectNewAccountNote">אין Face ID ואין קוד שחזור? פותחים חשבון חדש עם קוד ההצטרפות של המועדון: האימונים בטלפון נשארים כמו שהם, והחשבון הישן נמחק לבד אחרי שנה בלי שימוש.</div>' +
         '<div style="text-align:center; margin-bottom:10px;">' + btn("פתיחת חשבון חדש", 'data-connect="new-account"', "chip-btn") + "</div>" +
         '<div style="text-align:center;">' + linkBtn("חזרה", 'data-connect="go-login"') + "</div>";
+    }
+    if (v === "restore-offer") {
+      return head("להעביר לכאן את האימונים?", "היומן בטלפון הזה ריק. אם יש לכם אימונים מהאפליקציה הישנה או מגיבוי, מעבירים אותם עכשיו.") +
+        btn("יש לי קוד העברה (21 תווים)", 'data-connect="restore-transfer"') +
+        '<div style="text-align:center; margin-bottom:10px;">' + btn("שחזור מקובץ גיבוי", 'data-connect="restore-file"', "chip-btn") + "</div>" +
+        '<div style="text-align:center;">' + linkBtn("לא עכשיו", 'data-connect="restore-skip"') + "</div>";
     }
     if (v === "passkey") {
       return head("כניסה מהירה עם Face ID", "בפעם הבאה נכנסים במבט אחד, בלי להקליד סיסמה. הסיסמה נשארת לגיבוי.") +
@@ -733,10 +799,10 @@
     }
     if (v === "join") {
       if (S.busy) return head("מצטרפים למועדון…");
-      return head("הצטרפות למועדון", joinToken ? "הקוד מוכן." : "מקלידים את קוד ההצטרפות שקיבלתם מהמאמן, או מדביקים את הקישור.") + bigErrorHtml() +
+      return head("הצטרפות למועדון", joinToken ? "הקוד מוכן." : "מקלידים את קוד ההצטרפות, או מדביקים את הקישור. הקוד נמצא בקבוצת המועדון, או ב-QR במכון.") + bigErrorHtml() +
         (joinToken
           ? btn("הצטרפות", 'data-connect="join-now"')
-          : '<form id="connectForm" data-connect-form="join" novalidate>' + codeFieldHtml("קוד הצטרפות") + submitBtn("הצטרפות") + "</form>") +
+          : '<form id="connectForm" data-connect-form="join" novalidate>' + codeFieldHtml("קוד הצטרפות (8 תווים)") + submitBtn("הצטרפות") + "</form>") +
         '<div style="text-align:center;">' + linkBtn("אחר כך", 'data-connect="close"') + "</div>";
     }
     if (v === "delete") {
@@ -788,7 +854,7 @@
       (signedIn() ? '<div style="text-align:center; margin-top:14px;">' + btn("מחיקת החשבון", 'data-connect="go-delete"', "chip-btn danger") + "</div>" : "");
   }
 
-  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", "code-view": "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", forgot: "שכחתי סיסמה", passkey: "Face ID", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
+  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", "code-view": "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", forgot: "שכחתי סיסמה", passkey: "Face ID", "restore-offer": "העברת אימונים", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
   function paint() {
     var body = el("connectBody");
     if (!body) return;
@@ -858,6 +924,12 @@
       }
     }
     else if (a === "passkey-signin") { doPasskeySignIn(); }
+    else if (a === "install-prompt") { if (typeof installApp === "function") installApp(); } // eslint-disable-line no-undef
+    else if (a === "restore-transfer" || a === "restore-file" || a === "restore-skip") {
+      try { dbSetSetting(RESTORE_OFFERED_KEY, true).catch(function () {}); } catch (err) {}
+      if (a === "restore-skip") { S.view = nextView(); paint(); }
+      else { close(); if (a === "restore-transfer" && window.haimuniaTransfer) window.haimuniaTransfer.open("take"); if (a === "restore-file" && typeof triggerImport === "function") triggerImport(); } // eslint-disable-line no-undef
+    }
     else if (a === "passkey-register") { doPasskeyRegister(afterCodeScreen); }
     else if (a === "passkey-skip") { afterCodeScreen(); }
     else if (a === "passkey-register-status") { doPasskeyRegister(function () { paint(); }); }
@@ -949,7 +1021,7 @@
 
   window.haimuniaConnect = {
     init: init, open: open, close: close, openFirstRun: openFirstRun, forget: forget,
-    isOpen: isOpen, enabled: enabled, parseToken: parseToken, isCode: isCode, opensInstall: opensInstall,
+    isOpen: isOpen, enabled: enabled, parseToken: parseToken, isCode: isCode, opensInstall: opensInstall, joinWith: joinWith,
     getClient: getClient,
     onChange: function (f) { listeners.push(f); },
     // What the club screen needs to know, nothing more.
