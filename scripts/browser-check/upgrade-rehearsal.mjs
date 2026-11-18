@@ -151,7 +151,8 @@ try {
   }).map((o) => o.key);
   check("every settings row 2.34.0 wrote is still there, unchanged", lost.length === 0, lost.join(", "));
   const state = await page.evaluate(() => ({
-    name: document.getElementById("userGreeting")?.textContent || "",
+    // Q-43a: the header greeting is gone; the member's card heads התקדמות (it is rendered there on switch).
+    name: (() => { document.querySelector("[data-action='switch-tab'][data-tab='history']")?.click(); return document.querySelector("#progressWho .who-name")?.textContent || ""; })(),
     theme: document.documentElement.getAttribute("data-theme"),
     scale: document.documentElement.getAttribute("data-text-scale"),
     whatsNewOpen: document.getElementById("notificationsOverlay")?.classList.contains("open"),

@@ -96,7 +96,10 @@ test("every workout, WOD result, custom movement, custom WOD, bodyweight and mea
 test("settings come across: name, box start date, bar weight, theme, text size, last export, the day's note", async () => {
   const window = await bootUpgraded();
   const doc = window.document;
-  assert.ok(doc.getElementById("userGreeting").textContent.includes(setting("haimunia:userName")), "the member's name is on screen");
+  // Q-43a: the header greeting is gone; the name is on the profile block in Settings.
+  window.openSettings();
+  assert.ok(doc.querySelector("#settingsProfileBlock .who-name").textContent.includes(setting("haimunia:userName")), "the member's name is on screen");
+  window.closeSettings();
   assert.equal(doc.documentElement.getAttribute("data-theme"), "light", "the theme they chose");
   assert.equal(doc.documentElement.getAttribute("data-text-scale"), "large", "the large-text mode they chose");
   assert.equal(await window.dbGetSetting("haimunia:boxStartDate"), setting("haimunia:boxStartDate"));
@@ -136,16 +139,24 @@ test("medals and streak: a PR bronze the old app awarded at its one-PR threshold
   const earnedNames = [...window.document.querySelectorAll("#achievementsOverlay .medal-badge.earned")].length;
   assert.ok(earnedNames >= seen.length, `every medal 2.34.0 showed is earned here (${earnedNames} earned, ${seen.length} seen)`);
   assert.deepEqual(window.newlyEarnedAchievements().map((a) => a.id), [], "nothing the old app already showed pops again");
-  assert.ok(window.document.getElementById("streakLabel"), "the streak label exists");
+  assert.equal(typeof window.computeCurrentStreak(), "number", "the streak is still computed (Q-43a: shown on התקדמות's card)");
 });
 
-test("what's new opens on first boot with what came after 2.34.0, and nothing about a community", async () => {
+// Q-43a (owner approved): what's new is a dot on the gear and one toast, not a sheet that opens by itself.
+test("what's new after 2.34.0: a dot on the gear and one toast; the sheet lists what came after, and nothing about a community", async () => {
   const window = await bootUpgraded();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(window.document.getElementById("notificationsBadge").style.display, "block", "the dot on the gear");
+  assert.match(window.document.getElementById("settingsGearBtn").getAttribute("aria-label"), /יש חדש/);
+  assert.equal(window.localStorage.getItem("haimunia:whatsNewToasted"), readFileSync(new URL("../app.js", import.meta.url), "utf8").match(/const APP_VERSION = "([^"]+)";/)[1], "one toast, for this version");
   const overlay = window.document.getElementById("notificationsOverlay");
-  assert.ok(overlay.classList.contains("open"), "the sheet opens by itself: lastSeenVersion was 2.34.0");
+  assert.ok(!overlay.classList.contains("open"), "no sheet opens by itself");
+  window.openSettings();
+  window.document.querySelector("#settingsAdvanced [data-action='open-release-notes']").click();
+  assert.ok(overlay.classList.contains("open"), "the sheet opens from Settings > מתקדם");
   const text = window.document.getElementById("notificationsList").textContent;
   assert.ok(text.includes("3.0.0"), "the new entry is shown");
-  assert.ok(!text.includes("2.34.0"), "entries the member already saw are not repeated");
+  // Opened on purpose from Settings it is the changelog, so older entries may be listed too.
   assert.ok(!/קהילה|פיד|פרופיל/.test(text), text);
   const appVersion = readFileSync(new URL("../app.js", import.meta.url), "utf8").match(/const APP_VERSION = "([^"]+)";/)[1];
   assert.equal(await window.dbGetSetting("haimunia:lastSeenVersion"), appVersion, "and it is marked seen, so it shows once");

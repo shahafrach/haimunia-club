@@ -1628,14 +1628,24 @@ function renderNotificationsList(showAll) {
 // release notes moved into Settings (see the "מה חדש" row there) as a
 // permanent link that no longer needs to fight for header space to stay
 // discoverable.
+// Q-43a: what's new is a dot on the header's gear (Settings > מתקדם > מה חדש) and one toast per version.
 function updateNotificationsBadge() {
   const badge = document.getElementById("notificationsBadge");
-  const btn = document.getElementById("notificationsBellBtn");
+  const btn = document.getElementById("settingsGearBtn");
   if (!badge) return;
   const count = unseenReleaseNotes().length;
-  badge.textContent = count > 9 ? "9+" : String(count);
-  badge.style.display = count > 0 ? "flex" : "none";
-  if (btn) btn.setAttribute("aria-label", "עדכוני גרסה");
+  badge.textContent = "";
+  badge.style.display = count > 0 ? "block" : "none";
+  if (btn) btn.setAttribute("aria-label", count > 0 ? "הגדרות, יש חדש באפליקציה" : "הגדרות");
+}
+const WHATS_NEW_TOAST_KEY = "haimunia:whatsNewToasted";
+function whatsNewToastOnce() {
+  if (!unseenReleaseNotes().length) return;
+  let shown = null;
+  try { shown = localStorage.getItem(WHATS_NEW_TOAST_KEY); } catch (e) {}
+  if (shown === APP_VERSION) return;
+  try { localStorage.setItem(WHATS_NEW_TOAST_KEY, APP_VERSION); } catch (e) {}
+  showToast("יש חדש באפליקציה. בהגדרות, תחת מתקדם.");
 }
 // Prefers the real community notification center when there's something
 // unread there; falls back to the offline release-notes overlay otherwise
@@ -6209,10 +6219,13 @@ function renderSettingsBody() {
   // menu already renders) rather than a near-duplicate; every
   // Community-only row (cloud/backup panel, legal links) is preserved as
   // its own section, not dropped.
+  // Q-43a (owner approved 2026-11-18): four blocks, then everything else behind one "מתקדם" fold.
   return `
     <div class="settings-pane">
       <div class="settings-club-edge" aria-hidden="true"></div>
-      <div class="who" style="margin:0;">
+      <div class="settings-block" id="settingsProfileBlock">
+        <div class="settings-block-title">פרופיל</div>
+        <div class="who" style="margin:0 0 8px;">
         <div class="who-avatar">${esc(initial)}</div>
         <div style="flex:1; min-width:0;">
           <div class="who-name">${userName ? bidiText(userName) : "אורח/ת"}</div>
@@ -6220,53 +6233,34 @@ function renderSettingsBody() {
         </div>
         <button class="icon-chip icon-chip-steel" data-action="edit-user-name" aria-label="עריכת פרופיל">${ICONS.edit}</button>
       </div>
-
-      ${renderConnectRow()}
-
-      <div class="settings-block">
-        <div class="settings-block-title">מראה</div>
-        ${renderThemeRow()}
-        ${renderTextScaleRow()}
-      </div>
-
-      <!-- Design spec §1.5. Every surface the first-run sequence defers has
-           to have somewhere to live, or deferring it is just deleting it.
-           This card is that somewhere: the explainer that is no longer a
-           gate, the install prompt that no longer fires on load, and the
-           box-start date that no longer appears on the welcome sheet. Each
-           row is the permanent home of exactly one thing §1.2 moved out of
-           the member's first minute. -->
-      <div class="settings-block">
-        <div class="settings-block-title">עזרה והתאמה</div>
-        <button class="exercise-row" data-action="open-onboarding" style="margin-bottom:8px;">
-          <span style="font-weight:700; font-size:13.5px;">סיור באפליקציה</span>
-          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
-        </button>
-        <!-- Fresh-eyes audit: this used to be the header's always-visible
-             icon, which meant the least exciting thing in the app (a
-             changelog) had the most prominent real estate on every screen.
-             Settings is its permanent home now - still one tap away, just
-             not competing with the community notification badge for the
-             one slot every screen shares. -->
-        <button class="exercise-row" data-action="open-release-notes" style="margin-bottom:8px;">
-          <span style="font-weight:700; font-size:13.5px;">מה חדש באפליקציה</span>
-          <span class="flex items-center gap-6" style="flex-shrink:0;">${unseenReleaseNotes().length ? `<span class="tab-badge" aria-hidden="true">${unseenReleaseNotes().length}</span>` : ""}<span style="color:var(--steel);">${ICONS.chevronsLeft}</span></span>
-        </button>
-        ${isStandalone() ? "" : `
-        <button class="exercise-row" data-action="show-install-hint" style="margin-bottom:8px;">
-          <span style="font-weight:700; font-size:13.5px;">התקנה במסך הבית</span>
-          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
-        </button>`}
-        <button class="exercise-row" data-action="edit-box-start-date" style="margin-bottom:8px;">
+        <button class="exercise-row" data-action="edit-box-start-date" style="margin:0;">
           <div style="text-align:right;">
             <div style="font-weight:700; font-size:13.5px;">מתי התחלתי להתאמן בבוקס</div>
             <div style="color:var(--steel); font-size:12px; margin-top:2px;">${boxStartDate ? esc(fmtDate(boxStartDate)) : "לא הוגדר — פותח את מדליות הוותק"}</div>
           </div>
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
         </button>
-        <!-- 3.12.0: the feedback box (src/feedback.js). Anonymous: the typed text, the screen, the version
-             and the device type; no name or username. Opened from here it is about Settings (3.14.0). Since
-             Q-27 it is also where the menu's "תמיכה ודיווח על תקלה" leads: one feedback screen. -->
+      </div>
+
+      ${renderConnectRow()}
+
+      <div class="settings-block" id="settingsDisplayBlock">
+        <div class="settings-block-title">תצוגה</div>
+        ${renderThemeRow()}
+        ${renderTextScaleRow()}
+      </div>
+
+      <div class="settings-block" id="settingsHelpBlock">
+        <div class="settings-block-title">עזרה</div>
+        <button class="exercise-row" data-action="open-onboarding" style="margin-bottom:8px;">
+          <span style="font-weight:700; font-size:13.5px;">סיור באפליקציה</span>
+          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
+        </button>
+        ${isStandalone() ? "" : `
+        <button class="exercise-row" data-action="show-install-hint" style="margin-bottom:8px;">
+          <span style="font-weight:700; font-size:13.5px;">התקנה במסך הבית</span>
+          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
+        </button>`}
         <button class="exercise-row" data-feedback-open="settings" style="margin:0;">
           <div style="text-align:right;">
             <div style="font-weight:700; font-size:13.5px;">שליחת משוב</div>
@@ -6276,6 +6270,8 @@ function renderSettingsBody() {
         </button>
       </div>
 
+      <details class="settings-advanced" id="settingsAdvanced">
+        <summary>מתקדם${unseenReleaseNotes().length ? ' <span class="tab-badge" aria-hidden="true" style="margin-inline-start:8px;">חדש</span>' : ""}</summary>
       <div class="settings-block">
         <div class="settings-block-title">קובץ גיבוי להורדה</div>
         <div class="footer-note"${storageOK ? "" : ' style="color:var(--red-text);" role="alert"'}>${storageOK ? esc("נשמר במכשיר הזה בלבד, ללא שרת") : esc(storageErrMsg || "שמירה נכשלה — בדקו את מקום האחסון") + storageFeedbackLink("settings")}</div>
@@ -6301,7 +6297,11 @@ function renderSettingsBody() {
       </div>
 
       <div class="settings-block">
-        <div class="settings-block-title">משפטי</div>
+        <div class="settings-block-title">מה חדש ופרטיות</div>
+        <button class="exercise-row" data-action="open-release-notes" style="margin-bottom:8px;">
+          <span style="font-weight:700; font-size:13.5px;">מה חדש באפליקציה</span>
+          <span class="flex items-center gap-6" style="flex-shrink:0;">${unseenReleaseNotes().length ? `<span class="tab-badge" aria-hidden="true">${unseenReleaseNotes().length}</span>` : ""}<span style="color:var(--steel);">${ICONS.chevronsLeft}</span></span>
+        </button>
         <div class="flex items-center justify-center gap-8"><a class="link-btn" href="./privacy.html" target="_blank" rel="noopener">פרטיות</a></div>
       </div>
 
@@ -6336,6 +6336,8 @@ function renderSettingsBody() {
       </div>
       <div class="footer-note" style="text-align:center; margin-top:2px;">© ${new Date().getFullYear()} Shahaf Rachmany · v${APP_VERSION}</div>
       ${renderUpdateCheck()}
+      ${renderUpdateCheck()}
+      </details>
     </div>`;
 }
 
@@ -6587,7 +6589,9 @@ function render() {
         document.getElementById("saveBtnLabel").textContent = "בחירת תרגיל";
       }
     } else if (tab === "history") {
-      content = renderHistoryTab();
+      // Q-43a: the member's card (name, streak, the way to medals) heads התקדמות now that the header's medals
+      // icon, its greeting and the ☰ menu are gone. The same component the desktop sidebar shows.
+      content = `<div id="progressWho" style="margin-bottom:12px;">${renderNavWho()}</div>` + renderHistoryTab();
     } else if (tab === "calendar") {
       content = renderCalendarTab();
     } else if (tab === "club") {
@@ -8135,7 +8139,8 @@ document.addEventListener("click", (e) => {
   else if (action === "dismiss-ios-install-hint") { dismissIOSInstallBanner(); }
   else if (action === "ios-install-expand") { iosInstallExpandedFor = iosInstallDockKey(); syncIOSInstallDock(); }
   else if (action === "switch-tab") { tab = el.dataset.tab; closeNavMenu(); render(); window.scrollTo(0, 0); }
-  else if (action === "open-nav-menu") { openNavMenu(); }
+  // Q-43a: the ☰ menu is gone from the header; an old link to it opens Settings, which holds what it held.
+  else if (action === "open-nav-menu") { openSettings(); }
   else if (action === "close-nav-menu") {
     if (el.id === "navMenuOverlay" && e.target !== el) return;
     closeNavMenu();
@@ -8712,7 +8717,7 @@ async function init() {
   // cover them, and the name typed into a Safari tab would not reach the installed app anyway.
   else if (window.haimuniaConnect && window.haimuniaConnect.opensInstall()) { /* connect.js shows the code screen */ }
   else if (userName === null && isFreshInstall) openWelcomeModal();
-  else openNotifications({ onlyIfUnseen: true });
+  else whatsNewToastOnce();
 
   setUpServiceWorker();
 }

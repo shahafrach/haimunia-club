@@ -2713,6 +2713,17 @@
   .pw-toggle{ display:inline-flex; align-items:center; min-height:44px; font-size:15px; padding:4px 0; }
   .more-options{ margin-top:8px; text-align:center; }
   .more-options > summary{ display:inline-flex; align-items:center; min-height:44px; padding:0 8px; cursor:pointer; color:var(--steel); font-size:15px; font-weight:700; }
+  .header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  /* Q-43a: the header is the logo and one 44px gear; on a scene screen the grid is spacer / logo / gear. */
+  #settingsGearBtn{ width:44px; height:44px; min-width:44px; border-radius:12px; }
+  body[data-scene] .header{ grid-template-columns:44px 1fr 44px; }
+  body[data-scene] .header #settingsGearBtn{ grid-column:3; }
+  .header-logo{ min-width:0; max-width:calc(100% - 56px); object-fit:contain; }
+  /* At large text a segmented option wraps its word instead of being cut. */
+  .segmented-opt, #themeRow [role="radio"], #textScaleRow [role="radio"]{ overflow-wrap:anywhere; text-align:center; line-height:1.2; }
+  .gear-dot{ position:absolute; top:6px; inset-inline-start:6px; width:10px; height:10px; border-radius:50%; background:var(--energy); box-shadow:0 0 0 2px var(--surface); }
+  .settings-advanced{ margin-top:4px; }
+  .settings-advanced > summary{ display:flex; align-items:center; min-height:48px; padding:0 4px; cursor:pointer; font-weight:800; font-size:15px; color:var(--chalk); }
   .join-forgot{ font-size:17px; font-weight:700; min-height:44px; padding:8px 12px; }
   .join-after{ font-size:17px; font-weight:700; line-height:1.6; text-align:center; margin-bottom:14px; }
   /* Approved immersive composition — shared by the existing render paths. */
@@ -3295,49 +3306,16 @@
 <div id="appShell" class="app-shell">
 <nav id="desktopSidebar" class="desktop-sidebar" aria-label="ניווט ראשי"></nav>
 <div id="app" style="display:none;">
+  <!-- Q-43a (owner approved 2026-11-18): the header is the logo and one gear. The ☰ menu, the medals icon,
+       the what's-new sparkle and the greeting block are gone: Settings, help and feedback are behind the gear,
+       medals are on התקדמות, and what's new is a dot on the gear plus one toast per version. The old actions
+       (open-nav-menu, open-notifications) still work for any link that uses them. -->
   <header class="header" aria-label="כותרת האפליקציה">
-    <div class="flex items-center gap-8">
-      <button id="navMenuBtn" data-action="open-nav-menu" aria-label="תפריט" aria-haspopup="dialog" aria-controls="navMenuOverlay" class="icon-chip icon-chip-steel" style="flex-shrink:0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-      </button>
-      <img src="./assets/logo-full.png" alt="האימוניה" class="header-logo" width="300" height="108" />
-      <!-- Live report: "I want a medal icon... I can't see any change" - the
-           header's own achievements link (userGreeting button + the "לכל
-           המדליות וההישגים שלי" line below it) already exists, but both live
-           in the header's SECOND child, which is display:none on every
-           scene page (see body[data-scene] .header > div:last-child,
-           above) - and all 5 main tabs (PAGE_SCENES, app.js) are scene
-           pages; only the admin-only "manage" tab is not. So on every
-           screen a member actually spends time on, that entry point was
-           invisible. This one lives in the FIRST child instead, which
-           stays visible in scene mode - and, since there is effectively no
-           ordinary screen left to hide it FROM, it is simply always
-           visible (unlike the sparkle/bell button next to it, this one has
-           no per-mode CSS toggling anything besides its scene-mode grid
-           placement, below). -->
-      <button id="medalsBtn" data-action="open-achievements" aria-label="מדליות והישגים" class="icon-chip icon-chip-steel" style="flex-shrink:0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
-      </button>
-      <!-- Usability pass: this used to be a second bell icon, one tap away
-           from the Community tab's own bell (renderNotificationBell(),
-           cloud.js) which opens real member notifications - two bells with
-           two different meanings (this one is "what's new" / release notes,
-           see openNotifications()/RELEASE_NOTES above) read as one broken
-           control. A sparkle reads as "what's new" on its own; the bell
-           shape is now unambiguously the Community one. -->
-      <button id="notificationsBellBtn" data-action="open-notifications" aria-label="עדכוני גרסה" class="icon-chip icon-chip-steel" style="position:relative; flex-shrink:0;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-        <span id="notificationsBadge" aria-hidden="true" style="display:none; position:absolute; top:0; left:0; background:var(--energy); color:var(--p-fff); font-size:9px; font-weight:800; min-width:15px; height:15px; border-radius:8px; align-items:center; justify-content:center; padding:0 3px; line-height:1;"></span>
-      </button>
-    </div>
-    <div style="text-align:left;">
-      <button id="userGreeting" data-action="open-achievements" class="flex items-center gap-6" style="color:var(--chalk); font-size:16px; font-weight:800; margin-bottom:2px; max-width:170px;"></button>
-      <div class="flex items-center gap-6">
-        <span id="dateLabel" style="color:var(--steel); font-size:12px; font-weight:600;"></span>
-        <span id="streakLabel" class="flex items-center gap-6 mono" style="display:none; color:var(--energy); font-size:12px; font-weight:700;"></span>
-      </div>
-      <button data-action="open-achievements" class="link-btn" style="display:block; margin-top:3px;">לכל המדליות וההישגים שלי</button>
-    </div>
+    <img src="./assets/logo-full.png" alt="האימוניה" class="header-logo" width="300" height="108" />
+    <button id="settingsGearBtn" data-action="open-settings" aria-label="הגדרות" class="icon-chip icon-chip-steel" style="position:relative; flex-shrink:0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span id="notificationsBadge" class="gear-dot" aria-hidden="true" style="display:none;"></span>
+    </button>
   </header>
   <div class="brand-stripe"></div>
 

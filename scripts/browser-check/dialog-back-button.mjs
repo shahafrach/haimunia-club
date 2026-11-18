@@ -174,9 +174,11 @@ async function runAppDialogs(browser) {
   check("appConfirm: back closes it AND dismisses — same non-answer as Escape/backdrop, not a yes", binCountAfterBack === binCountBefore, `${binCountBefore} -> ${binCountAfterBack}`);
 
   // ---- navMenu: full 4-affordance sample ---------------------------------
+  // Q-43a: the phone's ☰ menu is gone, and an old link to it opens Settings. The sample below still opens it
+  // the same way, so it now proves that path lands in a dialog the back gesture closes.
   async function openNavMenu() {
-    await page.click("[data-action='open-nav-menu']");
-    await page.waitForFunction(() => document.getElementById("navMenuOverlay")?.classList.contains("open"), { timeout: 5000 });
+    await page.click("#settingsGearBtn");
+    await page.waitForFunction(() => document.getElementById("settingsOverlay")?.classList.contains("open"), { timeout: 5000 });
   }
   // No backdrop-click sub-check here: navMenu is index.html's "full-page
   // pattern" (align-items:stretch, padding:0, its .modal-sheet stretches to
@@ -189,21 +191,12 @@ async function runAppDialogs(browser) {
   // tap inside it before the user has read it — so this checks the three
   // affordances that actually apply and leaves the 4th sample (backdrop
   // included) to picker below, which genuinely has one.
-  await openNavMenu();
-  await page.click("#navMenuOverlay button[data-action='close-nav-menu']");
-  await page.waitForSelector("#navMenuOverlay", { state: "hidden", timeout: 5000 });
-  check("navMenu: X closes it", true);
+  // ---- settings (Q-43a: the gear; it replaced the ☰ menu sample) ----------
   await openNavMenu();
   await page.keyboard.press("Escape");
-  await page.waitForSelector("#navMenuOverlay", { state: "hidden", timeout: 5000 });
-  check("navMenu: Escape closes it", true);
+  await page.waitForSelector("#settingsOverlay", { state: "hidden", timeout: 5000 });
+  check("settings: Escape closes it", true);
   await openNavMenu();
-  await checkBackCloses(page, "navMenu", "#navMenuOverlay");
-
-  // ---- settings -----------------------------------------------------------
-  await openNavMenu();
-  await page.click("#navMenuOverlay [data-action='open-settings']");
-  await page.waitForFunction(() => document.getElementById("settingsOverlay")?.classList.contains("open"), { timeout: 5000 });
   await checkBackCloses(page, "settings", "#settingsOverlay");
 
   // ---- picker: full 4-affordance sample -----------------------------------
@@ -252,8 +245,9 @@ async function runAppDialogs(browser) {
   // backdrop-click sub-check here either. X/Escape/back is the honest full
   // set for this dialog's actual shape.
   async function openAchievements() {
-    await openNavMenu();
-    await page.click("#navMenuOverlay [data-action='open-achievements']");
+    // Q-43a: medals open from the member's card at the top of התקדמות.
+    await switchTab(page, "tabHistoryBtn");
+    await page.click("#progressWho [data-action='open-achievements']");
     await page.waitForFunction(() => document.getElementById("achievementsOverlay")?.classList.contains("open"), { timeout: 5000 });
   }
   await openAchievements();

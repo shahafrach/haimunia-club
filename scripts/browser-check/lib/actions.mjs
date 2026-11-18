@@ -263,10 +263,7 @@ export async function switchTab(page, tabId) {
   }
   // Library and staff tools retain their IDs in the secondary navigation.
   // Follow the visible menu route when a destination is not in the four-tab bar.
-  if (!await page.locator(`#${tabId}`).isVisible()) {
-    await page.click("#navMenuBtn");
-    await page.waitForSelector("#navMenuOverlay.open");
-  }
+  // Q-43a: every screen is in the tab bar now; the ☰ menu route is gone.
   await page.click(`#${tabId}`);
 }
 
@@ -275,14 +272,8 @@ export async function switchTab(page, tabId) {
 // menu. Opens the menu if needed, taps its settings row, and waits for
 // the settings overlay to actually be open before returning.
 export async function openSettings(page) {
-  const menuOpen = await page.evaluate(() => document.getElementById("navMenuOverlay")?.classList.contains("open"));
-  if (!menuOpen) await page.click("[data-action='open-nav-menu']");
-  // Scoped to the nav-menu overlay specifically: the desktop sidebar (Phase
-  // 4) renders its own "open-settings" row from the same markup, always in
-  // the DOM (just CSS-hidden below the 900px breakpoint) - a bare
-  // [data-action='open-settings'] selector resolves in DOM order and can
-  // silently grab that hidden copy instead of the visible mobile one.
-  await page.click("#navMenuOverlay [data-action='open-settings']");
+  // Q-43a: Settings is the header's gear (the ☰ menu is gone).
+  await page.click("#settingsGearBtn");
   await page.waitForFunction(() => document.getElementById("settingsOverlay")?.classList.contains("open"), { timeout: 5000 });
 }
 

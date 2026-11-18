@@ -7,19 +7,25 @@ import { test } from "node:test";
 import assert from "node:assert";
 import { bootApp } from "./helpers/boot.mjs";
 
+// Q-43a: the header's ☰ menu is gone. The member's card (name, streak, the way to medals) heads התקדמות, and
+// Settings is behind the header's gear.
+function openProgress(window) {
+  window.document.querySelector("[data-action='switch-tab'][data-tab='history']").click();
+}
+
 test("real-user report: the profile card that opens medals shows a visible 'מדליות' label, not only a hidden aria-label", async () => {
   const window = await bootApp();
-  window.document.getElementById("navMenuBtn").click();
-  const who = window.document.querySelector("#navMenuList .who");
-  assert.ok(who, "the profile card renders in the nav menu");
+  openProgress(window);
+  const who = window.document.querySelector("#progressWho .who");
+  assert.ok(who, "the profile card heads התקדמות");
   assert.equal(who.getAttribute("data-action"), "open-achievements");
   assert.match(who.textContent, /מדליות/, "the destination is named visibly, not only in aria-label");
 });
 
 test("the achievements screen title reads 'מדליות', not 'עיטורים'", async () => {
   const window = await bootApp();
-  window.document.getElementById("navMenuBtn").click();
-  window.document.querySelector(".who").click();
+  openProgress(window);
+  window.document.querySelector("#progressWho .who").click();
   await new Promise((r) => setTimeout(r, 20));
   const overlay = window.document.getElementById("achievementsOverlay");
   assert.equal(overlay.classList.contains("open"), true);
@@ -27,24 +33,23 @@ test("the achievements screen title reads 'מדליות', not 'עיטורים'",
   assert.doesNotMatch(overlay.textContent, /עיטור/, "the old wording is gone from the achievements screen entirely");
 });
 
-test("real-user report, root cause: opening medals or settings from the nav menu closes the menu, instead of leaving it open underneath", async () => {
+test("real-user report, root cause: medals (from התקדמות) and Settings (from the gear) never leave another dialog open underneath", async () => {
   // The menu staying open behind whatever was opened from it is what made
   // Escape/back-button close the WRONG (hidden) dialog - currentAppDialog()
   // returns the first APP_DIALOGS entry whose isOpen() is true, in
   // registration order, and navMenu is registered before both achievements
   // and settings.
   const window = await bootApp();
-  window.document.getElementById("navMenuBtn").click();
-  window.document.querySelector(".who").click();
+  openProgress(window);
+  window.document.querySelector("#progressWho .who").click();
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(window.document.getElementById("achievementsOverlay").classList.contains("open"), true);
   assert.equal(window.document.getElementById("navMenuOverlay").classList.contains("open"), false,
     "the nav menu must not still be open underneath achievements");
 
   window.document.querySelector("[data-action='close-achievements']").click();
-  window.document.getElementById("navMenuBtn").click();
   await new Promise((r) => setTimeout(r, 20));
-  window.document.querySelector("[data-action='open-settings']").click();
+  window.document.getElementById("settingsGearBtn").click();
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(window.document.getElementById("settingsOverlay").classList.contains("open"), true);
   assert.equal(window.document.getElementById("navMenuOverlay").classList.contains("open"), false,
@@ -83,8 +88,8 @@ test("real-user report: the phone back button (browser history back) closes an o
   // close the app to get back out" with achievements as the caught case,
   // but the gap was every dialog registered in APP_DIALOGS.
   const window = await bootApp();
-  window.document.getElementById("navMenuBtn").click();
-  window.document.querySelector(".who").click();
+  openProgress(window);
+  window.document.querySelector("#progressWho .who").click();
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(window.document.getElementById("achievementsOverlay").classList.contains("open"), true);
 
@@ -96,8 +101,8 @@ test("real-user report: the phone back button (browser history back) closes an o
 
 test("closing a dialog normally (its own close button) consumes the reserved back-button history entry, so a later real back-press does not land on a dead state", async () => {
   const window = await bootApp();
-  window.document.getElementById("navMenuBtn").click();
-  window.document.querySelector(".who").click();
+  openProgress(window);
+  window.document.querySelector("#progressWho .who").click();
   await new Promise((r) => setTimeout(r, 20));
 
   window.document.querySelector("#achievementsOverlay [data-action='close-achievements']").click();
@@ -116,12 +121,12 @@ test("closing a dialog normally (its own close button) consumes the reserved bac
     "no dialog re-opens from a stray leftover history entry");
 });
 
-test("the nav menu shows an app version footer instead of ending in empty space", async () => {
+test("Settings shows the app version (Q-43a: under מתקדם, the ☰ menu that carried it is gone)", async () => {
   const window = await bootApp();
-  window.document.getElementById("navMenuBtn").click();
-  const list = window.document.getElementById("navMenuList");
-  assert.match(list.textContent, /v\d+\.\d+\.\d+/, "the nav menu names the running app version");
-  assert.match(list.textContent, /האימוניה/, "the footer names the app, not a bare version number");
+  window.document.getElementById("settingsGearBtn").click();
+  const adv = window.document.getElementById("settingsAdvanced");
+  assert.ok(adv, "the מתקדם fold");
+  assert.match(adv.textContent, /v\d+\.\d+\.\d+/, "it names the running app version");
 });
 
 test("a one-day streak reads '1 יום ברצף', not the grammatically wrong '1 ימים ברצף'", async () => {
@@ -135,12 +140,12 @@ test("a one-day streak reads '1 יום ברצף', not the grammatically wrong '1
 
   assert.equal(window.computeCurrentStreak(), 1, "one set logged today is a one-day streak");
 
-  window.document.getElementById("navMenuBtn").click();
-  const who = window.document.querySelector("#navMenuList .who-sub");
+  openProgress(window);
+  const who = window.document.querySelector("#progressWho .who-sub");
   assert.equal(who.textContent, "1 יום ברצף");
 
-  const streakLabel = window.document.getElementById("streakLabel");
-  assert.equal(streakLabel.getAttribute("aria-label"), "1 יום ברצף");
+  // Q-43a: the header's streak label is gone with the greeting block; the card above is the one place.
+  assert.equal(window.document.getElementById("streakLabel"), null);
 });
 
 test("a near-empty progress chart (1-2 points) explains itself instead of just looking sparse", async () => {
@@ -206,8 +211,7 @@ test("real-user report: rapid double-tap on save-wod creates exactly one entry, 
 // moment a member most needs a coherent, single-dialog screen.
 test("real-user report: wiping all data from inside Settings does not leave Settings and Welcome open at the same time", async () => {
   const window = await bootApp();
-  window.document.getElementById("navMenuBtn").click();
-  window.document.querySelector('[data-action="open-settings"]').click();
+  window.document.getElementById("settingsGearBtn").click();
   assert.equal(window.document.getElementById("settingsOverlay").classList.contains("open"), true);
 
   await window.clearAllData();

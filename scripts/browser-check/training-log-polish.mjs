@@ -306,11 +306,11 @@ check(
 // ---------------------------------------------------------------------------
 console.log("\n---- 10: one row style in the main menu ----");
 await page.evaluate(() => { const o = document.getElementById("wodPickerOverlay"); if (o) o.classList.remove("open"); });
-await page.click("#navMenuBtn");
-await page.waitForSelector("#navMenuOverlay.open");
+// Q-43a: the phone's ☰ menu is gone; its rows live on in the desktop sidebar, read here.
+await page.setViewportSize({ width: 1200, height: 900 });
 await page.waitForTimeout(250);
 const navRows = await page.evaluate(() =>
-  [...document.querySelectorAll("#navMenuOverlay .navrow")].map((el) => {
+  [...document.querySelectorAll("#desktopSidebar .navrow")].map((el) => {
     const cs = getComputedStyle(el);
     const label = el.querySelector(".nav-label");
     const chip = el.querySelector(".icon-chip");
@@ -345,7 +345,7 @@ check(
 // The community edition's CONTROL re-applied .tabbtn's column layout to the
 // management rows in this menu. This edition has no .tabbtn row here at all,
 // so the split it guarded against cannot happen.
-await page.click("#navMenuOverlay button[data-action='close-nav-menu']");
+await page.setViewportSize(VIEWPORT);
 await page.waitForTimeout(250);
 
 // ---------------------------------------------------------------------------
@@ -658,13 +658,12 @@ check(
   darkVolume.every((r) => r.counts && /ב-7 ימים/.test(r.counts) && /ב-30 ימים/.test(r.counts)),
   JSON.stringify(darkVolume.map((r) => r.counts).slice(0, 2)),
 );
-await page.click("#navMenuBtn");
-await page.waitForSelector("#navMenuOverlay.open");
+await page.setViewportSize({ width: 1200, height: 900 });
 await page.waitForTimeout(250);
 const darkNav = await page.evaluate(() =>
-  [...document.querySelectorAll("#navMenuOverlay .navrow")].map((el) => getComputedStyle(el).flexDirection));
+  [...document.querySelectorAll("#desktopSidebar .navrow")].map((el) => getComputedStyle(el).flexDirection));
 check("dark theme: every menu row is still a row", darkNav.length > 0 && darkNav.every((d) => d === "row"), JSON.stringify(darkNav));
-await page.click("#navMenuOverlay button[data-action='close-nav-menu']");
+await page.setViewportSize(VIEWPORT);
 await page.evaluate(() => { delete document.documentElement.dataset.theme; });
 await page.waitForTimeout(200);
 
