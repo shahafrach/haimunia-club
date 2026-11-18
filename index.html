@@ -1235,6 +1235,8 @@
      renderTextScaleRow(). Until then, separate them enough to read as two. */
   #textScaleRow{ margin-top:12px; }
   .segmented-opt, #themeRow [role="radio"], #textScaleRow [role="radio"]{ min-width:0; min-height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:15px; font-weight:600; color:var(--steel); background:transparent; border:1px solid transparent; text-decoration:none; padding:8px 6px; }
+  .segmented-opt[aria-pressed="true"]{ background:var(--surface); color:var(--chalk); font-weight:800; border-color:var(--brass); box-shadow:var(--shadow-card); }
+  .training-toggle{ margin:0 0 14px; }
   .segmented-opt[aria-checked="true"], #themeRow [role="radio"][aria-checked="true"], #textScaleRow [role="radio"][aria-checked="true"]{ background:var(--surface); color:var(--chalk); font-weight:800; border-color:var(--brass); box-shadow:var(--shadow-card); }
   /* COMM-323: card-based Settings redesign. Noam's own .settings-* CSS
      wasn't something this workspace could copy verbatim (crossfit-pwa-Noam

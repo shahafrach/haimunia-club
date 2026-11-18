@@ -174,10 +174,13 @@ function getNavItems() {
   // at it, so grouping the registry cannot change either of them. One
   // registry, three renderings.
   const items = [
-    { id: "add", tab: "add", rowId: "tabAddBtn", label: "רישום", tint: "energy", icon: ICONS.logIcon, main: true, group: "mine" },
+    { id: "add", tab: "add", rowId: "tabAddBtn", label: "אימון", tint: "energy", icon: ICONS.logIcon, main: true, group: "mine" },
     { id: "history", tab: "history", rowId: "tabHistoryBtn", label: "התקדמות", tint: "blue", icon: ICONS.chartIcon, main: true, group: "mine" },
-    { id: "calendar", tab: "calendar", rowId: "tabCalendarBtn", label: "לוח שנה", tint: "yellow", icon: ICONS.calendarIcon, main: true, group: "mine" },
-    { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "אימונים", tint: "purple", icon: ICONS.stopwatchIcon, main: true, group: "mine" },
+    { id: "calendar", tab: "calendar", rowId: "tabCalendarBtn", label: "יומן", tint: "yellow", icon: ICONS.calendarIcon, main: true, group: "mine" },
+    // Q-43: WOD is the second half of the אימון tab (the toggle at the top of both screens), not a tab of its
+    // own. `partOf` keeps it out of the bottom bar and the desktop sidebar and lights אימון for it; the hidden
+    // nav-menu copy keeps #tabWodBtn and every switch-tab data-tab="wod" deep link working.
+    { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "WOD", tint: "purple", icon: ICONS.stopwatchIcon, main: false, partOf: "add", group: "mine" },
   ];
   // The club tab exists only for a connected member of the club.
   if (window.haimuniaClub && window.haimuniaClub.available()) {
@@ -191,9 +194,20 @@ function getNavItems() {
 // hamburger menu and desktop sidebar. Regenerated on every render() call,
 // same "always regenerated, just glued into a fixed container" treatment
 // renderNavMenuList/renderSettingsBody already rely on.
+// The bar item a screen belongs to: WOD lights אימון (Q-43).
+function navTabFor(t) {
+  const item = getNavItems().find((i) => i.tab === t);
+  return item && item.partOf ? item.partOf : t;
+}
+// Q-43: one אימון tab, two kinds. A two-option switch at the top of the lift screen and of the WOD screen.
+// No ids: #tabAddBtn/#tabWodBtn stay on the nav rows.
+function renderTrainingToggle() {
+  const opt = (t, label) => `<button class="segmented-opt" data-action="switch-tab" data-tab="${t}" aria-pressed="${tab === t}">${label}</button>`;
+  return `<div class="segmented training-toggle" role="group" aria-label="סוג האימון">${opt("add", "הרמה")}${opt("wod", "WOD")}</div>`;
+}
 function renderBottomTabBar() {
   return getNavItems().filter((item) => item.main).map((item) => {
-    const isActive = tab === item.tab;
+    const isActive = navTabFor(tab) === item.tab;
     return `
       <button class="tabbtn${isActive ? " active" : ""}" id="${item.rowId}" data-action="switch-tab" data-tab="${item.tab}" role="tab" aria-selected="${isActive}" aria-controls="content" tabindex="${isActive ? "0" : "-1"}"${item.badge ? ` aria-label="${esc(item.label)}, ${item.badge} דיווחים ממתינים"` : ""}>
         <span style="position:relative;display:inline-flex;">${item.icon}${item.badge ? `<span class="tab-badge" aria-hidden="true" style="position:absolute;top:-4px;left:-8px;margin:0;min-width:14px;height:14px;font-size:9px;">${item.badge}</span>` : ""}</span>
@@ -301,7 +315,7 @@ function renderNavRows(withIds, onlyOther, pick) {
   let items = onlyOther ? getNavItems().filter((item) => !item.main) : getNavItems();
   if (typeof pick === "function") items = items.filter(pick);
   return items.map((item) => {
-    const isActive = tab === item.tab;
+    const isActive = withIds ? tab === item.tab : navTabFor(tab) === item.tab;
     // The "tabbtn" class here is load-bearing, not styling (its visual
     // rules are neutralized for .navrow.tabbtn in index.html's CSS):
     // cloud.js has its own capture-phase click listener that detects
@@ -405,7 +419,7 @@ function renderNavMenuList() {
 // every item (onlyOther=false) - there's no separate bottom bar at this
 // width for the main tabs to split against (COMM-327).
 function renderDesktopSidebar() {
-  return renderNavWho() + `<div class="nav-destinations" role="tablist" aria-label="מסכי האפליקציה" aria-orientation="vertical">${renderNavRows(false, false)}</div>` + renderNavSettingsRow();
+  return renderNavWho() + `<div class="nav-destinations" role="tablist" aria-label="מסכי האפליקציה" aria-orientation="vertical">${renderNavRows(false, false, (i) => !i.partOf)}</div>` + renderNavSettingsRow();
 }
 // Live report: "when I move my finger from the left side it opens another
 // app or something." manifest.json ships display:standalone - an installed
@@ -4822,6 +4836,7 @@ function renderLogTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
+    ${renderTrainingToggle()}
     ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     ${editingEntryId ? `
     <div style="background:var(--p-e8b98a-a12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
@@ -5681,7 +5696,7 @@ function renderCalendarTab() {
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <div class="scene-page__brand">${esc(brandWordmark())}</div>
-        <h1 id="pageTitle-calendar" class="scene-page__title">לוח שנה</h1>
+        <h1 id="pageTitle-calendar" class="scene-page__title">יומן</h1>
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
@@ -6697,7 +6712,7 @@ function render() {
   if (toastDock) toastDock.innerHTML = renderToastBar();
   toastPaintOwed = false;
   const contentPanel = document.getElementById("content");
-  const activeNavItem = getNavItems().find((i) => i.tab === tab);
+  const activeNavItem = getNavItems().find((i) => i.tab === navTabFor(tab));
   if (activeNavItem && document.getElementById(activeNavItem.rowId)) contentPanel.setAttribute("aria-labelledby", activeNavItem.rowId);
   else contentPanel.removeAttribute("aria-labelledby");
   if (focusKey) {
@@ -7201,6 +7216,7 @@ function renderWodTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
+    ${renderTrainingToggle()}
     ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     <div class="subtabbar" role="tablist" aria-label="תצוגת ספריית האימונים">
       <button class="subtabbtn ${wodSubTab === "log" ? "active" : ""}" id="wodSubtab-log" data-action="switch-wod-subtab" data-subtab="log" role="tab" aria-selected="${wodSubTab === "log"}" aria-controls="wodContent" tabindex="${wodSubTab === "log" ? "0" : "-1"}">רישום</button>
