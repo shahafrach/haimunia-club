@@ -3,8 +3,8 @@
 Full history: QUEUE-archive.md on this branch. Do not read it unless a row points there.
 
 ## Waiting for Shahaf
-- F-023: advisor ran backup-database (green). demo #181 is merged (3dfffc6). Next: confirm migration-status and deploy-edge-functions green, run set-vault-secrets, then write "continue" so release runs the Q-26 read-only checks.
-- F-028: after #181 is live, advisor runs backup-database again, then merge demo #182 (mark ready first), migration-status green.
+- F-023: #181 is live (migration 202611160001 applied, migration-status and deploy-edge-functions green 07:42). **Only step left: run set-vault-secrets** in haimunia-app-demo Actions. Release check 11:10 UTC (read only): the Vault cron secret is still the placeholder, notif_push_send answered 401 to all 60 calls in the last 3 h (last 11:09), job_health_state failing = [edge: notif_push_send]. Write "continue" after the run.
+- F-028: #181 is live and a backup-database ran after it (10:08, green), so demo #182 can go now: mark it ready, merge, wait for migration-status green. It does not depend on set-vault-secrets.
 - 3.18.0 is live (club #33 merged, live sw.js 3.18.0, release 07:57 check). rollback-3.17.1 at dc02722 still to create from a computer.
 - Ship 3.18.1 after fixes does Q-33: merge club #37.
 - From a computer: Dependabot alerts on (F-030), rollback tags (list in archive), Turnstile check on box-log (F-008), empty template repo (Q-20).
