@@ -1,6 +1,6 @@
 # Findings
 
-Consolidated 2026-11-15 from `audit/c1` to `audit/c6` and `audit/pre-merge` (each row once, newest status).
+Consolidated 2026-11-15 from `audit/c1` to `audit/c6` and `audit/pre-merge` (each row once, newest status). 2026-11-18: merged Cursor's `audit/final` (#34, F-025, F-026) and `audit/security` (#35, its F-025..F-027 renumbered F-028..F-030; F-027 is unused).
 
 Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.md.
 
@@ -29,9 +29,70 @@ Codes and severities: STANDARD.md. Checks for Cursor: docs/audit/CURSOR-CHECKS.m
 | F-021 | lead (Q-12 CI sweep) | SEC-3 | medium | fixed 2026-11-16: demo #179 merged (1a06407); comment triggers need OWNER, MEMBER or COLLABORATOR | haimunia-app-demo `claude-review.yml`: the `issue_comment` and `pull_request_review_comment` paths have no `author_association` guard. On a public repo anyone can comment "@claude" on an open same-repo PR; the job then reads `CLAUDE_CODE_OAUTH_TOKEN` with `pull-requests: write` and `id-token: write`. Not confirmed here whether claude-code-action itself refuses actors without write access. The only secret any untrusted trigger can reach. | sibling `.github/workflows/claude-review.yml` job `if:` (main af491fe) | Q-13 |
 | F-022 | lead (Q-12 CI sweep) | SEC-6 | low | wontfix while the old app is frozen | haimuniya/haimunia-app `test.yml` uses `actions/checkout@v4` and `actions/setup-node@v4` by tag, not by SHA. It holds no secrets and runs with `contents: read`, so the exposure is a compromised tag running tests. | old app `.github/workflows/test.yml:15-16` | none |
 | F-023 | owner (advisor) / lead | OPS | medium | open: owner's set-vault-secrets run (2026-11-16 13:20) did not fix it, the 401s continued; the real fix is QUEUE Q-26 (a dedicated cron secret) | scheduled-job-alert has failed on every run since about 2026-11-13, and it is right. job_health_state lists `edge: notif_push_send` and `edge: purge_abandoned_profiles`. In the last 24 h both Edge Functions answered 401 `{"error":"unauthorized"}` to every cron call (480/480 and 1/1): the Vault secret `edge_functions_service_role_key` that `cron_invoke_edge_function()` sends no longer equals the functions' env `SUPABASE_SERVICE_ROLE_KEY`. Effect: abandoned sign-ups are not purged (a privacy promise), and BOX-LOG push sends fail (the club app has no push). The operator hint points at `scheduled_job_health()`, which cannot see Edge Function answers (Q-24). | read-only SQL 2026-11-16 on job_health_state, edge_function_invocations, net._http_response; sibling `202609230008`, `supabase/functions/{notif_push_send,purge_abandoned_profiles}/index.ts` | Q-23 |
-| F-024 | lead (Q-21 live pass) | UX | low | fix verified: club #31 a08921e (3.17.1; iPhone 13 Safari tab with the banner: every log control reachable; 514/0); closes when #31 ships | In the iPhone Safari tab (iPhone 13, 390×664), the two-step iOS install banner covers the layout A steppers and the plate visualizer until it is dismissed; save stays reachable. After dismissing, every control is reachable. | live 3.13.0, real Chromium iPhone 13 profile: elementFromPoint on the steppers returns `#iosInstallBanner` | Q-25 |
+| F-024 | lead (Q-21 live pass) | UX | low | fixed: club #31 a08921e (3.17.1); re-verified audit/final 2026-11-16 (`scripts/browser-check/log-layout-fits.mjs` iPhone 13 profile: steppers/plates/save hit with compact dock) | In the iPhone Safari tab (iPhone 13, 390×664), the two-step iOS install banner covers the layout A steppers and the plate visualizer until it is dismissed; save stays reachable. After dismissing, every control is reachable. | live 3.13.0, real Chromium iPhone 13 profile: elementFromPoint on the steppers returns `#iosInstallBanner` | Q-25 |
+| F-025 | cursor-final | OFF-2 | medium | open | On a first visit (no service-worker controller at boot), when a new `sw.js` lands while the page is visible, tapping `#updateBanner` does not reload. `sw.js` calls `skipWaiting()` during `install` (3.7.0/3.7.1 recovery), so the new worker activates and `clients.claim()` fires `controllerchange` before the page sets `swapRequested`. Because `hadControllerAtBoot` is false for that whole first session, `controllerAlreadySwapped` stays false; the tap posts `SKIP_WAITING` to an already-active worker (no-op) and waits for a second `controllerchange` that never comes. Returning sessions (`hadControllerAtBoot` true) reload via the `controllerAlreadySwapped` branch. No training data is lost; the member stays on the old page until a manual refresh. | `sw.js:112` `self.skipWaiting()` on install; `app.js` `applyUpdate` / `controllerchange` (`hadControllerAtBoot`); `scripts/browser-check/update-flow.mjs` scenario 3 FAIL twice 2026-11-16 on `audit/final` (fresh context); after a reload in the same profile the tap reloads | C5, update-flow |
+| F-026 | cursor-final | A11Y-1 | high | open | Calendar view toggle fails axe `label-content-name-mismatch` (serious): visible text is "לוח" / "רשימה" while `aria-label` is "הצגת לוח שנה" / "הצגת רשימת אימונים". A11Y-1 requires zero serious/critical. | `app.js` `cal-view-btn` (~5798); `scripts/browser-check/a11y-axe-scan.mjs` FAIL on Calendar 2026-11-16 | C6 |
+| F-028 | cursor-security 2026-11-16 | SEC-2 | high | open | MFA incomplete for club staff SECURITY DEFINER RPCs. A password-only (aal1) session of a club owner/coach who has a verified TOTP factor can still `rotate_club_link` (returns the new 64-hex join token), `club_announcement_post` / `club_announcement_delete` / `club_announcement_set_pinned`, and `remove_member`. Table RLS has restrictive `aal2_required`, but these DEFINER functions bypass RLS and do not call `aal_satisfied()` (unlike `delete_my_account` / `request_account_deletion`, fixed in F-016). Same class as F-016, wider surface. Fix in `shahafrach/haimunia-app-demo`: require `aal_satisfied()` at the top of every authenticated staff/member mutating DEFINER RPC (at least the staff ones above; prefer the full missing list from the audit harness). | Local Supabase (sibling migrations through `202611150004`): enrolled verified factor on audit_user_a; password login JWT `aal=aal1`, `aal_satisfied()=false`; `rotate_club_link` → 200 + new token; `club_announcement_post` → 200; `remove_member` → 204 and row gone from `circle_members`; `club_staff_actions` logged the three. Failing proof: `AUDIT_LOCAL=1 node --test test/audit-aal1-staff-rpcs.test.mjs` (and `scripts/audit-security-harness.mjs`). | security final |
+| F-029 | cursor-security 2026-11-16 | SEC-7 | low | open | Sign-up username/email enumeration via GoTrue: existing synthetic email returns HTTP 422 `user_already_exists`; a fresh email returns 200 with tokens. Club usernames map 1:1 to `<user>@members.haimuniya.invalid`. Recover endpoint responses match (both 200). Platform Auth behaviour; mitigate with identical client errors and/or Turnstile (already on anon sign-in). | Local Auth: signup existing → 422; signup fresh → 200. | security final |
+| F-030 | cursor-security 2026-11-16 | OPS | low | open | Dependabot alerts API is disabled (HTTP 403) on `haimunia-club` and `haimunia-app-demo`. `npm audit` is currently clean (0 vulns) on both; without Dependabot there is no ongoing GitHub alert stream. | `gh api repos/.../dependabot/alerts` → 403; `npm audit` 0/0. | security final |
 
-- F-008: planned shutdown date 2026-12-15, then remove the site (`box-log.pages.dev`) and its Pages project.
+- F-008: planned shutdown date 2026-12-15, then remove the site (`box-log.pages.dev`) and its Pages project. **Re-check audit/final 2026-11-16:** live `https://box-log.pages.dev/` now serves a full CSP (script/style/connect/frame including Turnstile), not the sparse `frame-ancestors`-only policy from 2026-11-14. Owner live Turnstile sign-up check still pending; club `connect-src` still omits `https://challenges.cloudflare.com` (script-src + frame-src only).
+
+## Final independent pass (launch gate 5) — `audit/final` — 2026-11-16 (Asia/Jerusalem)
+
+Independent verifier. No app code fixed. No production writes. Supabase MCP advisors declined by owner.
+
+| Step | Result | Notes |
+|------|--------|-------|
+| 0 Setup | partial | Repos in `~/dev`; npm ci; Supabase CLI 2.116.0; Playwright Chromium+WebKit; axe; gitleaks; `.cursor/rules/audit.mdc`. Docker C2C bridge broken in this VM → full `supabase start` failed; host-published Postgres + GoTrue/storage schema + all project migrations applied instead. `~/dev/audit.env` written (gitignored); Auth API users not created (no GoTrue container). |
+| 1 Database | pass (local + CI) | 0 public tables without RLS; 0 SECURITY DEFINER without `search_path=""`. `delete_my_account` / `request_account_deletion` check `auth.uid` + `aal_satisfied`. `feedback_submit` / `client_error_report` DEFINER, fixed search_path, anon+authenticated (intentional). `transfer_put`/`transfer_take` service_role only; limits present. F-005: 46/46 uid policies use `(select auth.uid())`. C2-1: `club_staff_log` in remove/delete/pin. CI `migration-check` green on demo main. Local `supabase test db` / advisors not run (no full stack; advisors auth declined). |
+| 2 Live security | pass | Live 3.17.1. Club + box-log headers/CSP present. Listed non-public paths 404. `npm audit` 0. Gitleaks: public publishable anon keys in `app-config.js` history only (expected). |
+| 3 Member flows | pass with gaps | Chromium browser-checks: boot, first-run, install dock, layout A (390/360 + iPhone 13), PR→share, percentage chart, monthly summary. Live Chromium+WebKit 390/360/1440 shell OK (WebKit: F-013 warning only). Connected feed/reactions/delete-account/feedback: mocked or unit-covered; no live club join (no invite). C4-2 real iPhone not run. |
+| 4 Data safety | pass | `test/heavy-log.test.mjs` 5/5 (3y counts+hashes, re-import, transfer &lt;1 MiB). Backup/transfer/old-app/upgrade-in-place/storage-compat pass. `upgrade-rehearsal.mjs` needs old-app commit `16d0cd8` (not in this repo). |
+| 5 Offline / SW | fail (F-025) | Offline log → reload → reconnect: no dupes. F-020 unit tests pass. `update-flow.mjs` scenario 3 FAIL (F-025). |
+| 6 a11y / RTL | fail (F-026) | axe serious on Calendar (F-026). Keyboard dialogs + text-scale pass. Contrast via design-tokens + monthly-summary light/dark ≥4.5:1. RTL live+local. |
+| 7 Code review | pass | `src/db.js` reopen path present; `reloadOnce` waits for saves; `src/transfer.js` HKDF/AES-GCM/1 MiB; C4-1 banner has backup+transfer (old “כדי שהנתונים לא יימחקו” gone). C5-1: WebKit 277615 title confirmed RESOLVED; 313800 NEW; OpenPWA page fetched. |
+
+**CURSOR-CHECKS.md:** C2-1 pass; C3-1 pass (live); C4-1 pass (code); C4-2 not run (needs iPhone); C4-3 covered by heavy-log + transfer tests (not live old-app create); C5-1 sources fetched; C6 fail F-026.
+
+**Open medium+ (launch gate 5):** F-023 (OPS medium), F-025 (OFF-2 medium), F-026 (A11Y-1 high); F-008 Turnstile owner check still pending.
+
+## Security assessment (cursor, 2026-11-16, Asia/Jerusalem)
+
+Branch `audit/security`. Method: find / prove / propose fix / retest. No app-code fixes. Local stack: sibling `haimunia-app-demo` Supabase CLI 2.116.0 with all migrations; test users A/B/C + anonymous in `~/dev/audit.env`. Live sites: read-only headers/paths/one page load only.
+
+### New open findings
+See F-028 (high), F-029 (low), F-030 (low) above.
+
+### Tested and found safe (with proof sketch)
+
+| Area | Result |
+|------|--------|
+| IDOR clubs / private_records / workout_posts / circle_members / announcements | A cannot read B's friends circle or private_records; B cannot read A's club; anon selects return empty / denied. Insert into B's private_records as A → 403 RLS. |
+| Staff RPCs as plain member C | `club_announcement_*` → not authorized; `owner_create_club` → permission denied; wrong-arg staff names → 404. |
+| Anon Postgres role vs transfer | `transfer_put`/`transfer_take` execute denied (service_role only). |
+| MFA aal1 on account deletion | `delete_my_account` / `request_account_deletion` → not authorized (F-016 holds). `private_records` insert blocked by restrictive `aal2_required`. |
+| Transfer code | 13 bytes / 104-bit Crockford; put stores; take once then `not_found`; wrong takes rate-limit (observed at 9/window after prior takes); device put 3/day; global caps in `transfer_put` source (300 blobs / 150 MB / 1 MiB). |
+| Join link | 32 random bytes hex; stored as sha256; after `rotate_club_link` old token → `invalid`, new token joins; fragment-only client read; live `Referrer-Policy: no-referrer`. |
+| Stored XSS | Announcements/posts/names go through `bidiText`→`esc` (`src/club.js`, `safe-helpers.js`); `test/app-innerhtml-sinks.test.mjs` green. Script payloads stored in `app_feedback` / `client_error_reports` as text; members cannot SELECT those tables (42501). CSP `script-src` has no unsafe-inline. |
+| Feedback / errors | Caps in SQL (500/day feedback, 5/device/day, 20/IP/day; 2000/day errors, 30/IP/hour); over-cap returns void. Staff read via Management API workflow, not client grants. |
+| Client secrets / maps | `app-config.js` publishable + Turnstile site key only (public by design). No `.map` files; live `app.js.map` 404. gitleaks: publishable key hits only (expected). |
+| Same-device storage | `haimunia:auth` and IndexedDB `box-log-db` readable to anyone with device/XSS — expected offline-first posture; CSP + esc are the web boundary. |
+| SW cache | Versioned cache name; REQUIRED_ASSETS fail-closed install; no push handlers (PD-1). |
+| Headers / CSP live | Club: full CSP + HSTS + COOP + nosniff + DENY + no-referrer. Box-log: full CSP now (F-008 live). Blocked paths 404 including docs/FINDINGS/package.json/test. `/src/*.js` and `/app-config.js` 200 by design (buildless). |
+| npm audit | 0 vulnerabilities on club and demo. |
+| CI (demo) | No `pull_request_target`; actions SHA-pinned; F-021 author_association guard present on claude-review comment paths. Club repo has no GitHub Actions (Cloudflare Pages git deploy). Old app: F-022 unpinned tags, wontfix while frozen. |
+
+### Could not test / limits
+| Item | Why |
+|------|-----|
+| Production Supabase active exploit | Rules of engagement: local only for active tests. |
+| Real Turnstile / captcha bypass | Needs live site interaction beyond read-only; owner check still pending (F-008 note). |
+| Real iPhone transfer redeem (C4-2) | Needs owner's device. |
+| Edge Function Deno runtime locally | Transfer proved via `transfer_put`/`transfer_take` RPCs as service_role (same DB path the Edge Functions call). |
+| Dependabot alert contents | API disabled (F-030). |
+| Full pgTAP `supabase test db` wall clock | Budget: targeted RPC/REST proofs + existing F-016 coverage instead of full 1600+ assertion rerun. |
+| Anonymous JWT `delete_my_account` | Self-delete only (`auth.uid()`); role is `authenticated`. Not filed as a vulnerability; product may still want to refuse `is_anonymous`. |
 
 ## C3 audit (2026-11-14, UTC)
 
@@ -110,15 +171,15 @@ Project `box-log`, eu-central-1, Postgres 17, free plan.
 |---|------|--------|
 | 1 | C4-2 on a real iPhone: create a transfer code in Safari, install, redeem | open (owner) |
 | 2 | G4 club message approved | open (owner) |
-| 3 | Cursor final pass, or lead's full real-Chromium pass on the live site (QUEUE Q-21) | green for 3.13.0 (2026-11-16, fake backend); re-run on the final version before launch |
+| 3 | Cursor final pass, or lead's full real-Chromium pass on the live site (QUEUE Q-21) | green for 3.13.0 (lead, 2026-11-16, fake backend); Cursor final pass on 3.17.1 done 2026-11-16 with gaps (C4-2 not run, connected flows mocked); lead re-runs the live pass on the final version before launch |
 | 4 | Q-12 CI sweep clean | green (F-021 fixed, demo #179) |
-| 5 | No open critical, high or medium finding | open: F-008 (owner's live Turnstile check), F-023 (owner runs set-vault-secrets) |
+| 5 | No open critical, high or medium finding | open 2026-11-18: F-023 (fix: demo #181), F-025, F-026, F-028 (high, Cursor security pass); F-008 Turnstile owner check still pending |
 
 Done earlier: 3.8.1 (F-010), 3.9.0 (sharing), G1 privacy policy (live since 3.10.0), 3.10.0 (delete account), 3.11.0 (update check).
 
 CI sweep 2026-11-15 (Q-12): no unknown PRs, branches or actors in any of the three repos, no run-number gaps, no pull_request_target, every action pinned by SHA in haimunia-app-demo. Findings: F-021, F-022.
 
-Low items, not gates: F-004 (watch CI), F-006, F-007 (accepted), F-011, F-013, F-019 (Q-16), F-022, F-024 (Q-25). Owner task: shut down box-log.pages.dev on 2026-12-15 (F-008 follow-up).
+Low items, not gates: F-004 (watch CI), F-006, F-007 (accepted), F-011, F-013, F-019 (Q-16), F-022, F-024 (Q-25), F-029, F-030 (QUEUE Q-31). Owner task: shut down box-log.pages.dev on 2026-12-15 (F-008 follow-up).
 
 ### F-001 fix plan
 
