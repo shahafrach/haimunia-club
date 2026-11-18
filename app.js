@@ -1440,7 +1440,6 @@ function showCelebration(prLabel, badges, opts) {
 function closeCelebration() {
   document.body.style.overflow = "";
   document.getElementById("celebrationOverlay").classList.remove("open", "arrival-card");
-  if (pendingClubShare) { const p = pendingClubShare; pendingClubShare = null; setTimeout(() => askClubShare(...p), 0); }
   if (celebrationOpenerEl && typeof celebrationOpenerEl.focus === "function") celebrationOpenerEl.focus();
   celebrationOpenerEl = null;
   // THE moment S5 has been waiting for: not "the overlay stopped being
@@ -2069,24 +2068,39 @@ function removeRecordFromClub(entryId) {
 function shareDayToClub(day) {
   try { if (day && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postDay(day); } catch (e) { /* never in the way of the log */ }
 }
-// Owner decision (2026-11-14): every new workout asks once whether it goes to the club. Yes posts the
-// day (and its PR card, if any); "not this time", Escape or a tap outside keeps it on the phone. An
-// edit keeps the answer it already had.
-let pendingClubShare = null;
+// Owner decision (2026-11-14): the member chooses per workout whether it goes to the club. Q-43 (owner approved
+// 2026-11-18): the choice is a checkbox on the save bar, "לשתף במועדון", and there is no dialog after saving.
+// Ticked, the save posts the day (and its PR card, if any); unticked, the workout stays on the phone. The box
+// starts each app open from the Settings default (CLUB_SHARE_DEFAULT_KEY, off unless the member turned it on:
+// decided by fixes, owner to confirm), then keeps what the member last set. An edit keeps the answer it had.
+const CLUB_SHARE_DEFAULT_KEY = "haimunia:clubShareDefault";
+let clubShareNext = null;
+function clubShareDefault() {
+  try { return localStorage.getItem(CLUB_SHARE_DEFAULT_KEY) === "1"; } catch (e) { return false; }
+}
+function setClubShareDefault(on) {
+  try { localStorage.setItem(CLUB_SHARE_DEFAULT_KEY, on ? "1" : "0"); } catch (e) { /* the box still works this time */ }
+  clubShareNext = !!on;
+}
+function clubShareChecked() { return clubShareNext === null ? clubShareDefault() : clubShareNext; }
+function clubShareAvailable() {
+  try { return !!(window.haimuniaClub && window.haimuniaClub.available()); } catch (e) { return false; }
+}
+// The save bar's checkbox: shown with a lift or WOD save button for a club member, not while editing.
+function syncClubShareCheck() {
+  const box = document.getElementById("clubShareCheck"), input = document.getElementById("clubShareInput");
+  const btn = document.getElementById("bottomBarBtn");
+  if (!box || !input || !btn) return;
+  const action = btn.dataset.action;
+  const show = clubShareAvailable() && ((tab === "add" && action === "save-set" && !editingEntryId) || (tab === "wod" && action === "save-wod" && !editingWodEntryId));
+  box.hidden = !show;
+  input.checked = clubShareChecked();
+}
 function askClubShare(entry, label, prDetail) {
   try {
-    if (!entry || !window.haimuniaClub || !window.haimuniaClub.available()) return;
-    // A PR or first-entry card is showing: ask when it closes, not on top of it.
-    const cel = document.getElementById("celebrationOverlay");
-    if (cel && cel.classList.contains("open")) { pendingClubShare = [entry, label, prDetail]; return; }
-    askAppConfirm({
-      title: "לשתף במועדון?",
-      message: `${label}. בפיד יופיעו שם האימון והתוצאה, בלי משקלים.`,
-      confirmLabel: "לשתף", cancelLabel: "לא הפעם",
-      action: "club-share-entry",
-      payload: { entry, prDetail: prDetail || null },
-      onCancel: () => { try { window.haimuniaClub.setShared(entry.id, false); } catch (e) { /* never in the way */ } },
-    });
+    if (!entry || !clubShareAvailable()) return;
+    if (clubShareChecked()) confirmClubShare({ entry, prDetail: prDetail || null });
+    else window.haimuniaClub.setShared(entry.id, false);
   } catch (e) { /* never in the way of the log */ }
 }
 function confirmClubShare(p) {
@@ -4828,6 +4842,7 @@ function renderLogTab() {
   return `
     <section class="scene-page ${PAGE_SCENES.add.className}${movementExplicitlyChosen ? " scene-page--compact" : ""}" aria-labelledby="pageTitle-add">
       <div class="scene-page__media" aria-hidden="true"></div>
+      ${movementExplicitlyChosen ? "" : renderTrainingToggle()}
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <div class="scene-page__brand">${esc(brandWordmark())}</div>
@@ -4836,7 +4851,6 @@ function renderLogTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${renderTrainingToggle()}
     ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     ${editingEntryId ? `
     <div style="background:var(--p-e8b98a-a12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
@@ -4909,7 +4923,6 @@ function renderLogTab() {
     </div>` : ""}
     <div class="bar-wrap" id="barWrap">
       <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא חדש!</span></div>
-      ${isDuration || !isBarbell ? "" : `<div id="barbellVisual">${renderBarbell(weight)}</div>`}
     </div>
 
     <div class="steppers">
@@ -4974,7 +4987,8 @@ function renderLogTab() {
     })() : ""}
     </div>
     <details class="log-more"${logMoreOpen ? " open" : ""}>
-      <summary class="link-btn link-btn--tap">עוד אפשרויות: סוג רישום, תאריך, 1RM, אחוזים, סולם</summary>
+      <summary class="link-btn link-btn--tap">כלים: מוט ומשקולות, סולם, טבלת אחוזים, 1RM</summary>
+    ${isDuration || !isBarbell ? "" : `<div id="barbellVisual" class="bar-wrap">${renderBarbell(weight)}</div>`}
     <div class="rx-toggle" role="radiogroup" aria-label="סוג רישום">
       <button class="rx-btn ${!isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="reps" role="radio" aria-checked="${!isDuration}">משקל וחזרות</button>
       <button class="rx-btn ${isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="duration" role="radio" aria-checked="${isDuration}"><span style="display:inline-flex; width:16px; height:16px; vertical-align:-3px; margin-left:4px;">${ICONS.stopwatchIcon}</span>החזקה בזמן</button>
@@ -6213,6 +6227,11 @@ function renderConnectRow() {
           </div>
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
         </button>
+        ${clubShareAvailable() ? `<label class="club-share-default" id="clubShareDefaultRow">
+          <input type="checkbox" id="clubShareDefaultInput" ${clubShareDefault() ? "checked" : ""} />
+          <span>לסמן "לשתף במועדון" בכל אימון חדש</span>
+        </label>
+        <div class="footer-note" style="margin:4px 0 0;">בפיד מופיעים שם התרגיל או האימון והתוצאה, בלי משקלים. משקל גוף לא נשלח אף פעם.</div>` : ""}
       </div>`;
 }
 function renderSettingsBody() {
@@ -6658,6 +6677,7 @@ function render() {
   // COMM-360: the save action only appears once something is actually
   // chosen on either tab - same rule, applied symmetrically.
   document.getElementById("bottomBar").style.display = ((tab === "add" && movementExplicitlyChosen) || (tab === "wod" && wodSubTab === "log" && wodById(selectedWodId))) ? "flex" : "none";
+  syncClubShareCheck();
   // §1.2 S6: the install prompt is a deferred question, so its gate has to
   // be re-checked as the member's situation changes rather than once at the
   // moment the browser offered it. No-op unless all four conditions hold.
@@ -7210,13 +7230,13 @@ function renderWodTab() {
   return `
     <section class="scene-page ${PAGE_SCENES.wod.className}" aria-labelledby="pageTitle-wod">
       <div class="scene-page__media" aria-hidden="true"></div>
+      ${renderTrainingToggle()}
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <h1 id="pageTitle-wod" class="scene-page__title">ספריית אימונים</h1>
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${renderTrainingToggle()}
     ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     <div class="subtabbar" role="tablist" aria-label="תצוגת ספריית האימונים">
       <button class="subtabbtn ${wodSubTab === "log" ? "active" : ""}" id="wodSubtab-log" data-action="switch-wod-subtab" data-subtab="log" role="tab" aria-selected="${wodSubTab === "log"}" aria-controls="wodContent" tabindex="${wodSubTab === "log" ? "0" : "-1"}">רישום</button>
@@ -8313,6 +8333,7 @@ document.addEventListener("click", (e) => {
     // pinned for a WOD you're no longer even looking at.
     const w = wodSubTab === "log" ? wodById(selectedWodId) : null;
     document.getElementById("bottomBar").style.display = w ? "flex" : "none";
+    syncClubShareCheck();
     syncWodSaveCta(w);
   }
   else if (action === "open-wod-picker") { openWodPicker(); }
@@ -8551,6 +8572,13 @@ document.addEventListener("keydown", (e) => {
   }
 });
 // "עוד אפשרויות" (log screen): remember the member's choice, so a re-render does not fold it back.
+// Q-43: the save bar's "לשתף במועדון" box and its Settings default.
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (!t || !t.id) return;
+  if (t.id === "clubShareInput") clubShareNext = !!t.checked;
+  else if (t.id === "clubShareDefaultInput") setClubShareDefault(!!t.checked);
+});
 document.addEventListener("toggle", (e) => {
   if (e.target && e.target.classList && e.target.classList.contains("log-more")) logMoreOpen = e.target.open;
 }, true);

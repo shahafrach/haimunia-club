@@ -386,14 +386,14 @@
       '<div class="scene-page__intro"><div class="scene-page__brand">' + esc(typeof brandWordmark === "function" ? brandWordmark() : "") + "</div>" +
       '<h1 id="pageTitle-club" class="scene-page__title">' + esc(i.clubName || "המועדון") + "</h1></div>" +
       '<div class="scene-sheet"><div class="stripe-ribbon" aria-hidden="true"></div>' +
-      announcementsHtml(i.staff) + sharingHtml() + feedHtml(i.staff) + membersHtml(i) + (i.staff ? linkToolHtml() : "") +
+      announcementsHtml(i.staff) + feedHtml(i.staff) + membersHtml(i) + (i.staff ? linkToolHtml() : "") +
       "</div></section>";
   }
 
   // ---- Sharing workouts to the club ----------------------------------------------------
   // Owner decision (2026-11-11): connected mode has a feed and reactions. Owner decision (2026-11-14):
-  // the member chooses per workout. After each new lift or WOD the app asks "share to the club?"; only
-  // the ones answered yes reach the day's post. The answer is kept on this phone (CHOICE_KEY). The unit
+  // the member chooses per workout. Q-43: a "לשתף במועדון" box on the save bar; only the
+  // workouts saved with it ticked reach the day's post. The answer is kept on this phone (CHOICE_KEY). The unit
   // is a training DAY, the same as BOX-LOG: one post per member per day, upserted on
   // (author_id, club_id, source_type, source_record_id) so a second lift that day updates it.
   // What is sent: the movement or WOD names and the results without weights, nothing else. Body weight
@@ -540,11 +540,7 @@
     if (!r || !r.n) return false;
     return postPr(entryId, r.name, r.pct);
   }
-  function sharingHtml() {
-    return '<div class="card" style="margin-bottom:12px;">' +
-      '<div style="font-weight:700; font-size:14px; color:var(--chalk); margin-bottom:4px;">שיתוף האימונים שלי</div>' +
-      '<div style="color:var(--steel); font-size:12.5px;">אחרי כל אימון שנרשם תישאלו אם לשתף אותו. בפיד מופיעים שם התרגיל או האימון והתוצאה, בלי משקלים. משקל גוף לא נשלח אף פעם.</div></div>';
-  }
+  // Q-43: what is shared, and the default for the save bar's "לשתף במועדון" box, live in Settings > מועדון.
 
   // ---- Events -----------------------------------------------------------------------
   function onClick(e) {

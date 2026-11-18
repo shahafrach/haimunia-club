@@ -101,19 +101,19 @@ async function openClub(window) {
   await until(() => $$(window, "#content article").length > 0, "feed");
 }
 const rpcs = (calls, name) => calls.filter(([n]) => n === name);
-// Every new workout asks "share to the club?" (owner decision 2026-11-14). A first entry's or a PR's
-// card shows first, and the question waits for it to close.
-async function answerShare(window, yes) {
-  if (window.document.getElementById("celebrationOverlay").classList.contains("open")) window.closeCelebration();
-  await until(() => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']"), "share question");
-  $(window, yes ? "[data-action='app-confirm-yes']" : "[data-action='app-confirm-no']").click();
+// Q-43: the member ticks "לשתף במועדון" on the save bar before saving (owner decision 2026-11-14: per
+// workout). There is no question after the save.
+function setShareBox(window, yes) {
+  const box = window.document.getElementById("clubShareInput");
+  box.checked = !!yes;
+  box.dispatchEvent(new window.Event("change", { bubbles: true }));
 }
 async function logLift(window, weight, reps, share = true) {
   window.choosePickedMovement("back-squat");
   window.applyFieldValue("step", "weight", weight);
   window.applyFieldValue("step", "reps", reps);
+  if (share !== null) setShareBox(window, share);
   await window.saveSet();
-  if (share !== null) await answerShare(window, share);
 }
 
 test("offline, or not in the club: there is no club tab", async () => {
@@ -266,10 +266,12 @@ test("a lift the member chose to share posts the day: names and results, never k
   window.choosePickedMovement("back-squat");
   window.applyFieldValue("step", "weight", 100);
   window.applyFieldValue("step", "reps", 5);
+  window.render();
+  assert.equal(window.document.getElementById("clubShareCheck").hidden, false, "the box is on the save bar");
+  assert.equal(window.document.getElementById("clubShareInput").checked, false, "unticked unless Settings says otherwise");
+  setShareBox(window, true);
   await window.saveSet();
-  await wait(60);
-  assert.equal(calls.filter(([n]) => n === "upsert:workout_posts").length, 0, "nothing is sent before the member answers");
-  await answerShare(window, true);
+  assert.equal($(window, "#appConfirmOverlay.open"), null, "no question after the save");
   await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "upsert");
   const [, row, opts] = calls.find(([n]) => n === "upsert:workout_posts");
   assert.equal(opts.onConflict, "author_id,club_id,source_type,source_record_id");
@@ -295,11 +297,32 @@ test("not this time: the workout stays on the phone, and the next one asks again
   assert.doesNotMatch(row.result_text, /·/, "one line, not two");
 });
 
-test("the club tab has no all-or-nothing switch any more; it explains the per-workout question", async () => {
+test("the club tab has no sharing block; Settings > מועדון holds the box's default", async () => {
   const { window } = await boot();
   await openClub(window);
   assert.equal($(window, "[data-club='share']"), null);
-  assert.match($(window, "#content").textContent, /אחרי כל אימון שנרשם תישאלו אם לשתף אותו/);
+  assert.doesNotMatch($(window, "#content").textContent, /שיתוף האימונים שלי/);
+  window.openSettings();
+  const def = $(window, "#clubShareDefaultInput");
+  assert.ok(def, "the default is in Settings");
+  assert.equal(def.checked, false);
+  def.checked = true;
+  def.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.equal(window.localStorage.getItem("haimunia:clubShareDefault"), "1", "kept on this phone");
+  window.closeSettings && window.closeSettings();
+  window.choosePickedMovement("back-squat");
+  window.render();
+  assert.equal($(window, "#clubShareInput").checked, true, "a new workout starts ticked");
+});
+
+test("unticked, the workout stays on the phone and is recorded as not shared", async () => {
+  const { window, calls } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await logLift(window, 80, 3, false);
+  await wait(80);
+  const id = (await window.buildBackupPayload()).entries[0].id;
+  assert.equal(window.haimuniaClub.isShared(id), false);
+  assert.equal(calls.filter(([n]) => n === "upsert:workout_posts").length, 0);
 });
 
 test("an edit keeps the answer the workout already had: no second question", async () => {
@@ -433,56 +456,8 @@ async function passWelcome(window) {
   await wait(60);
 }
 
-// F-015 (3.9.0 verification, real Chromium): closing the first-entry card calls history.back() in the dialog
-// history layer; its popstate can land after "לשתף במועדון?" has opened and pushed its own entry. That pop
-// is the app's own, not the member's, so it must not close the question (and must not record "not shared").
-// jsdom's own back() timing never shows the race, so back() is held here and its popstate fired by hand
-// after the question is open, which is the order the real-Chromium trace showed.
-test("F-015: the popstate from the card's own history.back() leaves the share question open; a real back still closes it", async () => {
-  const { window } = await boot();
-  await until(() => window.haimuniaClub.available(), "in club");
-  await passWelcome(window);
-  let backs = 0;
-  window.history.back = () => { backs++; };
-  const pop = () => window.dispatchEvent(new window.PopStateEvent("popstate", { state: window.history.state }));
-  const question = () => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']");
-  const choice = (id) => JSON.parse(window.localStorage.getItem("haimunia:clubShareChoice") || "{}")["c1|" + id];
-
-  logLift(window, 80, 3, null);
-  await until(() => window.document.getElementById("celebrationOverlay").classList.contains("open"), "first-entry card");
-  window.closeCelebration();
-  await until(question, "share question");
-  assert.equal(backs, 1, "closing the card consumed its history entry with history.back()");
-  const id = (await window.buildBackupPayload()).entries[0].id;
-
-  pop(); // the card's own back() lands now
-  await wait(60);
-  assert.ok(question(), "the question is still open");
-  assert.equal(choice(id), undefined, "and nothing was recorded for the workout");
-  assert.ok(window.history.state && window.history.state.appDialog, "the question still holds a reserved history entry");
-
-  pop(); // the member presses back
-  await wait(60);
-  assert.equal(question(), null, "a real back-press closes the question");
-  assert.equal(choice(id), false, "and counts as not this time");
-});
-
-test("F-015: answering yes still works after the card's own popstate", async () => {
-  const { window, calls } = await boot();
-  await until(() => window.haimuniaClub.available(), "in club");
-  await passWelcome(window);
-  window.history.back = () => {};
-  logLift(window, 80, 3, null);
-  await until(() => window.document.getElementById("celebrationOverlay").classList.contains("open"), "first-entry card");
-  window.closeCelebration();
-  await until(() => $(window, "#appConfirmOverlay[data-confirm-kind='club-share-entry']"), "share question");
-  window.dispatchEvent(new window.PopStateEvent("popstate", { state: window.history.state }));
-  await wait(60);
-  $(window, "[data-action='app-confirm-yes']").click();
-  await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "shared");
-  const id = (await window.buildBackupPayload()).entries[0].id;
-  assert.equal(window.haimuniaClub.isShared(id), true);
-});
+// F-015 guarded the "לשתף במועדון?" question against the first-entry card's own popstate. Q-43 removed that
+// question (the save bar's box decides), so there is no dialog left to race.
 
 // F-018 (real Chromium, 3.9.0): toast() only queued the toast; nothing rendered after the async failure, so
 // the member never saw it. The toast must be in the DOM with no further action: these tests only wait.
