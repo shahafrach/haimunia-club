@@ -4828,6 +4828,7 @@ function renderLogTab() {
   return `
     <section class="scene-page ${PAGE_SCENES.add.className}${movementExplicitlyChosen ? " scene-page--compact" : ""}" aria-labelledby="pageTitle-add">
       <div class="scene-page__media" aria-hidden="true"></div>
+      ${movementExplicitlyChosen ? "" : renderTrainingToggle()}
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <div class="scene-page__brand">${esc(brandWordmark())}</div>
@@ -4836,7 +4837,6 @@ function renderLogTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${renderTrainingToggle()}
     ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     ${editingEntryId ? `
     <div style="background:var(--p-e8b98a-a12); border:1px solid var(--brass); border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
@@ -7210,13 +7210,13 @@ function renderWodTab() {
   return `
     <section class="scene-page ${PAGE_SCENES.wod.className}" aria-labelledby="pageTitle-wod">
       <div class="scene-page__media" aria-hidden="true"></div>
+      ${renderTrainingToggle()}
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <h1 id="pageTitle-wod" class="scene-page__title">ספריית אימונים</h1>
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
-    ${renderTrainingToggle()}
     ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     <div class="subtabbar" role="tablist" aria-label="תצוגת ספריית האימונים">
       <button class="subtabbtn ${wodSubTab === "log" ? "active" : ""}" id="wodSubtab-log" data-action="switch-wod-subtab" data-subtab="log" role="tab" aria-selected="${wodSubTab === "log"}" aria-controls="wodContent" tabindex="${wodSubTab === "log" ? "0" : "-1"}">רישום</button>

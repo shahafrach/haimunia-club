@@ -35,15 +35,21 @@ for (const scale of [1, 2]) {
       smallTabs: tabs.filter((b) => b.getBoundingClientRect().height < 44).length,
       smallOpts: opts.filter((b) => b.getBoundingClientRect().height < 44).length, opts: opts.length, cut,
       page: de.scrollWidth <= de.clientWidth + 1,
+      // The toggle sits on the photo: it must not cover the page title, and a tap on it must reach it.
+      clear: opts.every((o) => {
+        const r = o.getBoundingClientRect(), t = document.querySelector(".scene-page__title").getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return (r.bottom <= t.top || r.top >= t.bottom) && hit && (hit === o || o.contains(hit));
+      }),
     };
   });
   for (const which of ["add", "wod"]) {
     if (which === "wod") await page.click("#content .training-toggle [data-tab='wod']");
     await page.waitForSelector(`#pageTitle-${which}`);
     const f = await measure();
-    check(`[${tag}] ${which}: bar = אימון/התקדמות/יומן, אימון lit, tabs and toggle >= 44px, nothing cut, no sideways scroll`,
-      f.labels.join("/") === "אימון/התקדמות/יומן" && f.active === "tabAddBtn" && !f.smallTabs && f.opts === 2 && !f.smallOpts && !f.cut.length && f.page, JSON.stringify(f));
-    if (scale === 1) await page.screenshot({ path: `${SHOTS}/q43b-${which}.png` }).catch(() => {});
+    check(`[${tag}] ${which}: bar = אימון/התקדמות/יומן, אימון lit, tabs and toggle >= 44px, nothing cut, toggle clear of the title and tappable, no sideways scroll`,
+      f.labels.join("/") === "אימון/התקדמות/יומן" && f.active === "tabAddBtn" && !f.smallTabs && f.opts === 2 && !f.smallOpts && !f.cut.length && f.page && f.clear, JSON.stringify(f));
+    await page.screenshot({ path: `${SHOTS}/q43b-${which}-${scale}.png` }).catch(() => {});
   }
   check(`[${tag}] no console errors, nothing left the origin`, errors.length === 0 && page.__foreignRequests.length === 0, errors.concat(page.__foreignRequests).join(" | "));
   await context.close();

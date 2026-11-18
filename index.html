@@ -1236,7 +1236,9 @@
   #textScaleRow{ margin-top:12px; }
   .segmented-opt, #themeRow [role="radio"], #textScaleRow [role="radio"]{ min-width:0; min-height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:15px; font-weight:600; color:var(--steel); background:transparent; border:1px solid transparent; text-decoration:none; padding:8px 6px; }
   .segmented-opt[aria-pressed="true"]{ background:var(--surface); color:var(--chalk); font-weight:800; border-color:var(--brass); box-shadow:var(--shadow-card); }
-  .training-toggle{ margin:0 0 14px; }
+  /* Q-43: the הרמה | WOD toggle sits at the top of the photo, under the header, so it costs the sheet no
+     height. Not on the compact (movement picked) lift screen, whose photo is too short for it. */
+  .scene-page > .training-toggle{ position:absolute; z-index:2; inset-block-start:calc(env(safe-area-inset-top,0px) + 72px); inset-inline:var(--scene-inline); max-width:320px; margin-inline:auto; }
   .segmented-opt[aria-checked="true"], #themeRow [role="radio"][aria-checked="true"], #textScaleRow [role="radio"][aria-checked="true"]{ background:var(--surface); color:var(--chalk); font-weight:800; border-color:var(--brass); box-shadow:var(--shadow-card); }
   /* COMM-323: card-based Settings redesign. Noam's own .settings-* CSS
      wasn't something this workspace could copy verbatim (crossfit-pwa-Noam
