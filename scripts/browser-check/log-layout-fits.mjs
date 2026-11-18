@@ -55,11 +55,12 @@ function fakeClubClient() {
   window.supabase = { createClient: () => client };
 }
 
-async function openWithHistory(size, { connected = false, device = null } = {}) {
+async function openWithHistory(size, { connected = false, device = null, zoom = 1 } = {}) {
   const ctx = await browser.newContext(device ? { ...device } : { viewport: size, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   const errors = await consoleErrorCollector(page);
   await installMockCloud(page);
+  if (zoom !== 1) await page.addInitScript((z) => { document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.zoom = String(z); }); }, zoom);
   if (connected) await page.addInitScript(fakeClubClient);
   await page.goto(target.url, { waitUntil: "networkidle" });
   await dismissWelcomeModal(page);
@@ -195,6 +196,23 @@ for (const [w, h, name] of [[390, 844, "390x844"], [360, 780, "360x780"]]) {
   await page.waitForFunction(() => window.__clubCalls.includes("pr_share") && window.__clubCalls.includes("upsert:workout_posts"), null, { timeout: 4000 }).catch(() => {});
   check("PR: the ticked box sends the day post and the PR card", await page.evaluate(() => window.__clubCalls.includes("upsert:workout_posts") && window.__clubCalls.includes("pr_share")), await page.evaluate(() => window.__clubCalls.join(",")));
   check("connected: no console errors", errors.length === 0, errors.join(" | "));
+  await ctx.close();
+}
+
+// Q-43: the save bar with its "לשתף במועדון" box on a 375px phone at 200% text: both whole, both >= 44px.
+{
+  const { ctx, page, errors } = await openWithHistory({ width: 375, height: 812 }, { connected: true, zoom: 2 });
+  await page.waitForFunction(() => window.haimuniaClub && window.haimuniaClub.available(), null, { timeout: 8000 }).catch(() => {});
+  await pickBackSquat(page);
+  const bar = await page.evaluate(() => {
+    const l = document.getElementById("clubShareCheck"), b = document.getElementById("bottomBarBtn");
+    const r = l.getBoundingClientRect(), br = b.getBoundingClientRect(), w = document.documentElement.clientWidth;
+    return { shown: !l.hidden, h: [Math.round(r.height), Math.round(br.height)], inside: r.left >= 0 && r.right <= w + 1 && br.left >= 0 && br.right <= w + 1,
+      whole: b.scrollWidth <= b.clientWidth + 1 && l.scrollWidth <= l.clientWidth + 1, page: document.documentElement.scrollWidth <= w + 1 };
+  });
+  check("375px 200%: the share box and the save button are whole, >= 44px, no sideways scroll", bar.shown && bar.h[0] >= 44 && bar.h[1] >= 44 && bar.inside && bar.whole && bar.page, JSON.stringify(bar));
+  await page.screenshot({ path: "/tmp/claude-0/-home-user/2bd321ec-b56f-56fc-bbf9-9cf5d21706bb/scratchpad/q43c-savebar-200.png" }).catch(() => {});
+  check("375px 200%: no console errors", errors.length === 0, errors.join(" | "));
   await ctx.close();
 }
 
