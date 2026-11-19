@@ -5487,7 +5487,9 @@ function renderCalendarGrid() {
     const cls = ["cal-cell"];
     if (iso === today) cls.push("today");
     if (iso === calSelectedDate) cls.push("selected");
-    const dayAria = `${d}${hasData ? (hasPR ? " — שיא אישי" : " — יש נתונים") : ""}`;
+    // Q-54: a full Hebrew name for the day, not only its number.
+    const dayName = new Date(iso + "T00:00:00").toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const dayAria = `${iso === today ? "היום, " : ""}${dayName}${hasData ? (hasPR ? ", יש אימון ושיא אישי" : ", יש אימון") : ""}`;
     cells += `<button class="${cls.join(" ")}" data-action="cal-select-day" data-date="${esc(iso)}" aria-label="${esc(dayAria)}" aria-pressed="${iso === calSelectedDate}" ${iso === today ? 'aria-current="date"' : ""}>
       <span class="cal-daynum" aria-hidden="true">${d}</span>
       ${hasData ? `<div class="cal-dot ${hasPR ? "pr" : ""}" aria-hidden="true"></div>` : ""}
@@ -5566,6 +5568,17 @@ async function saveSessionNote(date, text) {
 // to see what they had already done. Single implementation: the calendar's
 // own day-detail and the log screen's today's-sets card must never drift
 // into two different renderings of the identical underlying data.
+// Q-54: a −/+ tap is announced ("חזרות 6"): the new value, read by the stepper's own label, in a polite
+// live region (#stepperLive, index.html), so VoiceOver and TalkBack users hear what they changed.
+function announceStepper(btn, value) {
+  const live = document.getElementById("stepperLive");
+  if (!live) return;
+  const label = (btn.closest(".stepper") && btn.closest(".stepper").querySelector(".stepper-label")) ? btn.closest(".stepper").querySelector(".stepper-label").textContent.trim() : "";
+  const shown = btn.closest(".stepper") && btn.closest(".stepper").querySelector(".stepper-val");
+  live.textContent = `${label} ${shown && shown.value !== "" ? shown.value : value}`.trim();
+}
+// Q-54: the PR flame says what it means to VoiceOver and TalkBack (the icon itself is decorative).
+const PR_FLAME = '<span class="pr-flame"><span aria-hidden="true">' + ICONS.flame.replace("<svg ", '<svg aria-hidden="true" ') + '</span><span class="sr-only">שיא אישי</span></span>';
 function renderDayEntriesListHtml(dayEntries, dayWods) {
   if (dayEntries.length === 0 && dayWods.length === 0) return `<div class="empty">לא נרשם דבר ביום הזה.</div>`;
   // Live bug hunt (2026-09-11): see isFlameworthyEntry()'s comment.
@@ -5578,7 +5591,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
           return `
         <div class="log-row">
           <div class="flex items-center gap-8">
-            ${isFlameworthyEntry(e, celebratableIds) ? ICONS.flame : ""}
+            ${isFlameworthyEntry(e, celebratableIds) ? PR_FLAME : ""}
             <span style="font-weight:700; font-size:var(--fs-2);">${bidiText(movementById(e.exerciseId) ? movementById(e.exerciseId).name : "?")}</span>
           </div>
           <div class="flex items-center gap-10">
@@ -5602,14 +5615,14 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
         return `
         <div class="log-row" style="flex-direction:column; align-items:stretch; gap:8px;">
           <div class="flex items-center gap-8">
-            ${anyPR ? ICONS.flame : ""}
+            ${anyPR ? PR_FLAME : ""}
             <span style="font-weight:700; font-size:var(--fs-2);">${name}</span>
             <span style="color:var(--steel); font-size:var(--fs-caption);">${isSuperset ? "סופרסט" : "סולם"} · ${group.length} סטים${blockTag}</span>
           </div>
           <div class="flex col gap-6">
             ${group.map((e, i) => `
             <div class="flex items-center justify-between">
-              <span class="mono flex items-center gap-6" style="color:var(--steel); font-size:var(--fs-2);">${bidiUnit(`${i + 1}. ${ladderRoundSummary(e, isSuperset)}`)}${isFlameworthyEntry(e, celebratableIds) ? ICONS.flame : ""}</span>
+              <span class="mono flex items-center gap-6" style="color:var(--steel); font-size:var(--fs-2);">${bidiUnit(`${i + 1}. ${ladderRoundSummary(e, isSuperset)}`)}${isFlameworthyEntry(e, celebratableIds) ? PR_FLAME : ""}</span>
               <div class="flex items-center gap-6">
                 <button data-action="edit-entry" data-id="${esc(e.id)}" aria-label="עריכת סט ${i + 1}" class="icon-btn-sm">${ICONS.edit}</button>
                 <button data-action="delete-entry" data-id="${esc(e.id)}" aria-label="מחיקת סט ${i + 1}" class="icon-btn-sm">${ICONS.trash}</button>
@@ -5624,7 +5637,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
         <div class="log-row" style="${e.notes ? "flex-direction:column; align-items:stretch; gap:4px;" : ""}">
           <div class="flex items-center justify-between" style="width:100%;">
             <div class="flex items-center gap-8">
-              ${e.isPR ? ICONS.flame : ""}
+              ${e.isPR ? PR_FLAME : ""}
               <span style="font-weight:700; font-size:var(--fs-2);">${bidiText(w ? w.name : "?")}</span>
               <span style="color:var(--steel); font-size:var(--fs-caption);">${wodEffortLabel(e.rx)}${e.partnerTag ? ` · ${bidiText(e.partnerTag)}` : ""}</span>
             </div>
@@ -7141,7 +7154,7 @@ function renderWodLogSection() {
     <div class="empty">${isToday ? "עדיין לא נרשמו אימונים היום." : `עדיין לא נרשמו אימונים ב-${esc(dayLabel)}.`}</div>` : `
     <button class="exercise-row" data-action="view-log-wod-date-calendar" style="margin-bottom:0;">
       <div class="flex items-center gap-8">
-        ${dayWods[0].isPR ? ICONS.flame : ""}
+        ${dayWods[0].isPR ? PR_FLAME : ""}
         <div style="text-align:right;">
           <div style="font-weight:700; font-size:var(--fs-2);">אחרון: ${bidiText(wodById(dayWods[0].wodId) ? wodById(dayWods[0].wodId).name : "?")} — ${formatWodEntry(dayWods[0])} (${wodEffortLabel(dayWods[0].rx)})</div>
           <div style="color:var(--steel); font-size:var(--fs-caption);">${dayWods.length} אימון${dayWods.length === 1 ? "" : "ים"} נרשמו ${isToday ? "היום" : `ב-${esc(dayLabel)}`}</div>
@@ -7205,7 +7218,7 @@ function renderWodDetailCard(w) {
           <div class="log-row" style="${e.notes ? "flex-direction:column; align-items:stretch; gap:4px;" : ""}">
             <div class="flex items-center justify-between" style="width:100%;">
               <div class="flex items-center gap-8">
-                ${e.isPR ? ICONS.flame : ""}
+                ${e.isPR ? PR_FLAME : ""}
                 <span style="color:var(--steel); font-size:var(--fs-1);">${fmtDate(e.date)}</span>
                 <span style="color:var(--steel); font-size:var(--fs-caption);">${wodEffortLabel(e.rx)}${e.partnerTag ? ` · ${bidiText(e.partnerTag)}` : ""}</span>
               </div>
@@ -7483,6 +7496,13 @@ function releaseScrollLockIfLastDialog() {
   if (currentAppDialog()) return;
   document.body.style.overflow = "";
 }
+function insideClosedDetails(n) {
+  for (let d = n.closest("details:not([open])"); d; d = d.parentElement && d.parentElement.closest("details:not([open])")) {
+    const own = n.tagName === "SUMMARY" && n.parentElement === d;
+    if (!own) return true;
+  }
+  return false;
+}
 function appDialogFocusables(overlayId) {
   const el = document.getElementById(overlayId);
   if (!el) return [];
@@ -7490,8 +7510,10 @@ function appDialogFocusables(overlayId) {
   // <use href="#glyphN"> (the achievements panel's medal SVGs) matches a
   // bare [href] selector too, which would have put a decorative SVG
   // fragment reference into the Tab trap.
-  return Array.from(el.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
-    .filter((n) => !n.disabled && n.getClientRects().length > 0);
+  // Q-54: a closed <details> hides its content from the trap (its own <summary> stays: that is how it opens),
+  // whether or not the engine reports the hidden rows as laid out. <summary> is focusable and was missing.
+  return Array.from(el.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'))
+    .filter((n) => !n.disabled && n.getClientRects().length > 0 && !insideClosedDetails(n));
 }
 function focusFirstAppDialogEl(overlayId) {
   const f = appDialogFocusables(overlayId);
@@ -8401,6 +8423,7 @@ document.addEventListener("click", (e) => {
     const base = (typeof current === "number" && isFinite(current)) ? current : 0;
     const next = clampField(action, field, +(base + dir * step).toFixed(2), min);
     applyFieldValue(action, field, next);
+    announceStepper(el, next);
   }
   else if (action === "save-set") { saveSet(); }
   else if (action === "set-bar-weight") { setBarWeight(+el.dataset.kg); }
@@ -9065,6 +9088,20 @@ try {
     }, 250);
   });
 } catch (e) { /* no cross-tab sync */ }
+// Q-54: while any sheet is open the page behind it is inert: no tap, no focus, nothing read by VoiceOver or
+// TalkBack. Every sheet is a body-level .modal-overlay outside #appShell and #bottomNavWrap, so one observer
+// covers all of them, whichever function opens or closes them.
+function syncBackgroundInert() {
+  const anyOpen = !!document.querySelector(".modal-overlay.open");
+  for (const id of ["appShell", "bottomNavWrap"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (anyOpen) el.setAttribute("inert", ""); else el.removeAttribute("inert");
+  }
+}
+try {
+  new MutationObserver(syncBackgroundInert).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"], childList: true });
+} catch (e) { /* no observer: the Tab trap still keeps focus in the sheet */ }
 // init() had no catch: a boot exception left the loading screen up for good.
 // src/boot-guard.js turns it into a message with a reload button.
 init().catch((e) => {
