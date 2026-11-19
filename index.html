@@ -379,6 +379,11 @@
     --fs-caption:.6875rem; --fs-1:.75rem; --fs-2:.875rem; --fs-3:1rem; --fs-4:1.125rem; --fs-5:1.375rem; --fs-6:1.875rem; --fs-display:2.5rem;
     --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
     --header-height:64px; --color-accent:var(--club-coral); --color-selected:var(--club-coral); --color-focus-ring:var(--brass); --color-input-border:var(--steel); --hero-title-scrim:radial-gradient(closest-side, var(--p-081523-a72) 0%, var(--p-081523-a72) 60%, transparent 100%); --tap-min:44px; --btn-height:44px; --btn-height-lg:52px; --btn-radius:14px;
+    /* Q-53b: ONE primary button. .save-btn, .chip-btn.primary, the scene save bar and the רישום pick button all
+       read these; solid --energy at full strength (a translucent fill read as disabled). */
+    --btn-primary-bg:var(--energy); --btn-primary-fg:var(--on-energy); --btn-primary-border:var(--energy);
+    --btn-primary-shadow:0 8px 18px -10px color-mix(in srgb, var(--energy) 85%, transparent);
+    --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-pill:999px;
 }
   
   :root[data-scheme="dark"]{
@@ -479,6 +484,11 @@
      the viewport. */
   /* Q-44: iOS Dynamic Type. The shorthand sets html's size from the system text size; the family is set again. */
   html{ font:-apple-system-body; }
+  /* Q-54: a control scrolled into view (Tab, find-in-page, a focused field) is not left under the fixed bottom bar,
+     the install dock or the header. */
+  /* Q-54: only while a keyboard focus ring shows, so a tap's own scrollIntoView (the pick) lands where it did. */
+  html:has(:focus-visible){ scroll-padding-block-start:calc(env(safe-area-inset-top,0px) + 72px); scroll-padding-block-end:calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve)); }
+  html:has(:focus-visible):has(#iosInstallBanner[style*="block"]){ scroll-padding-block-end:calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve) + var(--install-dock-reserve)); }
   /* Q-52: pinch-zoom is allowed (touch-action:pan-y on the page blocked it, WCAG 1.4.4). The double-tap zoom
      is turned off only on the controls (manipulation keeps pinch and taps fast), not on the page. */
   html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; overscroll-behavior-y:contain; width:100%; }
@@ -514,7 +524,7 @@
   .justify-between{ justify-content:space-between; }
   .justify-center{ justify-content:center; }
   
-  .gap-6{ gap:6px; } .gap-8{ gap:8px; } .gap-10{ gap:10px; } 
+  .gap-6{ gap:6px; } .gap-8{ gap:var(--space-2); } .gap-10{ gap:10px; } 
   .wrap{ flex-wrap:wrap; }
   /* max(env(...), 28px): some Android WebView/Chrome combinations report
      safe-area-inset-top as 0 on an installed (standalone) PWA even though
@@ -589,8 +599,8 @@
      alone reads as "slightly different" at a glance mid-workout, which is
      exactly when this bar has to answer "where am I?" without being studied. */
   .tabbtn.active::before{ content:""; position:absolute; top:2px; left:50%; transform:translateX(-50%); width:20px; height:3px; border-radius:2px; background:var(--energy); }
-  .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:12px 14px; box-shadow:var(--shadow-card); }
-  .exercise-select{ width:100%; display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 16px; margin-bottom:12px; box-shadow:var(--shadow-card); }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 14px; box-shadow:var(--shadow-card); }
+  .exercise-select{ width:100%; display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; margin-bottom:12px; box-shadow:var(--shadow-card); }
   /* COMM-343: an explicit unchosen-exercise prompt (dashed, no category
      dot - there's nothing to color yet) instead of the normal chosen look,
      for whenever COMM-360 starts actually leaving selectedId unset. */
@@ -609,7 +619,7 @@
      The striped spine is the brand's own hazard motif - the same --stripe
      .brand-stripe and .pr-flash already use - on the leading edge, so this
      reads as this app's card rather than a generically tinted button. */
-  .exercise-select.pick-hero{ position:relative; overflow:hidden; gap:12px; padding:16px; padding-inline-start:28px; border-color:color-mix(in srgb, var(--energy) 55%, var(--border)); background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 14%, var(--surface)), var(--surface) 78%); }
+  .exercise-select.pick-hero{ position:relative; overflow:hidden; gap:var(--space-3); padding:16px; padding-inline-start:28px; border-color:color-mix(in srgb, var(--energy) 55%, var(--border)); background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 14%, var(--surface)), var(--surface) 78%); }
   .pick-hero::before{ content:""; position:absolute; top:0; bottom:0; inset-inline-start:0; width:10px; background-image:var(--stripe); }
   .pick-hero-title{ font-weight:800; font-size:var(--fs-4); line-height:1.25; color:var(--chalk); min-width:0; overflow-wrap:anywhere; }
   /* Q-49: at large text the title and its button stack instead of the title running out of the card. */
@@ -623,7 +633,9 @@
      contrast violation. 8% measures 4.87:1 dark / 5.36:1 light, which
      leaves room for the token to be nudged later without silently
      dropping under the floor. The border carries the accent instead. */
-  .pick-hero-cta{ display:inline-flex; align-items:center; gap:6px; flex-shrink:0; padding:9px 13px; border-radius:999px; font-size:var(--fs-2); font-weight:800; color:var(--energy-text); background:color-mix(in srgb, var(--energy) 8%, var(--surface)); border:1px solid color-mix(in srgb, var(--energy) 50%, transparent); }
+  /* Q-53b: בחירת תרגיל is the screen's primary button: full width, 52px, solid (was a small outlined chip). */
+  .pick-hero-cta{ display:flex; align-items:center; justify-content:center; gap:6px; flex:1 1 100%; min-height:var(--btn-height-lg); padding:0 16px; border-radius:var(--btn-radius); font-size:var(--fs-3); font-weight:800; color:var(--btn-primary-fg); background:var(--btn-primary-bg); border:1px solid var(--btn-primary-border); box-shadow:var(--btn-primary-shadow); }
+  .pick-hero-title{ flex:1 1 100%; }
   /* ---- The four-slot empty state, on the log screen -------------------
      Same shape as cloud.js's emptyStateHtml() (d540a34): a decorative icon,
      a forward-looking headline, one line of explanation, and one when-line
@@ -649,7 +661,9 @@
      they answer two different questions - "what goes in the card above"
      and "what has been logged today". Two identical blocks would just read
      as the screen having failed twice. */
-  .day-empty{ display:flex; align-items:center; justify-content:center; gap:8px; border:1px dashed var(--border); border-radius:14px; padding:14px 16px; color:var(--steel); font-size:var(--fs-2); line-height:1.5; text-align:center; }
+  /* Q-53b: ONE empty state (app.js emptyStateHtml): a dashed box, optional icon, quiet text. .day-empty and .empty
+     stay as names on it (tests and checks read them) and carry no look of their own. */
+  .empty-state{ display:flex; align-items:center; justify-content:center; gap:var(--space-2); border:1px dashed var(--border); border-radius:var(--btn-radius); padding:var(--space-3) var(--space-4); color:var(--steel); font-size:var(--fs-2); line-height:1.5; text-align:center; }
   .day-empty > svg{ flex-shrink:0; opacity:.75; }
   /* The tour offer. It keeps its place directly under the picker and its
      64px target (scripts/browser-check/first-run-sequence.mjs pins both),
@@ -660,8 +674,8 @@
      screen dashed means "something will appear here", and the tour offer is
      a real thing to press, not a placeholder. */
   .exercise-row.tour-offer{ background:transparent; box-shadow:none; }
-  .dot{ width:8px; height:8px; border-radius:999px; flex-shrink:0; }
-  .stat-row{ display:flex; gap:8px; margin-bottom:16px; }
+  .dot{ width:8px; height:8px; border-radius:var(--radius-pill); flex-shrink:0; }
+  .stat-row{ display:flex; gap:var(--space-2); margin-bottom:16px; }
   .stat-card{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:10px 12px; box-shadow:var(--shadow-card); }
   /* COMM-343: the log screen's own est-1RM/best-hold/last-session cards get
      a slightly heavier accent than a plain .stat-card elsewhere (progress/
@@ -692,8 +706,8 @@
      theme and measured 4.35:1 here - just under the 4.5:1 floor. */
   .bar-center{ width:64px; height:20px; display:flex; align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border); border-radius:6px; font-weight:700; font-size:var(--fs-2); color:var(--brass); flex-shrink:0; direction:ltr; unicode-bidi:isolate; }
   .bar-caption{ color:var(--steel); font-size:var(--fs-1); }
-  .steppers{ display:flex; gap:8px; margin-bottom:16px; }
-  .stepper{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .steppers{ display:flex; gap:var(--space-2); margin-bottom:16px; }
+  .stepper{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:var(--space-1); }
   .stepper-label{ color:var(--steel); font-size:var(--fs-1); font-weight:600; white-space:nowrap; }
   .stepper-box{ width:100%; min-width:0; display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:14px; border:1px solid var(--border); }
   .stepper-btn{ width:44px; height:44px; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:opacity .15s; }
@@ -702,8 +716,7 @@
   .est-line{ text-align:center; color:var(--steel); font-size:var(--fs-1); margin-bottom:20px; }
   .est-line b{ color:var(--brass); font-weight:700; }
   .section-label{ color:var(--steel); font-size:var(--fs-1); font-weight:700; margin-bottom:10px; letter-spacing:.5px; }
-  .empty{ color:var(--steel); font-size:var(--fs-2); text-align:center; padding:24px 0; }
-  .log-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-card); }
+    .log-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; box-shadow:var(--shadow-card); }
   /* UX audit, defect 3 - THE MOST DANGEROUS PAIR IN THE APP. A logged
      entry's edit and delete icons measured 23x26 CSS px and sat flush
      against each other, so the miss-tap for "edit this set" is "delete
@@ -719,10 +732,10 @@
      renders inside the live ladder/superset chips (a 12px ✕ inside a small
      inline pill on the log screen), where a 44px box would break the pill
      layout outright - that one is left for a markup change in app.js. */
-  .log-row [data-action="edit-entry"], .log-row [data-action="delete-entry"]{ min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:12px; }
+  .log-row [data-action="edit-entry"], .log-row [data-action="delete-entry"]{ min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:var(--radius-md); }
   .log-row [data-action="edit-entry"] + [data-action="delete-entry"]{ margin-inline-start:6px; }
-  .log-list{ display:flex; flex-direction:column; gap:8px; }
-  .exercise-row{ width:100%; min-height:44px; display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:12px 14px; text-align:right; transition:all .15s; margin-bottom:8px; box-shadow:var(--shadow-card); }
+  .log-list{ display:flex; flex-direction:column; gap:var(--space-2); }
+  .exercise-row{ width:100%; min-height:44px; display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 14px; text-align:right; transition:all .15s; margin-bottom:8px; box-shadow:var(--shadow-card); }
   .exercise-row.active{ background:var(--surface2); border-color:var(--brass); }
   .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px; margin-bottom:16px; box-shadow:var(--shadow-card); }
   .rep-table{ display:flex; gap:6px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
@@ -1038,12 +1051,12 @@
   .scene-page--add.scene-page--compact .scene-page__intro{ inset-block-start:calc(env(safe-area-inset-top,0px) + 64px); }
   .scene-page--add.scene-page--compact .scene-page__title{ font-size:var(--fs-5); }
   .scene-page--add.scene-page--compact .scene-page__subtitle{ display:none; }
-  .log-last{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; min-height:22px; color:var(--steel); font-size:var(--fs-1); font-weight:700; margin-bottom:8px; }
-  .log-last-label{ display:inline-flex; align-items:center; gap:4px; flex-shrink:0; }
+  .log-last{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-2); min-height:22px; color:var(--steel); font-size:var(--fs-1); font-weight:700; margin-bottom:8px; }
+  .log-last-label{ display:inline-flex; align-items:center; gap:var(--space-1); flex-shrink:0; }
   .log-last-value{ color:var(--chalk); font-size:var(--fs-2); text-align:end; }
   .log-last--none{ justify-content:flex-start; }
   .log-last--saved .log-last-label{ color:var(--chalk); }
-  .log-repeat{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; font-size:var(--fs-3); font-weight:800; margin-bottom:10px; }
+  .log-repeat{ display:flex; align-items:center; justify-content:center; gap:var(--space-2); width:100%; min-height:52px; font-size:var(--fs-3); font-weight:800; margin-bottom:10px; }
   .log-controls .bar-wrap{ margin-bottom:10px; }
   .log-controls #barbellVisual{ transform:scale(.8); transform-origin:center top; margin-bottom:-24px; }
   .log-controls .steppers{ flex-wrap:wrap; margin-bottom:10px; }
@@ -1057,9 +1070,9 @@
 
   .club-admin{ margin-top:14px; }
   /* Q-48: the רישום screen. */
-  .date-chip{ position:relative; display:inline-flex; align-items:center; gap:6px; min-height:var(--tap-min); padding:0 14px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); color:var(--chalk); font-size:var(--fs-2); font-weight:800; cursor:pointer; }
+  .date-chip{ position:relative; display:inline-flex; align-items:center; gap:6px; min-height:var(--tap-min); padding:0 14px; border-radius:var(--radius-pill); background:var(--surface2); border:1px solid var(--border); color:var(--chalk); font-size:var(--fs-2); font-weight:800; cursor:pointer; }
   .date-chip input[type="date"]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; cursor:pointer; }
-  .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:8px; }
+  .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:var(--space-2); }
   .scene-page--add .log-controls .steppers.steppers--row .stepper:last-child:nth-child(3){ grid-column:auto; }
   .steppers--row .stepper{ flex-basis:auto; }
   .steppers--row .stepper-box{ display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"val val" "minus plus"; }
@@ -1072,7 +1085,7 @@
   .est-line{ font-size:var(--fs-1); }
   .tools-btn{ list-style:none; display:flex; align-items:center; justify-content:center; min-height:var(--tap-min); padding:0 14px; border-radius:var(--btn-radius); border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-size:var(--fs-2); font-weight:700; cursor:pointer; text-align:center; }
   .tools-btn::-webkit-details-marker{ display:none; }
-  .day-log-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:14px 0 8px; }
+  .day-log-head{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-2); flex-wrap:wrap; margin:14px 0 8px; }
   .day-log-total{ color:var(--steel); font-size:var(--fs-2); font-weight:700; }
   #pickerList .movement-btn{ min-height:48px; }
   .picker-add{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
@@ -1183,7 +1196,7 @@
   }
   /* F-024 (3.17.1): the one-line form of the iOS dock on the log screen (tucked away once an exercise is picked).
      On an iPhone 13 Safari tab (390x664) the full two-step card covered the steppers and the plate picture. */
-  .install-dock-line{ display:none; align-items:center; gap:8px; }
+  .install-dock-line{ display:none; align-items:center; gap:var(--space-2); }
   .install-dock--compact .install-dock-line{ display:flex; }
   .install-dock--compact .install-dock-full{ display:none; }
   .install-dock--compact{ padding-top:6px; }
@@ -1199,8 +1212,8 @@
      these match the app rather than the legal minimum. The glyph inside is
      untouched - this only grows the transparent area around it, so nothing
      moves visually. */
-  .icon-btn{ min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:12px; }
-  .save-btn{ width:100%; max-width:448px; background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 78%, var(--p-fff-50)), var(--energy)); color:var(--p-1a0d08); font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:0.5px; font-size:var(--fs-4); padding:16px 0; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 10px 26px -6px var(--p-e85d3d-a50); transition:opacity .15s; }
+  .icon-btn{ min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:var(--radius-md); }
+  .save-btn{ width:100%; max-width:448px; background:var(--btn-primary-bg); color:var(--btn-primary-fg); border:1px solid var(--btn-primary-border); font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:0.5px; font-size:var(--fs-4); padding:16px 0; border-radius:var(--radius-lg); display:flex; align-items:center; justify-content:center; gap:var(--space-2); box-shadow:var(--btn-primary-shadow); transition:opacity .15s; }
   .save-btn:active{ opacity:.85; }
   /* Shared tinted icon chip, reused by the Phase 2 nav menu and anywhere a
      generic gray icon badge would otherwise be re-derived inline per call
@@ -1317,7 +1330,7 @@
      The selected state carries three redundant signals (filled surface,
      brass rim, heavier weight) so it survives greyscale, colour-blindness
      and the light theme, per the spec. */
-  .segmented, #themeRow, #textScaleRow{ display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; padding:4px; background:var(--surface2); border:1px solid var(--border); border-radius:14px; }
+  .segmented, #themeRow, #textScaleRow{ display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:var(--space-1); padding:4px; background:var(--surface2); border:1px solid var(--border); border-radius:14px; }
   #themeRow > [aria-hidden="true"], #textScaleRow > [aria-hidden="true"]{ display:none; }
   /* Partial mitigation for spec 4.2, which this file cannot finish: the two
      tracks sit inside one "מראה" card with no visible label of their own
@@ -1337,13 +1350,13 @@
      this "avatar + name" component, just reused instead of duplicated),
      .icon-chip for the edit action, .chip-btn.danger for the destructive
      zone. Replaces the old flat .divider-label + bare .card list. */
-  .settings-pane{ display:flex; flex-direction:column; gap:16px; }
-  .settings-block{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 16px; box-shadow:var(--shadow-card); }
+  .settings-pane{ display:flex; flex-direction:column; gap:var(--space-4); }
+  .settings-block{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; box-shadow:var(--shadow-card); }
   .settings-block-title{ font-weight:800; font-size:var(--fs-2); color:var(--steel); letter-spacing:.3px; margin-bottom:10px; }
   /* COMM-355: same cloud-aware 5/30-day staleness signal as before, now
      with the icon+box treatment a plain colored line lost somewhere along
      the way, instead of reverting to a flat rule with no cloud-awareness. */
-  .settings-warn{ display:flex; align-items:flex-start; gap:8px; background:color-mix(in srgb, var(--yellow) 14%, transparent); border:1px solid var(--yellow); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:var(--fs-1); color:var(--chalk); }
+  .settings-warn{ display:flex; align-items:flex-start; gap:var(--space-2); background:color-mix(in srgb, var(--yellow) 14%, transparent); border:1px solid var(--yellow); border-radius:var(--radius-md); padding:10px 12px; margin-bottom:10px; font-size:var(--fs-1); color:var(--chalk); }
   .modal-overlay{ position:fixed; inset:0; background:var(--p-000000-a60); z-index:50; display:none; align-items:flex-end; overflow:hidden; }
   /* THE CONFIRM SHEET MUST WIN EVERY TIE. Live bug hunt, fresh round 5
      (2026-09-15) - HIGH, reproduced live.
@@ -1412,7 +1425,7 @@
     #navMenuSheet > .modal-head, #settingsSheet > .modal-head, #achievementsOverlay .modal-head{ padding-top:calc(max(env(safe-area-inset-top,0px), 28px) + 16px); }
   }
   .modal-title{ color:var(--chalk); font-weight:800; font-size:var(--fs-3); }
-  .search-box{ display:flex; align-items:center; margin:0 16px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:8px 12px; gap:8px; }
+  .search-box{ display:flex; align-items:center; margin:0 16px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; gap:var(--space-2); }
   /* The input itself is intentionally borderless/transparent (it sits
      inside .search-box's own decorated pill), but that meant outline:none
      on the input left a keyboard user with no visible focus state at all -
@@ -1433,7 +1446,7 @@
      id, not the shared .modal-list class every other overlay also uses. */
   #navMenuList{ display:flex; flex-direction:column; }
   /* Nav menu (replaces the old top tabbar) and its user-info card. */
-  .who{ display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px; margin:4px 0 18px; box-shadow:var(--shadow-card); }
+  .who{ display:flex; align-items:center; gap:var(--space-3); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px; margin:4px 0 18px; box-shadow:var(--shadow-card); }
   .who-avatar{ width:42px; height:42px; border-radius:50%; background:linear-gradient(160deg, color-mix(in srgb, var(--brass) 45%, var(--p-fff-55)), var(--brass)); color:var(--p-241a0d); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:var(--fs-3); flex-shrink:0; }
   /* Live bug hunt (2026-09-11): an 80-char unbreakable name (cleanStr's own
      cap, e.g. one long repeated character with no spaces) overflowed this
@@ -1507,7 +1520,7 @@
      it. See the ≥1200px block further down for what it becomes. */
   
   @media (min-width: 900px){
-    .app-shell{ display:flex; align-items:flex-start; justify-content:center; gap:32px; max-width:1100px; margin:0 auto; padding:28px 24px; }
+    .app-shell{ display:flex; align-items:flex-start; justify-content:center; gap:var(--space-6); max-width:1100px; margin:0 auto; padding:28px 24px; }
     .desktop-sidebar{ display:flex; flex-direction:column; width:248px; flex-shrink:0; position:sticky; top:28px; background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:18px 14px; box-shadow:var(--shadow-card); }
     .desktop-sidebar .who{ margin:0 0 14px; }
     .desktop-sidebar .navrow{ padding:10px 10px; }
@@ -1709,18 +1722,18 @@
      stats in one bordered/shadowed card, matching every other data
      surface (.card/.chart-card) in this app. */
   .cal-panel{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px; box-shadow:var(--shadow-card); margin-bottom:16px; overflow:hidden; }
-  .cal-legend{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:4px; }
+  .cal-legend{ display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap; margin-top:4px; }
   .cal-legend-item{ display:flex; align-items:center; gap:6px; color:var(--steel); font-size:var(--fs-1); }
-  .cal-month-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
-  .cal-month-stat{ text-align:center; background:var(--surface2); border-radius:12px; padding:10px 6px; }
+  .cal-month-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-2); margin-top:14px; }
+  .cal-month-stat{ text-align:center; background:var(--surface2); border-radius:var(--radius-md); padding:10px 6px; }
   .cal-month-stat-value{ font-weight:800; font-size:var(--fs-4); color:var(--chalk); }
   .cal-month-stat-label{ color:var(--steel); font-size:var(--fs-1); margin-top:2px; }
   .cal-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   .cal-nav-btn{ width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .cal-month-label{ font-weight:800; font-size:var(--fs-3); }
-  .cal-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:6px; }
+  .cal-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-1); margin-bottom:6px; }
   .cal-weekday{ text-align:center; color:var(--steel); font-size:var(--fs-1); font-weight:700; }
-  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:18px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-1); margin-bottom:18px; }
   /* UX audit, defect 3: seven cells share a ~326px row inside
      .cal-panel, which fixes their WIDTH at about 43px - there is no width
      left to give without overflowing the panel horizontally. min-height
@@ -1745,7 +1758,7 @@
   .cal-cell.today{ border-color:var(--chalk); }
   .cal-cell.selected{ background:var(--surface2); border-color:var(--brass); }
   .cal-daynum{ font-size:var(--fs-2); font-weight:600; color:var(--chalk); }
-  .cal-dot{ width:5px; height:5px; border-radius:999px; background:var(--steel); }
+  .cal-dot{ width:5px; height:5px; border-radius:var(--radius-pill); background:var(--steel); }
   .cal-dot.pr{ background:var(--brass); }
   /* Scene-scoped calendar redesign (2026-09-08 redline): every cell had
      its own bordered/filled square, which read as a grid of buttons
@@ -1764,7 +1777,7 @@
      a layout. 34px keeps the 44px cell itself as the tap target, which is
      what the accessibility floor measures. */
   body[data-scene] .cal-cell{ aspect-ratio:1; min-height:44px; min-width:0; display:grid; grid-template-rows:1fr 7px; justify-items:center; align-items:center; border-radius:0; background:transparent; border:none; position:relative; }
-  body[data-scene] .cal-daynum{ display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:999px; font-size:var(--fs-2); font-weight:600; color:var(--chalk); }
+  body[data-scene] .cal-daynum{ display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--radius-pill); font-size:var(--fs-2); font-weight:600; color:var(--chalk); }
   /* Today: a subtle ring, not a filled shape - distinguishable from
      "selected" without relying on color alone (SCREEN_ACCEPTANCE.md:
      "selected date, workout date and today remain distinguishable without
@@ -1782,13 +1795,13 @@
      its own to get wrong. One row per point, the value in the same mono/brass
      treatment the plot's own PR dots and the card's headline use. */
   .chart-compact{ display:flex; flex-direction:column; gap:6px; padding:10px 0 2px; }
-  .chart-compact-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:8px 12px; }
+  .chart-compact-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:8px 12px; }
   .chart-compact-value{ font-weight:700; font-size:var(--fs-3); color:var(--chalk); }
   .chart-compact-value.pr{ color:var(--brass); }
   .chart-compact-date{ font-size:var(--fs-1); color:var(--steel); font-weight:600; }
-  .report-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; box-shadow:var(--shadow-card); }
-  .report-flag{ font-size:var(--fs-1); font-weight:700; padding:2px 8px; border-radius:999px; }
-  .subtabbar{ display:flex; background:var(--surface2); border-radius:12px; padding:3px; margin-bottom:16px; border:1px solid var(--border); }
+  .report-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; margin-bottom:8px; box-shadow:var(--shadow-card); }
+  .report-flag{ font-size:var(--fs-1); font-weight:700; padding:2px 8px; border-radius:var(--radius-pill); }
+  .subtabbar{ display:flex; background:var(--surface2); border-radius:var(--radius-md); padding:3px; margin-bottom:16px; border:1px solid var(--border); }
   .subtabbtn{ flex:1; min-height:44px; padding:8px 0; border-radius:9px; font-weight:700; font-size:var(--fs-2); color:var(--steel); }
   .subtabbtn.active{ background:var(--surface); color:var(--chalk); box-shadow:var(--shadow-sm); }
   /* Design spec section 3.6 — RX IS THE DEFAULT AND THAT IS A DATA-INTEGRITY
@@ -1834,9 +1847,9 @@
      reason, do not write that pattern out in prose here either: the guard's
      regex does not know a comment from a rule.) No colour in any of it, so
      there is nothing to mirror into the two dark blocks. */
-  .rx-toggle{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
-  .rx-toggle.unset{ border:1px dashed var(--brass); border-radius:14px; padding:4px; gap:4px; }
-  .rx-btn{ flex:1 1 30%; min-width:104px; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:8px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:var(--fs-3); color:var(--steel); line-height:1.2; }
+  .rx-toggle{ display:flex; flex-wrap:wrap; gap:var(--space-2); margin-bottom:16px; }
+  .rx-toggle.unset{ border:1px dashed var(--brass); border-radius:14px; padding:4px; gap:var(--space-1); }
+  .rx-btn{ flex:1 1 30%; min-width:104px; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:8px 6px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:var(--fs-3); color:var(--steel); line-height:1.2; }
   /* Q-53: the selected chips name their state in --chalk (AA on the tinted fill); green, yellow and blue stay in the
      border and the fill. */
   .rx-btn.active-rx{ background:var(--p-3f8455-a15); border-color:var(--green); color:var(--chalk); }
@@ -1866,7 +1879,7 @@
   .wod-desc{ color:var(--steel); font-size:var(--fs-1); margin-top:2px; }
   /* Q-53: field borders at 3:1 against their surface (WCAG 1.4.11), placeholders at 4.5:1. */
   ::placeholder{ color:var(--steel); opacity:1; }
-  .text-input{ width:100%; background:var(--surface2); border:1px solid var(--color-input-border); border-radius:12px; padding:10px 12px; color:var(--chalk); font-size:var(--fs-3); }
+  .text-input{ width:100%; background:var(--surface2); border:1px solid var(--color-input-border); border-radius:var(--radius-md); padding:10px 12px; color:var(--chalk); font-size:var(--fs-3); }
   /* Live bug hunt (2026-09-11): the ≥1200px staff-tier rule widens #app to
      ~940px for genuinely tabular admin work (roster, moderation queue,
      analytics) - see that rule's own comment further down. The person-
@@ -1909,7 +1922,7 @@
   :root[data-scheme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
   :root[data-scheme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   :root[data-scheme="dark"] input[type="time"]::-webkit-calendar-picker-indicator{ filter:invert(1) brightness(1.4); }
-  .format-chip{ min-height:44px; padding:10px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:var(--fs-2); color:var(--steel); text-align:center; flex:1; }
+  .format-chip{ min-height:44px; padding:10px 6px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:var(--fs-2); color:var(--steel); text-align:center; flex:1; }
   /* color:var(--energy-text), not --energy: found by a light-theme axe
      pass this session - --energy (#E85D3D since it was unified across
      themes earlier today) is a FILL/border tone, 3.46:1 against white,
@@ -1949,9 +1962,9 @@
      sibling of .modal-list (not inside it), so .modal-sheet's flex column
      keeps it visible under the scrollable content regardless of scroll
      position, the same structural trick #bottomNavWrap already uses. */
-  .wodbuild-card-details, .wodbuild-card-moves{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 16px; box-shadow:var(--shadow-card); margin-bottom:14px; }
+  .wodbuild-card-details, .wodbuild-card-moves{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; box-shadow:var(--shadow-card); margin-bottom:14px; }
   .wodbuild-foot{ flex-shrink:0; padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 16px); border-top:1px solid var(--border); background:var(--bg); }
-  .movecheck-row{ width:100%; min-height:44px; display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 14px; margin-bottom:6px; text-align:right; }
+  .movecheck-row{ width:100%; min-height:44px; display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:11px 14px; margin-bottom:6px; text-align:right; }
   .movecheck-row.checked{ background:var(--surface2); border-color:var(--brass); }
   /* .movecheck-box carries no box styling of its own any more: it is drawn
      by the one checkbox rule further down (search "ONE CHECKBOX"), which
@@ -2077,11 +2090,11 @@
   .ach-summary-level{ font-weight:800; font-size:var(--fs-3); color:var(--energy); letter-spacing:.3px; margin-bottom:2px; }
   .ach-summary-num{ font-weight:700; font-size:var(--fs-5); color:var(--chalk); }
   .ach-summary-label{ color:var(--steel); font-size:var(--fs-1); margin-top:2px; }
-  .ach-level-bar{ width:100%; max-width:220px; height:6px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); margin:10px auto 4px; overflow:hidden; }
-  .ach-level-fill{ height:100%; background:var(--energy); border-radius:999px; }
+  .ach-level-bar{ width:100%; max-width:220px; height:6px; border-radius:var(--radius-pill); background:var(--surface2); border:1px solid var(--border); margin:10px auto 4px; overflow:hidden; }
+  .ach-level-fill{ height:100%; background:var(--energy); border-radius:var(--radius-pill); }
   .ach-section{ margin-bottom:22px; }
-  .ach-section-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-  .ach-section-dot{ width:8px; height:8px; border-radius:999px; flex-shrink:0; }
+  .ach-section-head{ display:flex; align-items:center; gap:var(--space-2); margin-bottom:10px; }
+  .ach-section-dot{ width:8px; height:8px; border-radius:var(--radius-pill); flex-shrink:0; }
   /* Section headings take the display pairing too, which is most of what
      makes a screen read as designed rather than assembled. WEIGHT 400 IS NOT
      A TYPO: Anton and Secular One each ship a single 400 cut, so asking for
@@ -2137,12 +2150,12 @@
      (2026-09-15). Chips carry real actions in the Community dialogs (RSVP,
      leave a challenge, share, and the X that closes challengeView and
      eventView), so this is a thumb-accuracy floor, not decoration. */
-  .chip-btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:9px 16px; min-height:44px; border-radius:12px; border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-weight:700; font-size:var(--fs-2); white-space:nowrap; }
+  .chip-btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:9px 16px; min-height:44px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-weight:700; font-size:var(--fs-2); white-space:nowrap; }
   /* The primary action carries a tinted shadow so it reads as the one thing
      to press, matching .save-btn's existing treatment rather than inventing a
      second language for the same idea. Tinted with --energy, not black: a
      grey drop under a warm button looks like dirt. */
-  .chip-btn.primary{ background:var(--energy); color:var(--p-1a0d08); border-color:var(--energy); box-shadow:0 8px 18px -10px color-mix(in srgb, var(--energy) 85%, transparent); }
+  .chip-btn.primary{ background:var(--btn-primary-bg); color:var(--btn-primary-fg); border-color:var(--btn-primary-border); box-shadow:var(--btn-primary-shadow); }
   /* .primary was doing double duty as both "primary action" (compose, send,
      save) and "this filter/scope is selected" (feed scope, leaderboard
      scope, mod-queue status) - identical fill, so a selected filter chip
@@ -2285,7 +2298,7 @@
   input[type="checkbox"]:checked::after{ opacity:1; }
   input[type="checkbox"]:focus-visible, .movecheck-row:focus-visible{
     outline:2px solid var(--brass); outline-offset:2px; }
-  .chip-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .chip-row{ display:flex; gap:var(--space-2); flex-wrap:wrap; margin-top:12px; }
   /* color:var(--energy-text), not --energy - found via axe while touching
      an unrelated invite-tab restructure, but pre-existing and shared: this
      class renders on every admin sectionHead() across the app (moderation,
@@ -2299,7 +2312,7 @@
      leaving its energy-orange text/border in place underneath a brass fill:
      a two-tone badge for a status with no admin meaning at all. .admin-tag
      itself now stays reserved for real admin-context labels ("ניהול"). */
-  .tag{ display:inline-flex; align-items:center; font-size:var(--fs-caption); font-weight:800; letter-spacing:.3px; border-radius:999px; padding:2px 9px; margin-inline-start:8px; border:1px solid transparent; }
+  .tag{ display:inline-flex; align-items:center; font-size:var(--fs-caption); font-weight:800; letter-spacing:.3px; border-radius:var(--radius-pill); padding:2px 9px; margin-inline-start:8px; border:1px solid transparent; }
   
   
   
@@ -2423,7 +2436,7 @@
   
   
   
-  .tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; margin-inline-start:6px; border-radius:999px; background:var(--red); color:var(--p-fff); font-size:var(--fs-caption); font-weight:800; }
+  .tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; margin-inline-start:6px; border-radius:var(--radius-pill); background:var(--red); color:var(--p-fff); font-size:var(--fs-caption); font-weight:800; }
   /* Promoted from ~19 classless, inline-styled cloud.js elements (COMM-347):
      each of these instances used to retype its whole look inline, in some
      cases identically at 2-3 call sites. Only genuinely dynamic values
@@ -2650,7 +2663,7 @@
   .celebration-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:var(--fs-6); color:var(--brass); margin-bottom:6px; letter-spacing:.5px; }
   .celebration-pr-line{ font-size:var(--fs-3); font-weight:700; color:var(--chalk); margin-bottom:6px; }
   .celebration-sub{ color:var(--steel); font-size:var(--fs-2); margin-bottom:20px; }
-  .celebration-medals{ display:flex; justify-content:center; gap:16px; flex-wrap:wrap; }
+  .celebration-medals{ display:flex; justify-content:center; gap:var(--space-4); flex-wrap:wrap; }
   @media (prefers-reduced-motion: no-preference){
     .celebration-sheet{ animation:celebrationPop .35s cubic-bezier(.34,1.56,.64,1); }
   }
@@ -2735,9 +2748,9 @@
   .join-err{ color:var(--red-text); font-size:var(--fs-4); font-weight:700; line-height:1.5; margin-bottom:14px; }
   .join-lead{ font-size:var(--fs-3); line-height:1.6; margin-bottom:14px; text-align:center; }
   .join-steps{ list-style:none; margin:0 0 14px; padding:0; display:flex; flex-direction:column; gap:10px; }
-  .join-step{ display:flex; align-items:center; gap:12px; font-size:var(--fs-3); line-height:1.5; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); }
+  .join-step{ display:flex; align-items:center; gap:var(--space-3); font-size:var(--fs-3); line-height:1.5; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface2); }
   .join-step-pic{ flex-shrink:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--surface); color:var(--blue); }
-  .join-step-pic img{ width:36px; height:36px; border-radius:8px; }
+  .join-step-pic img{ width:36px; height:36px; border-radius:var(--radius-sm); }
   .join-step-num{ font-weight:800; }
   /* Q-38b: every field in the connect dialog (sign-up, login, forgot) is at least 48px tall with 17px text. */
   #connectBody .text-input:not(.join-field){ min-height:48px; font-size:var(--fs-4); }
@@ -2745,9 +2758,9 @@
   .pw-toggle{ display:inline-flex; align-items:center; min-height:44px; font-size:var(--fs-3); padding:4px 0; }
   .more-options{ margin-top:8px; text-align:center; }
   .more-options > summary{ display:inline-flex; align-items:center; min-height:44px; padding:0 8px; cursor:pointer; color:var(--steel); font-size:var(--fs-3); font-weight:700; }
-  .header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .header{ display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); }
   /* Q-43a: the header is the logo and one 44px gear; on a scene screen the grid is spacer / logo / gear. */
-  #settingsGearBtn{ width:auto; min-width:52px; min-height:52px; height:auto; padding:4px 6px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  #settingsGearBtn{ width:auto; min-width:52px; min-height:52px; height:auto; padding:4px 6px; border-radius:var(--radius-md); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
   #settingsGearBtn .gear-label{ font-size:var(--fs-caption); font-weight:700; line-height:1.1; white-space:nowrap; }
   /* Q-49: the install card (compact, folded) and the join card. */
   .install-card{ margin-bottom:12px; padding:0; }
@@ -2759,7 +2772,7 @@
   .join-card{ margin-top:12px; }
   .join-card-title{ font-weight:800; font-size:var(--fs-3); margin-bottom:6px; }
   .join-card-label{ display:block; color:var(--steel); font-size:var(--fs-1); margin-bottom:6px; }
-  .join-card-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .join-card-row{ display:flex; gap:var(--space-2); flex-wrap:wrap; }
   .join-card-input{ flex:1 1 150px; min-height:var(--tap-min); font-size:var(--fs-4); letter-spacing:1px; }
   .join-card-btn{ flex:0 0 auto; width:auto; max-width:none; min-height:var(--tap-min); padding:0 18px; }
   .join-card-err{ color:var(--danger-text); font-size:var(--fs-2); margin-top:8px; }
@@ -2815,7 +2828,7 @@
   .scene-page--history .cal-month-stats{ margin-top:8px; }
   body[data-scene] .header #navMenuBtn, body[data-scene] .header #medalsBtn, body[data-scene] .header #notificationsBellBtn{ background:var(--p-081523-a72); border-radius:50%; }
   body[data-scene] #bottomTabBar{ background:var(--p-081523-a96); }
-  body[data-scene] #bottomBar .save-btn{ background:var(--p-d92f2b); color:var(--p-fff); border-radius:16px; }
+  body[data-scene] #bottomBar .save-btn{ background:var(--btn-primary-bg); color:var(--btn-primary-fg); border-radius:var(--radius-lg); }
   /* THE APP'S PRIMARY ACCENT, NOT A SECOND RED. Real-phone report: "today in
      the calendar uses a red circle - use the primary accent instead". Today
      is the selected day whenever the screen is opened, so this rule is what
@@ -2838,7 +2851,7 @@
      white-on-energy is 2.83:1 and would have failed AA outright. */
   body[data-scene] .cal-cell.selected .cal-daynum{ background:var(--energy); color:var(--on-energy); }
   @media(min-width:900px){ .scene-page{margin-inline:-16px;} }
-  .scene-summary-meta{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:var(--fs-1); font-weight:700; margin-bottom:12px; }
+  .scene-summary-meta{ display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); font-size:var(--fs-1); font-weight:700; margin-bottom:12px; }
   .scene-page--add .pick-hero{ background:var(--surface); border-color:var(--border); margin-top:16px; }
   .scene-page--add .pick-hero::before,.scene-page--add .pick-hero::after{ display:none; }
   .scene-page--add .chart-card{ padding:8px 12px; }
@@ -2846,7 +2859,7 @@
 
   .scene-page > .scene-sheet{background:var(--club-paper);}
   .scene-page > .scene-page__scrim{background:linear-gradient(180deg,var(--p-030a14-a32),var(--p-030a14-a6) 20svh,var(--p-030a14-a70) 43svh,var(--p-081523) 85svh);}
-  .scene-page--add .log-row{padding:6px 8px; border:0; background:var(--surface2); border-radius:12px; box-shadow:none;}
+  .scene-page--add .log-row{padding:6px 8px; border:0; background:var(--surface2); border-radius:var(--radius-md); box-shadow:none;}
   .scene-page--add .log-row button{min-width:44px; min-height:44px;}
   /* Reported directly: the exercise name/icons wrapped onto a second line
      mid-row instead of staying on one. flex-wrap:wrap was masking the
@@ -2967,7 +2980,7 @@
   .scene-sheet{--brass:var(--p-80551f); --red-text:var(--p-ad3025);}
   :root[data-scheme="dark"] .scene-sheet{--brass:var(--p-e8b98a-106); --red-text:var(--p-ff7869-107);}
   
-  .nav-destinations{display:flex; flex-direction:column; gap:8px;}
+  .nav-destinations{display:flex; flex-direction:column; gap:var(--space-2);}
   .navrow.active .nav-label{color:var(--energy-text);}
   .scene-page--add .steppers{display:grid; grid-template-columns:repeat(2,minmax(0,1fr));}
   .scene-page--add .steppers .stepper:last-child:nth-child(3){grid-column:1/-1;}
@@ -2979,7 +2992,7 @@
   :root .scene-page > .scene-sheet{background:var(--club-paper);}
   .scene-page__intro{top:calc(var(--scene-photo-height) - 68px);}
   .scene-page--add .scene-page__intro{top:calc(var(--scene-photo-height) - 94px);}
-  .scene-page--add .log-list{gap:4px;}
+  .scene-page--add .log-list{gap:var(--space-1);}
 
   .scene-page--achievements .ach-summary-level{color:var(--energy-text);}
   /* THE MEDALS SHEET STOPS BEING TRANSLUCENT. Real-phone report: "the medals
@@ -3068,6 +3081,8 @@
      ceiling move with it, keeping the same ratio to the svh term as
      before. */
   .scene-page--add{ --scene-photo-height: clamp(320px, 46svh, 440px); }
+  /* Q-53b: before a movement is chosen the photo was half the screen and pushed the primary button down. */
+  .scene-page--add:has(.pick-hero){ --scene-photo-height: clamp(200px, 30svh, 280px); }
 
   /* The lighter scrim itself DOES extend to every scene, not just Add -
      the original darkened to .62 opacity by the halfway point on every
@@ -3129,7 +3144,7 @@
      past the fold. Sized down instead of adjusting spacing further below,
      since this ribbon is the new element on the screen. */
   .stripe-ribbon{
-    height:6px; margin:0 0 10px; border-radius:999px; overflow:hidden;
+    height:6px; margin:0 0 10px; border-radius:var(--radius-pill); overflow:hidden;
     background:repeating-linear-gradient(115deg, var(--p-f3f7ff) 0 14px, var(--energy) 14px 28px);
     box-shadow:0 4px 16px -4px var(--p-ff6b3d-a40);
   }
@@ -3145,17 +3160,10 @@
      app's own existing convention for text-on-energy elsewhere) at .75
      opacity; dark theme (below) uses light text at .68, per the earlier
      ship. */
+  /* Q-53b: was a translucent coral "glass" fill (.75 light, .68 dark) that read as a disabled button. The
+     primary is solid at full strength on every screen, in both schemes. */
   body[data-scene="scene-page--add"] #bottomBar .save-btn{
-    background:linear-gradient(135deg, var(--p-ffae8c-a75), var(--p-ff6b3d-a75) 55%, var(--p-e85d3d-a75));
-    backdrop-filter:blur(18px) saturate(150%);
-    border:1.5px solid var(--p-e85d3d-a35);
-    color:var(--p-1a0d08);
-  }
-  :root[data-scheme="dark"] body[data-scene="scene-page--add"] #bottomBar .save-btn{
-    background:linear-gradient(135deg, var(--p-ffae8c-a68), var(--p-ff6b3d-a68) 55%, var(--p-e85d3d-a68));
-    backdrop-filter:blur(20px) saturate(170%);
-    border:1.5px solid var(--p-ffae8c-a55);
-    color:var(--p-fff6f1);
+    background:var(--btn-primary-bg); border:1px solid var(--btn-primary-border); color:var(--btn-primary-fg); backdrop-filter:none;
   }
   
 
@@ -3198,7 +3206,7 @@
     /* Wider than the member shell's 1440 cap because there are three real
        columns here rather than two and a sometimes-third, and aligned to the
        top rather than centred so the rail does not float. */
-    max-width:1680px; align-items:flex-start; gap:24px; padding:28px 24px;
+    max-width:1680px; align-items:flex-start; gap:var(--space-5); padding:28px 24px;
   }
   /* THE RIGHT-HAND RAIL. inset-inline-start is the RIGHT edge in this
      document (dir="rtl"), written logically rather than as `right` so a
@@ -3254,7 +3262,7 @@
   /* 9: the welcome title and subtitle get their own dark scrim, so they
      read on any part of the striped photo, in either theme. White on this
      panel over pure white is about 7:1. */
-  #welcomeOverlay .scene-page__intro{ background:linear-gradient(180deg, var(--p-081523-a72), var(--p-081523-a86)); border-radius:16px; padding:12px 16px 14px; text-shadow:none; }
+  #welcomeOverlay .scene-page__intro{ background:linear-gradient(180deg, var(--p-081523-a72), var(--p-081523-a86)); border-radius:var(--radius-lg); padding:12px 16px 14px; text-shadow:none; }
   #welcomeOverlay .scene-page__title{ text-shadow:none; font-size:var(--fs-6); justify-content:center; }
   #welcomeOverlay .scene-page__subtitle{ opacity:1; max-width:none; }
   /* Anchored by its BOTTOM edge just above the sheet, so a title that wraps
@@ -3278,7 +3286,7 @@
   .report-counts, .report-flag{ white-space:nowrap; }
   /* 16: the profile edit button was a 30x30 target. */
   #settingsBody [data-action="edit-user-name"]{ min-width:44px; min-height:44px; }
-  .badge-new{ display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; background:var(--energy); color:var(--on-energy); font-size:var(--fs-caption); font-weight:800; }
+  .badge-new{ display:inline-flex; align-items:center; padding:1px 8px; border-radius:var(--radius-pill); background:var(--energy); color:var(--on-energy); font-size:var(--fs-caption); font-weight:800; }
 </style>
 </head>
 <body>
@@ -3287,10 +3295,15 @@
      particular), so the copy tells the user the reliable fix — close and
      reopen the app — rather than implying a tap alone is enough. Tapping
      still fires the same SKIP_WAITING handshake as a bonus shortcut. -->
-<button id="updateBanner" data-action="reload-app" role="status" aria-live="polite" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
+<!-- Q-54: a button inside a status region, not a button that claims role=status (it then stops being a button). -->
+<!-- Q-54: stepper changes are announced here (app.js announceStepper). -->
+<div id="stepperLive" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div id="updateBannerRegion" role="status" aria-live="polite">
+<button id="updateBanner" data-action="reload-app" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
   <div style="font-weight:800; font-size:var(--fs-3); margin-bottom:3px;">עדכון חדש זמין</div>
   <div style="font-weight:600; font-size:var(--fs-2); opacity:.85;">סגרו את האפליקציה ופתחו אותה מחדש כדי לעדכן</div>
 </button>
+</div>
 
 <!-- The two "add to home screen" banners used to live here, as their own
      position:fixed;bottom:0 elements. They are children of #bottomNavWrap

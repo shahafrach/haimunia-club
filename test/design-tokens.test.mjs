@@ -129,3 +129,12 @@ test("Q-44: --energy-text clears 4.5:1 on --surface2 in both schemes", () => {
     assert.ok(r >= 4.5, `${dark ? "dark" : "light"} --energy-text (${t["energy-text"]}) on --surface2 (${t.surface2}) is ${r.toFixed(2)}:1`);
   }
 });
+
+// Q-53b: one primary button, solid; its text clears 4.5:1 in both schemes.
+test("Q-53b: --btn-primary-fg on --btn-primary-bg clears 4.5:1 in both schemes", () => {
+  for (const dark of [false, true]) {
+    const t = scheme(dark);
+    const r = ratio(t["btn-primary-fg"], t["btn-primary-bg"]);
+    assert.ok(r >= 4.5, `${dark ? "dark" : "light"} primary button text is ${r.toFixed(2)}:1`);
+  }
+});
