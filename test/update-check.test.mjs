@@ -213,8 +213,8 @@ test("F-020: a save tried during \"מעדכנים…\" is held back with a toast
   await window.deleteWodEntry("w1");
   assert.equal((await window.dbLoadAll()).length, before, "no set was written");
   assert.deepEqual((await window.dbLoadWodEntries()).map((w) => w.id), ["w1"], "and nothing was deleted");
-  const vals = [...window.document.querySelectorAll("input.stepper-val")].map((i) => i.value);
-  assert.deepEqual(vals.slice(0, 2), ["87.5", "3"], "the draft is still in the steppers");
+  const vals = ["weight", "reps"].map((f) => window.document.querySelector(`input.stepper-val[data-field="${f}"]`).value);
+  assert.deepEqual(vals, ["87.5", "3"], "the draft is still in the steppers");
   assert.equal(reload.calls, 0);
   window.dbIdle = realIdle;
   await until(() => reload.calls === 1, "the update goes on once the write is done", 400);

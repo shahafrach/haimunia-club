@@ -36,9 +36,10 @@ test("a fresh install skips the what's-new popup, and nothing opens after the we
 
   const stillOpen = [...window.document.querySelectorAll(".modal-overlay.open")].map((el) => el.id);
   assert.deepEqual(stillOpen, [], "nothing may stand between the welcome sheet and the logging screen");
-  // Not shown does not mean not offered: the explainer is now pulled from a
-  // card on the logging screen, and §1.5 keeps it in Settings forever after.
-  assert.match(window.renderLogTab(), /data-action="open-onboarding"/);
+  // Not shown does not mean not offered: the explainer is pulled from Settings > עזרה (Q-48 took its card
+  // off the logging screen; §1.5 keeps it in Settings).
+  window.openSettings();
+  assert.ok(window.document.querySelector("#settingsHelpBlock [data-action='open-onboarding']"));
 });
 
 test("editing the profile later never opens the explainer either", async () => {

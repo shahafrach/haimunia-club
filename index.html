@@ -1016,6 +1016,28 @@
   .log-more > summary::-webkit-details-marker{ display:none; }
 
   .club-admin{ margin-top:14px; }
+  /* Q-48: the רישום screen. */
+  .date-chip{ position:relative; display:inline-flex; align-items:center; gap:6px; min-height:var(--tap-min); padding:0 14px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); color:var(--chalk); font-size:14px; font-weight:800; cursor:pointer; }
+  .date-chip input[type="date"]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; cursor:pointer; }
+  .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:8px; }
+  .scene-page--add .log-controls .steppers.steppers--row .stepper:last-child:nth-child(3){ grid-column:auto; }
+  .steppers--row .stepper{ flex-basis:auto; }
+  .steppers--row .stepper-box{ display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"val val" "minus plus"; }
+  .steppers--row .stepper-btn[data-dir="-1"]{ grid-area:minus; width:auto; }
+  .steppers--row .stepper-btn[data-dir="1"]{ grid-area:plus; width:auto; }
+  .steppers--row .stepper-val{ grid-area:val; width:100%; }
+  .log-controls .steppers--row .stepper-btn{ width:auto; height:44px; }
+  .log-controls .steppers--row .stepper-val{ min-height:48px; font-size:20px; }
+  .log-controls .steppers--row .stepper:last-child{ flex-basis:auto; }
+  .est-line{ font-size:12px; }
+  .tools-btn{ list-style:none; display:flex; align-items:center; justify-content:center; min-height:var(--tap-min); padding:0 14px; border-radius:var(--btn-radius); border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-size:13.5px; font-weight:700; cursor:pointer; text-align:center; }
+  .tools-btn::-webkit-details-marker{ display:none; }
+  .day-log-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:14px 0 8px; }
+  .day-log-total{ color:var(--steel); font-size:13px; font-weight:700; }
+  #pickerList .movement-btn{ min-height:48px; }
+  .picker-add{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
+  .movement-btn-names{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:start; min-width:0; }
+  .movement-he{ color:var(--steel); font-size:12px; font-weight:500; }
   .club-share-line{ display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin:2px 0 8px; }
   .club-share-line .chip-btn{ min-height:44px; }
   .club-shared-tag{ color:var(--green-text); font-weight:700; font-size:13px; }
