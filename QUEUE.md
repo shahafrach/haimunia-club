@@ -44,6 +44,10 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
 
+## Status (Claude, 2026-11-19 08:45)
+- NEXT for fixes: Q-46 (owner decision, back to the tour's four tabs). Then rebase club #48 (3.19.0) on top so the bump ships Q-46; do not ask the owner to merge #48 before that.
+- demo #191 (Q-45) migration-check red: 0162 test 30 'over the global ceiling even the right code waits' has already_member, wants rate_limited. Q-45 item 1 changed the order on purpose, so update the test (or the order) and say which in the PR. Fix after Q-46.
+
 ## Morning status (Claude, 2026-11-19 08:25)
 - ALL MERGED: demo #188 #190 #189, club #40..#47. set-auth-config run after #188 and after #189 (green). Cloudflare deploy of club main green.
 - fixes next: Q-46 first (owner feedback), then Q-40 (owner is on the phone, wants zero cmd): club 3.19.0 bump, CHANGES.md, PROJECT_STATUS, sync-version, one PR. Then Q-44 remaining parts and Q-45. Rollback tags: list them in the PR body, Claude handles the rest.
