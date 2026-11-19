@@ -1,3 +1,34 @@
+# 3.20.0 — רישום חדש, שיתוף בדיעבד, נגישות, עברית אחידה ופתיחה מהירה — 2026-11-19
+
+- Q-47 (#50): a workout already in לוח שנה, and a PR from its card, can be shared to the club later; not only
+  with the checkbox at save time.
+- Q-48 + Q-57 (#51): the רישום screen redesigned. A WOD starts from its template or blank, an empty score is
+  not saved, recent movements come first in both pickers and "add new" is the last row.
+- Q-51 (#52): data safety. Backups read fresh from the database; two open tabs tell each other about writes;
+  deletes reach the disk first; the date follows today until a day is chosen; weeks start on the chosen day;
+  "delete all" clears every key.
+- Q-52 (#53): mobile and PWA. One install component; Face ID sign-in offered by the keyboard (conditional
+  passkeys); a focused field stays above the keyboard; pinch-zoom allowed; the manifest opens at the root in
+  any orientation; a sign-in note after the first import on iOS.
+- Q-53 part 1 (#54): every font size in rem, so iOS text size moves it; titles on photos get a scrim; AA
+  contrast for chips, placeholders and field borders; unused Rubik 900 and ~180 dead CSS rules removed. Sheets
+  sized in px no longer run past the screen at large text.
+- Q-49 (#55): install and join stay visible for guests (מועדון tab with a join card, an install card); the
+  gear says הגדרות.
+- Q-54 (#56): accessibility. The page behind a sheet is hidden from screen readers and the keyboard; Tab
+  reaches a closed fold's summary but not what it hides; calendar days and PR marks are read in full Hebrew;
+  −/+ changes are announced; the update banner is a button in a status region; the join sheet can always be
+  closed; a keyboard focus is never left under the header or the bottom bar.
+- Q-53 part 2 (#57): one solid primary button everywhere (הוספת סט no longer looks disabled); בחירת תרגיל is
+  the big button on an empty רישום, with a shorter photo; one empty-state look; radius and spacing tokens.
+- Q-55 (#58): one name per thing (מועדון, שיא אישי, מדליות); ק״ג, בנצ׳מרק and אימוג׳י spelled right; the
+  transfer path matches Settings (הגדרות ← מתקדם ← הזנת קוד העברה).
+- Q-56 (#60): the app opens on the רישום photo and title at once (Lighthouse mobile 80 → 99, LCP 5.2 s →
+  2.0 s); photos in WebP; pictures, fonts and icons are kept across updates instead of downloaded again
+  (a second, long-lived service-worker cache; immutable headers); boot reads settings once.
+- No IndexedDB change. The service worker adds the `haimunia-static` cache; the first update downloads the
+  pictures once into it.
+
 # 3.19.0 — הצטרפות בקוד קצר, שחזור בלי אדם, מבנה חדש: ארבע לשוניות והגדרות — 2026-11-19
 
 - Q-35 (#38): home-screen icons are full-bleed with no white rim; a 180x180 apple-touch-icon is linked and
