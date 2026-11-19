@@ -504,7 +504,9 @@ let wodSubTab = "log";
 // check (render()) already treat as "show the pick-a-WOD empty state, no
 // save action".
 let selectedWodId = null;
-let wodMinutes = 3, wodSeconds = 0, wodRounds = 5, wodReps = 0, wodWeight = 20;
+// Q-57: a new score starts blank (0), not a made-up 3:00 / 5 rounds / 20 kg; a WOD with history pre-fills
+// from its last attempt (choosePickedWod).
+let wodMinutes = 0, wodSeconds = 0, wodRounds = 0, wodReps = 0, wodWeight = 0;
 // EMOM-only: one rep count per movement in the selected WOD's rotation,
 // index-aligned with its emomMovements — kept in sync with that WOD's own
 // movement count by renderWodLogSection whenever it renders.
@@ -899,7 +901,10 @@ function categoryPRCounts() {
   return counts;
 }
 function loggedDates() { return [...entries.map((e) => e.date), ...wodEntries.map((e) => e.date)]; }
-function weekBucket(iso) { return Math.floor(new Date(iso + "T00:00:00").getTime() / 86400000 / 7); }
+// Q-51 CQ-07: one definition of a week in the app, Sunday to Saturday (weekStartDay, the weekly streak's own).
+// This used to count weeks from the 1970 epoch, which start on a Thursday, through a local Date that drifts
+// with DST. Consecutive weeks give consecutive buckets.
+function weekBucket(iso) { const d = isoDayNumber(iso); return d === null ? NaN : Math.floor(weekStartDay(d) / 7); }
 function longestWeekStreak() {
   const buckets = [...new Set(loggedDates().map(weekBucket))].sort((a, b) => a - b);
   let longest = 0, current = 0, prev = null;
@@ -1254,7 +1259,15 @@ async function loadSeenAchievements() {
 // that medal back.
 function baselineSeenAchievements() {
   for (const a of ACHIEVEMENTS) if (a.earned()) seenAchievementIds.add(a.id);
-  dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]).catch(() => {});
+  persistSeenAchievements().catch(() => {});
+}
+// Q-51 CQ-03: a union with what is on disk, never this tab's copy alone. Another tab may have shown (and so kept)
+// a medal this tab has not; writing this tab's set over it would take that medal back.
+async function persistSeenAchievements() {
+  let onDisk = [];
+  try { const v = await dbGetSetting(SEEN_ACHIEVEMENTS_KEY); if (Array.isArray(v)) onDisk = v; } catch (e) { /* write what we have */ }
+  for (const id of onDisk) seenAchievementIds.add(id);
+  await dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]);
 }
 function newlyEarnedAchievements() {
   return ACHIEVEMENTS.filter((a) => a.earned() && !seenAchievementIds.has(a.id));
@@ -1268,7 +1281,7 @@ function claimNewlyEarned() {
   const newlyEarned = newlyEarnedAchievements();
   if (!newlyEarned.length) return [];
   for (const a of newlyEarned) seenAchievementIds.add(a.id);
-  dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]).catch(noteStorageError);
+  persistSeenAchievements().catch(noteStorageError);
   return newlyEarned.filter((a) => !a.silent);
 }
 function checkForNewAchievements() {
@@ -1889,7 +1902,6 @@ function totalLoggedEntries() { return entries.length + wodEntries.length; }
 // actual fix: the audit's complaint was never that the explainer is bad (two
 // personas praised the copy) but that it showed exactly once, as a gate,
 // with no way back to it.
-function shouldShowTourCard() { return !hasOnboarded && totalLoggedEntries() < 3; }
 
 
 async function addMovement(name, category) {
@@ -2097,6 +2109,48 @@ function confirmClubShare(p) {
   window.haimuniaClub.setShared(p.entry.id, true);
   shareDayToClub(p.entry.date);
   if (p.prDetail) shareRecordToClub(p.entry, p.prDetail);
+}
+// Q-47 (owner, 2026-11-19): share a workout that is already in the log, from לוח שנה or the PR card in
+// התקדמות. The same path as the save bar's box (confirmClubShare: the per-workout answer, the day post, the PR
+// card); removing it is the same path a "no" takes (the answer, then the day post follows the log).
+function clubEntryById(id) {
+  return entries.find((e) => e.id === id) || wodEntries.find((e) => e.id === id) || null;
+}
+function shareLoggedToClub(ids) {
+  if (!clubShareAvailable()) return;
+  const prIds = celebratablePrEntryIds();
+  for (const id of ids) {
+    const e = clubEntryById(id);
+    if (!e) continue;
+    const isLift = entries.includes(e);
+    confirmClubShare({ entry: e, prDetail: isLift && prIds.has(e.id) ? prGainDetail(e) : null });
+  }
+  render();
+}
+function unshareLoggedFromClub(ids) {
+  if (!clubShareAvailable()) return;
+  const days = new Set();
+  for (const id of ids) {
+    const e = clubEntryById(id);
+    if (!e) continue;
+    try { window.haimuniaClub.setShared(e.id, false); } catch (err) { /* never in the way */ }
+    if (entries.includes(e)) removeRecordFromClub(e.id);
+    days.add(e.date);
+  }
+  for (const d of days) shareDayToClub(d);
+  render();
+}
+// The button under a logged lift, ladder or WOD: "שיתוף במועדון", or "שותף" with a way to take it back.
+// Only for a connected club member.
+function renderClubShareLine(ids, label) {
+  if (!clubShareAvailable() || !ids.length) return "";
+  let shared = false;
+  try { shared = ids.some((id) => window.haimuniaClub.isShared(id)); } catch (e) { shared = false; }
+  const list = esc(ids.join(","));
+  const what = label ? ` ${esc(label)}` : "";
+  return shared
+    ? `<div class="club-share-line"><span class="club-shared-tag">שותף במועדון</span><button class="link-btn link-btn--tap" data-action="club-unshare" data-ids="${list}" aria-label="הסרה מהמועדון${what}">הסרה</button></div>`
+    : `<div class="club-share-line"><button class="chip-btn" data-action="club-share-later" data-ids="${list}" aria-label="שיתוף במועדון${what}">שיתוף במועדון</button></div>`;
 }
 
 async function saveSet(sanityConfirmed) {
@@ -2645,9 +2699,16 @@ function askDeleteEntry(id) {
 async function deleteEntry(id) {
   if (updateHoldsWrites()) return; // F-020
   const removed = entries.find((e) => e.id === id);
+  // Q-51 CQ-04: the disk first. A delete that did not reach IndexedDB keeps the set on screen and its club
+  // post, and says so, instead of a set that is gone here and back on the next open.
+  try { await dbDelete(id); } catch (e) {
+    noteStorageError(e);
+    showToast("המחיקה לא נשמרה במכשיר. נסו שוב.");
+    render();
+    return;
+  }
   entries = entries.filter((e) => e.id !== id);
   if (editingEntryId === id) { editingEntryId = null; logDate = todayISO(); logDateExplicitlyChosen = false; }
-  try { await dbDelete(id); } catch (e) { noteStorageError(e); }
   if (removed) {
     const mov = movementById(removed.exerciseId);
     offerUndo(`${mov ? mov.name : "הסט"} — ${entrySummary(removed)} נמחק`, () => restoreEntry(removed));
@@ -3255,19 +3316,27 @@ async function buildBackupPayload() {
       sessionNotes[row.key.slice("sessionNote:".length)] = row.value;
     }
   }
+  // Q-51 CQ-01: every backup (export, the rollback file, the transfer code, the safety backup before "delete
+  // everything") is built from a fresh read of IndexedDB, not from this tab's in-memory arrays, which can be
+  // behind another tab's writes. A store that cannot be read falls back to the in-memory copy, so a backup is
+  // never emptier than what the member sees.
+  const fresh = async (load, sanitize, mem) => {
+    try { return sanitizeList(await load(), sanitize); } catch (e) { return mem; }
+  };
+  const byTs = (a, b) => (b.ts || 0) - (a.ts || 0);
   return {
     app: BACKUP_APP_ID,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    entries,
-    customMovements,
-    wodEntries,
-    customWods,
-    bodyweightEntries,
-    measureTypes,
-    measureEntries,
+    entries: (await fresh(dbLoadAll, sanitizeEntry, entries)).sort(byTs),
+    customMovements: await fresh(dbLoadMovements, sanitizeMovement, customMovements),
+    wodEntries: (await fresh(dbLoadWodEntries, sanitizeWodEntry, wodEntries)).sort(byTs),
+    customWods: await fresh(dbLoadCustomWods, sanitizeCustomWod, customWods),
+    bodyweightEntries: (await fresh(dbLoadBodyweight, sanitizeBodyweight, bodyweightEntries)).sort(byTs),
+    measureTypes: await fresh(dbLoadMeasureTypes, sanitizeMeasureType, measureTypes),
+    measureEntries: await fresh(dbLoadMeasurements, sanitizeMeasurement, measureEntries),
     sessionNotes,
-    customWodMovementTags,
+    customWodMovementTags: await fresh(dbLoadWodMovementTags, sanitizeWodMovementTag, customWodMovementTags),
   };
 }
 
@@ -3583,6 +3652,13 @@ async function clearAllData() {
     // "delete everything" must also drop the stored name and export marker.
     await dbClearSettings();
     try { localStorage.removeItem(USER_NAME_KEY); localStorage.removeItem(LAST_EXPORT_KEY); } catch (e) {}
+    // Q-51 CQ-08: privacy.html promises "delete everything" leaves nothing of the log on the phone. These keys
+    // hold which workouts were shared to the club and the names of shared PRs, the share default, and feedback
+    // or error reports still waiting to be sent (their text). The account itself is not touched here.
+    try {
+      for (const k of ["haimunia:clubShareChoice", "haimunia:clubDayRev", "haimunia:clubPrShared", "haimunia:clubShareDefault",
+        "haimunia:feedbackQueue", "haimunia:errorReportsPending", "haimunia:errorReportDays"]) localStorage.removeItem(k);
+    } catch (e) { /* nothing more to clear */ }
     userName = null;
     if (window.haimuniaConnect) window.haimuniaConnect.forget();
     boxStartDate = null;
@@ -4131,6 +4207,11 @@ async function saveWod(sanityConfirmed) {
   }
   if (!isFinite(wodMinutes) || !isFinite(wodSeconds) || !isFinite(wodRounds) || !isFinite(wodReps) || !isFinite(wodWeight) || !isFinite(wodScaledWeight)) return;
   if (w.scoreType === "emom" && !wodEmomReps.every((r) => isFinite(r))) return;
+  // Q-57: the score starts blank, so a blank one is refused with a reason instead of saved as 0:00 / 0 rounds.
+  const emptyScore = (w.scoreType === "time" && wodMinutes * 60 + wodSeconds <= 0)
+    || (w.scoreType === "amrap" && wodRounds + wodReps <= 0)
+    || (w.scoreType === "load" && !(wodWeight > 0));
+  if (emptyScore) { showToast("מלאו את התוצאה לפני השמירה"); render(); return; }
   const editId = editingWodEntryId;
   const existing = editId ? wodEntries.find((e) => e.id === editId) : null;
   // Live bug hunt (2026-09-11): rx-scoped now - see bestWodScore()'s comment.
@@ -4323,9 +4404,15 @@ function askDeleteWodEntry(id) {
 async function deleteWodEntry(id) {
   if (updateHoldsWrites()) return; // F-020
   const removed = wodEntries.find((e) => e.id === id);
+  // Q-51 CQ-04: the disk first, as deleteEntry().
+  try { await dbDeleteWodEntry(id); } catch (e) {
+    noteStorageError(e);
+    showToast("המחיקה לא נשמרה במכשיר. נסו שוב.");
+    render();
+    return;
+  }
   wodEntries = wodEntries.filter((e) => e.id !== id);
   if (editingWodEntryId === id) { editingWodEntryId = null; wodLogDate = todayISO(); wodLogDateExplicitlyChosen = false; }
-  try { await dbDeleteWodEntry(id); } catch (e) { noteStorageError(e); }
   if (removed) {
     const w = wodById(removed.wodId);
     offerUndo(`${w ? w.name : "האימון"} — ${formatWodEntry(removed)} נמחק`, () => restoreWodEntry(removed));
@@ -4726,19 +4813,6 @@ function renderUsageCountingRow() {
     ${opts.map(([val, label]) => `<button class="segmented-opt" data-action="set-usage-counting" data-pref="${val}" role="radio" aria-checked="${(val === "on") === on}">${label}</button>`).join("")}
   </div>`;
 }
-function renderTourCard() {
-  if (!shouldShowTourCard()) return "";
-  return `
-    <button class="exercise-row tour-offer" data-action="open-onboarding" style="min-height:64px; margin-bottom:12px;">
-      <div style="text-align:right;">
-        <div style="font-weight:700; font-size:13.5px; color:var(--chalk);">סיור קצר במסכים</div>
-        <!-- "ארבעת" is a claim about the explainer's contents: the overlay
-             has exactly four rows, one per screen. -->
-        <div style="color:var(--steel); font-size:12.5px; margin-top:2px;">דקה, ומכירים את ארבעת המסכים</div>
-      </div>
-      <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
-    </button>`;
-}
 
 
 // ---------- Log screen, layout A (3.13.0) ----------
@@ -4812,6 +4886,25 @@ function noteLogSaved(label) {
   render();
 }
 
+// Q-48: the day's sets, built up as they are added, with a running total (sets and volume). The list itself
+// is the empty state. Shown under the controls once an exercise is chosen, and on its own before.
+function renderDayLog(dayEntries, isToday, dayLabel) {
+  if (dayEntries.length === 0) {
+    return `<div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כל סט שתוסיפו יופיע כאן." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>`;
+  }
+  const setCount = dayEntries.reduce((n, e) => n + (e.sets || 1), 0);
+  const volume = Math.round(dayEntries.reduce((v, e) => v + (e.type === "duration" ? 0 : (e.weight || 0) * (e.reps || 0) * (e.sets || 1)), 0));
+  return `
+    <div class="day-log-head">
+      <h2 class="section-label" style="margin:0;">${isToday ? "האימון של היום" : `האימון של ${esc(dayLabel)}`}</h2>
+      <span class="day-log-total" id="dayLogTotal">${setCount === 1 ? "סט אחד" : `${setCount} סטים`}${volume ? ` · נפח <span class="mono">${bidiUnit(`${volume.toLocaleString("he-IL")} ק״ג`)}</span>` : ""}</span>
+    </div>
+    <div class="chart-card" style="margin-bottom:8px;">${renderDayEntriesListHtml(dayEntries, [])}</div>
+    <button class="link-btn link-btn--tap" data-action="view-log-date-calendar" style="display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:0;">
+      <span>הערות לאימון ופרטי היום · ${bidiText(entrySummary(dayEntries[0]))}</span>
+      <span class="flex items-center gap-6">לוח השנה${ICONS.chevronsLeft}</span>
+    </button>`;
+}
 function renderLogTab() {
   const selected = movementById(selectedId);
   const isDuration = logEntryType === "duration";
@@ -4836,7 +4929,7 @@ function renderLogTab() {
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <div class="scene-page__brand">${esc(brandWordmark())}</div>
-        <h1 id="pageTitle-add" class="scene-page__title">${hasLoggedToday ? `<span aria-hidden="true" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:999px; background:var(--club-success); flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--p-fff)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>` : ""}<span>סיכום אימון</span></h1>
+        <h1 id="pageTitle-add" class="scene-page__title">${hasLoggedToday ? `<span aria-hidden="true" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:999px; background:var(--club-success); flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--p-fff)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>` : ""}<span>רישום אימון</span></h1>
         <p class="scene-page__subtitle">${hasLoggedToday ? "עבודה מעולה!" : "מוכנים להתחיל?"}</p>
       </div>
       <div class="scene-sheet">
@@ -4848,17 +4941,17 @@ function renderLogTab() {
       <button data-action="cancel-edit-entry" style="color:var(--steel); font-size:12px; text-decoration:underline;">ביטול</button>
     </div>` : ""}
 
-    <div class="scene-summary-meta"><bdi>${esc(fmtDate(logDate))}</bdi></div>
+    <!-- Q-48: the date is one tappable label ("היום ▾" or the date) over a real date input, so the native
+         picker opens on tap; it replaces the date fields that sat in the controls and under the fold. -->
+    <div class="scene-summary-meta">
+      <label class="date-chip"><span class="date-chip-text">${isToday ? "היום" : `<bdi>${esc(fmtDate(logDate))}</bdi>`}</span><span aria-hidden="true">▾</span>
+        <input type="date" id="logDateInput" value="${esc(logDate)}" max="${todayISO()}" aria-label="תאריך הרישום: ${esc(isToday ? "היום" : fmtDate(logDate))}" />
+      </label>
+      ${isToday ? "" : `<button data-action="reset-log-date" class="link-btn link-btn--tap">חזרה להיום</button>`}
+    </div>
 
     ${movementExplicitlyChosen ? "" : `
-    ${dayEntries.length === 0 ? `
-    <div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כאן מתעדים את האימון שהושלם." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>` : `
-    <h2 class="section-label">${isToday ? "סיכום האימון" : `סיכום ${esc(dayLabel)}`}</h2>
-    <div class="chart-card" style="margin-bottom:8px;">${renderDayEntriesListHtml(dayEntries, [])}</div>
-    <button class="link-btn link-btn--tap" data-action="view-log-date-calendar" style="display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:0;">
-      <span>הערות לאימון ופרטי היום · ${bidiText(entrySummary(dayEntries[0]))}</span>
-      <span class="flex items-center gap-6">לוח השנה${ICONS.chevronsLeft}</span>
-    </button>`}
+    ${renderDayLog(dayEntries, isToday, dayLabel)}
 
 `}
     <!-- .pick-hero only while nothing is chosen - see index.html for why the
@@ -4881,23 +4974,6 @@ function renderLogTab() {
 
     ${movementExplicitlyChosen ? "" : `
     ${renderUpgradeBackupCard()}
-    ${renderTourCard()}
-
-    <!-- The four-slot empty state (icon / forward-looking headline / one
-         line of explanation / a when-line), the same pattern d540a34 landed
-         in cloud.js's emptyStateHtml() and the coach dashboard uses.
-         It replaces a single unstyled sentence floating in roughly 60% of a
-         blank screen. The when-line is the load-bearing slot here: an empty
-         log screen that says what is about to appear in it reads as ready,
-         where one that says only "choose an exercise" reads as broken. -->
-    <div class="log-empty" data-empty-state="log-choose-exercise">
-      <span class="log-empty-medal" aria-hidden="true">${ICONS.emptyBarbell}</span>
-      <div class="log-empty-text">
-        <h2 class="log-empty-head">כאן מתעדים את האימון של היום</h2>
-        <div class="log-empty-body">בוחרים תרגיל בכרטיס שלמעלה, ומשקל, חזרות וסטים נפתחים בדיוק כאן.</div>
-      </div>
-      <div class="log-empty-when">מיד אחרי הבחירה יופיעו כאן גם השיא שלכם, האימון האחרון וההיסטוריה בתרגיל.</div>
-    </div>
 `}
     ${!movementExplicitlyChosen ? "" : `
     <!-- Layout A (owner, 2026-11-15; PR #21): what a set needs comes first, with no scroll at 390x844
@@ -4907,23 +4983,21 @@ function renderLogTab() {
     <div class="log-controls">
     ${renderLastPerformance()}
     ${renderRepeatSet()}
-    ${logDate !== todayISO() ? `<div class="flex items-center gap-8" style="margin-bottom:12px;">
-      <input type="date" id="logDateInput" value="${esc(logDate)}" max="${todayISO()}" aria-label="תאריך רישום הסט" style="flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--chalk); font-size:14px; font-weight:700; font-family:inherit;" />
-      ${logDate !== todayISO() ? `<button data-action="reset-log-date" class="reset-date-btn">היום</button>` : ""}
-    </div>` : ""}
+
     <div class="bar-wrap" id="barWrap">
       <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא חדש!</span></div>
     </div>
 
-    <div class="steppers">
-      ${renderStepper("weight", "משקל (ק\"ג)", weight, 2.5, isDuration || !isBarbell ? 0 : barWeight)}
-      ${isDuration ? renderStepper("durationSeconds", "משך (שניות)", durationSeconds, 5, 1) : renderStepper("reps", "חזרות", reps, 1, 1)}
+    <!-- Q-48: one row in the order a member says it, סטים × חזרות @ משקל. -->
+    <div class="steppers steppers--row">
       ${renderStepper("sets", "סטים", sets, 1, 1)}
+      ${isDuration ? renderStepper("durationSeconds", "משך (שניות)", durationSeconds, 5, 1) : renderStepper("reps", "חזרות", reps, 1, 1)}
+      ${renderStepper("weight", "משקל (ק\"ג)", weight, 2.5, isDuration || !isBarbell ? 0 : barWeight)}
     </div>
 
     ${isDuration
       ? `<div class="est-line">‹ משך ההחזקה: <b id="durationLineValue">${formatDuration(durationSeconds)}</b></div>`
-      : `<div class="est-line">‹ הסט הזה מעריך 1RM של <b id="estLineValue">${estimate1RM(weight, reps)} ק״ג</b></div>`}
+      : `<div class="est-line">1RM משוער לסט הזה: <b id="estLineValue">${estimate1RM(weight, reps)} ק״ג</b></div>`}
 
     ${ladderMode ? (() => {
       const rounds = ladderMode ? currentLadderRounds() : [];
@@ -4976,18 +5050,16 @@ function renderLogTab() {
       </div>`;
     })() : ""}
     </div>
+    ${renderDayLog(dayEntries, isToday, dayLabel)}
     <details class="log-more"${logMoreOpen ? " open" : ""}>
-      <summary class="link-btn link-btn--tap">כלים: מוט ומשקולות, סולם, טבלת אחוזים, 1RM</summary>
+      <summary class="tools-btn">כלים: מוט ומשקולות, סולם, טבלת אחוזים, 1RM</summary>
     ${isDuration || !isBarbell ? "" : `<div id="barbellVisual" class="bar-wrap">${renderBarbell(weight)}</div>`}
     <div class="rx-toggle" role="radiogroup" aria-label="סוג רישום">
       <button class="rx-btn ${!isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="reps" role="radio" aria-checked="${!isDuration}">משקל וחזרות</button>
       <button class="rx-btn ${isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="duration" role="radio" aria-checked="${isDuration}"><span style="display:inline-flex; width:16px; height:16px; vertical-align:-3px; margin-left:4px;">${ICONS.stopwatchIcon}</span>החזקה בזמן</button>
     </div>
 
-    ${logDate === todayISO() ? `<div class="flex items-center gap-8" style="margin-bottom:12px;">
-      <input type="date" id="logDateInput" value="${esc(logDate)}" max="${todayISO()}" aria-label="תאריך רישום הסט" style="flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--chalk); font-size:14px; font-weight:700; font-family:inherit;" />
-      ${logDate !== todayISO() ? `<button data-action="reset-log-date" class="reset-date-btn">היום</button>` : ""}
-    </div>` : ""}
+
     ${(est || bestHold || last) ? `
     <div class="stat-row">
       ${est ? `<div class="stat-card stat-hero"><div class="stat-label">1RM משוער</div><div class="stat-value mono" style="color:var(--brass);">${est} ק״ג</div></div>` : ""}
@@ -5089,17 +5161,8 @@ function renderLogTab() {
       </div>`;
     })()}
     </details>
-    ${dayEntries.length === 0 ? `
-    <div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כאן מתעדים את האימון שהושלם." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>` : `
-    <h2 class="section-label">${isToday ? "סיכום האימון" : `סיכום ${esc(dayLabel)}`}</h2>
-    <div class="chart-card" style="margin-bottom:8px;">${renderDayEntriesListHtml(dayEntries, [])}</div>
-    <button class="link-btn link-btn--tap" data-action="view-log-date-calendar" style="display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:0;">
-      <span>הערות לאימון ופרטי היום · ${bidiText(entrySummary(dayEntries[0]))}</span>
-      <span class="flex items-center gap-6">לוח השנה${ICONS.chevronsLeft}</span>
-    </button>`}
 
     ${renderUpgradeBackupCard()}
-    ${renderTourCard()}
 
     `}
 
@@ -5216,6 +5279,14 @@ function renderDurationDetailCard(m, durationEntries) {
     </div>`;
 }
 
+// Q-47: the PR card in התקדמות (an exercise's open detail) can share its latest personal record afterwards.
+function renderPrShareLine(m) {
+  if (!clubShareAvailable()) return "";
+  const prIds = celebratablePrEntryIds();
+  const pr = entriesFor(m.id).filter((e) => prIds.has(e.id)).sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+  if (!pr) return "";
+  return `<div class="club-pr-share"><span class="club-pr-share-label">השיא האחרון: <span class="mono">${bidiUnit(entrySummary(pr))}</span> · ${esc(fmtDate(pr.date))}</span>${renderClubShareLine([pr.id], m.name)}</div>`;
+}
 function renderHistoryListArea() {
   const area = document.getElementById("historyListArea");
   if (!area) return;
@@ -5265,7 +5336,7 @@ function renderHistoryListArea() {
         </span>`;
         })()}
       </button>`;
-    const detail = historyId === m.id ? renderDetailCard(m) + `<div style="height:8px;"></div>` : "";
+    const detail = historyId === m.id ? renderDetailCard(m) + renderPrShareLine(m) + `<div style="height:8px;"></div>` : "";
     return row + detail;
   }).join("");
 }
@@ -5489,7 +5560,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
             <button data-action="edit-entry" data-id="${esc(e.id)}" aria-label="עריכת סט" class="icon-btn-sm">${ICONS.edit}</button>
             <button data-action="delete-entry" data-id="${esc(e.id)}" aria-label="מחיקת סט" class="icon-btn-sm">${ICONS.trash}</button>
           </div>
-        </div>`;
+        </div>${renderClubShareLine([e.id], movementById(e.exerciseId) ? movementById(e.exerciseId).name : "")}`;
         }
         // Ladder or superset: one card, exercise name(s) + PR flame shown
         // once, then every round on its own line with its own edit/delete —
@@ -5519,7 +5590,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
               </div>
             </div>`).join("")}
           </div>
-        </div>`;
+        </div>${renderClubShareLine(group.map((e) => e.id), exerciseIds.map((id) => movementById(id) ? movementById(id).name : "").join(" + "))}`;
       }).join("")}
       ${dayWods.map((e) => {
         const w = wodById(e.wodId);
@@ -5538,7 +5609,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
             </div>
           </div>
           ${e.notes ? `<div style="color:var(--steel); font-size:12px; padding-inline-start:23px;">${bidiText(e.notes)}</div>` : ""}
-        </div>`;
+        </div>${renderClubShareLine([e.id], w ? w.name : "")}`;
       }).join("")}
     </div>`;
 }
@@ -6156,9 +6227,9 @@ function renderHistoryTab() {
   const monthPrefix = localISODate(now).slice(0, 7);
   const celebratablePrIds = celebratablePrEntryIds();
   const prCountThisMonth = entries.filter((e) => celebratablePrIds.has(e.id) && e.date.startsWith(monthPrefix)).length;
-  const start = new Date(now); start.setDate(now.getDate() - now.getDay());
-  const startISO = localISODate(start);
-  const sessionsThisWeek = new Set(entries.filter((e) => e.date >= startISO).map((e) => e.date)).size;
+  // Q-51 CQ-07: "this week" is the same Sunday-start week as the streak and the medals (weekBucket).
+  const thisWeek = weekBucket(localISODate(now));
+  const sessionsThisWeek = new Set(entries.filter((e) => weekBucket(e.date) === thisWeek).map((e) => e.date)).size;
   const totalSetsLogged = entries.reduce((sum, e) => sum + e.sets, 0);
 
   return `
@@ -6593,6 +6664,7 @@ function countUsage(event, screen) {
 // places that set `tab`, so no route to a screen can be missed.
 let lastCountedScreen = null;
 function render() {
+  followTodayIfUnchosen();
   let content;
   try {
     if (tab === "add") {
@@ -6605,7 +6677,7 @@ function render() {
       if (selected && movementExplicitlyChosen) {
         const prefix = editingEntryId ? "עדכון סט — " : ladderMode ? `הוספת סט ${currentLadderRounds().length + 1} ל${ladderPartnerId ? "סופרסט" : "סולם"} — ` : "רישום סט — ";
         document.getElementById("bottomBarBtn").dataset.action = "save-set";
-        document.getElementById("saveBtnLabel").textContent = editingEntryId || ladderMode ? prefix + selected.name : "שמירת אימון";
+        document.getElementById("saveBtnLabel").textContent = editingEntryId || ladderMode ? prefix + selected.name : "הוספת סט";
       } else {
         // The bar is hidden in this state (see the display rule below), but
         // #bottomBarBtn/#saveBtnLabel are long-lived DOM nodes that survive
@@ -6962,9 +7034,12 @@ function renderWodLogSection() {
     </button>
 
 
-    <div class="flex items-center gap-8" style="margin-bottom:12px;">
-      <input type="date" id="wodLogDateInput" value="${esc(wodLogDate)}" max="${todayISO()}" aria-label="תאריך רישום האימון" style="flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--chalk); font-size:14px; font-weight:700; font-family:inherit;" />
-      ${wodLogDate !== todayISO() ? `<button data-action="reset-wod-log-date" class="reset-date-btn">היום</button>` : ""}
+    <!-- Q-48: the same date chip as the רישום screen. -->
+    <div class="scene-summary-meta">
+      <label class="date-chip"><span class="date-chip-text">${wodLogDate === todayISO() ? "היום" : `<bdi>${esc(fmtDate(wodLogDate))}</bdi>`}</span><span aria-hidden="true">▾</span>
+        <input type="date" id="wodLogDateInput" value="${esc(wodLogDate)}" max="${todayISO()}" aria-label="תאריך רישום האימון: ${esc(wodLogDate === todayISO() ? "היום" : fmtDate(wodLogDate))}" />
+      </label>
+      ${wodLogDate !== todayISO() ? `<button data-action="reset-wod-log-date" class="link-btn link-btn--tap">חזרה להיום</button>` : ""}
     </div>
 
     ${history.length > 0 ? `
@@ -7311,6 +7386,16 @@ function choosePickedMovement(id) {
 function emomPrefill(w) {
   return w.emomMovements.map((_, i) => (w.emomMovementTypes?.[i] === "duration" ? w.emomTargetDurations?.[i] : w.emomTargetReps?.[i]) || 0);
 }
+// Q-57: the score fields take the last attempt of this WOD, the way a lift's steppers take its last session;
+// with no attempt yet they are blank.
+function prefillWodScore(w) {
+  const last = [...wodEntriesFor(w.id)].sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+  wodMinutes = 0; wodSeconds = 0; wodRounds = 0; wodReps = 0; wodWeight = 0;
+  if (!last) return;
+  if (w.scoreType === "time") { wodMinutes = Math.floor((last.timeSeconds || 0) / 60); wodSeconds = (last.timeSeconds || 0) % 60; }
+  else if (w.scoreType === "amrap") { wodRounds = last.rounds || 0; wodReps = last.reps || 0; }
+  else if (w.scoreType === "load") { wodWeight = last.weight || 0; }
+}
 function choosePickedWod(id) {
   const next = wodById(id);
   if (!next) return;
@@ -7320,6 +7405,7 @@ function choosePickedWod(id) {
     wodNotes = "";
     wodEmomReps = next.scoreType === "emom" ? emomPrefill(next) : [];
     emomStateWodId = next.scoreType === "emom" ? next.id : null;
+    prefillWodScore(next);
   }
   selectedWodId = id;
 }
@@ -7673,7 +7759,7 @@ for (const key in APP_DIALOGS) {
 
 function renderPickerList(query) {
   const q = query.toLowerCase();
-  const filtered = allMovements().filter((m) => m.name.toLowerCase().includes(q));
+  const filtered = allMovements().filter((m) => m.name.toLowerCase().includes(q) || (q && movementHe(m).includes(query.trim())));
   const exactMatch = allMovements().some((m) => m.name.toLowerCase() === q);
   const byCategory = bag();
   filtered.forEach((m) => { (byCategory[m.category] = byCategory[m.category] || []).push(m); });
@@ -7692,15 +7778,40 @@ function renderPickerList(query) {
     list.innerHTML = addRow + `<div style="color:var(--steel); text-align:center; padding:16px 0; font-size:13px;">לא נמצא תרגיל</div>`;
     return;
   }
-  list.innerHTML = addRow + Object.entries(byCategory).map(([cat, items]) => `
+  // Q-48: the last five movements used come first (only with no search), then the categories. A Hebrew name
+  // shows under the English one where the catalog has one (MOVEMENT_HE, src/constants.js).
+  const row = (m) => `
+        <button class="movement-btn ${selectedId === m.id ? "active" : ""}" data-action="pick-movement" data-id="${esc(m.id)}">
+          <span class="movement-btn-names"><span style="font-weight:600; font-size:14px;">${bidiText(m.name)}</span>${movementHe(m) ? `<span class="movement-he">${esc(movementHe(m))}</span>` : ""}</span>
+          ${selectedId === m.id ? `<div class="dot" style="background:var(--brass);"></div>` : ""}
+        </button>`;
+  const recent = q ? [] : recentMovements(5);
+  const recentHtml = recent.length ? `
+    <div class="cat-group" id="pickerRecent">
+      <div class="cat-head"><h3 class="cat-name">אחרונים</h3></div>
+      ${recent.map(row).join("")}
+    </div>` : "";
+  // Q-57: "add a new exercise" sits after the list, not above it, so a tap meant for the first row cannot hit it.
+  list.innerHTML = recentHtml + Object.entries(byCategory).map(([cat, items]) => `
     <div class="cat-group">
       <div class="cat-head"><div class="dot" style="background:${esc(catColor(cat))}"></div><h3 class="cat-name">${esc(catLabel(cat))}</h3></div>
-      ${items.map((m) => `
-        <button class="movement-btn ${selectedId === m.id ? "active" : ""}" data-action="pick-movement" data-id="${esc(m.id)}">
-          <span style="font-weight:600; font-size:14px;">${bidiText(m.name)}</span>
-          ${selectedId === m.id ? `<div class="dot" style="background:var(--brass);"></div>` : ""}
-        </button>`).join("")}
-    </div>`).join("");
+      ${items.map(row).join("")}
+    </div>`).join("") + `<div class="picker-add">${addRow}</div>`;
+}
+function movementHe(m) {
+  return (typeof MOVEMENT_HE === "object" && MOVEMENT_HE && m && MOVEMENT_HE[m.id]) || "";
+}
+// The last n distinct movements logged, newest first, that still exist.
+function recentMovements(n) {
+  const seen = new Set(), out = [];
+  for (const e of [...entries].sort((a, b) => (b.ts || 0) - (a.ts || 0))) {
+    if (seen.has(e.exerciseId)) continue;
+    seen.add(e.exerciseId);
+    const m = movementById(e.exerciseId);
+    if (m && m.id === e.exerciseId) out.push(m);
+    if (out.length >= n) break;
+  }
+  return out;
 }
 
 let wodPickerOpen = false;
@@ -7769,10 +7880,7 @@ function renderWodPickerList(query) {
   // programming, so it outranks a private WOD but not Fran.
   const order = ["Girls", "Heroes", "Club", "Custom"];
   const cats = Object.keys(byCategory).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  list.innerHTML = addRow + `<div style="height:12px;"></div>` + cats.map((cat) => `
-    <div class="cat-group">
-      <div class="cat-head"><div class="dot" style="background:${esc(catColor(cat))}"></div><h3 class="cat-name">${esc(wodCatLabel(cat))}</h3></div>
-      ${byCategory[cat].map((w) => `
+  const wodRow = (w) => `
         <div class="movement-btn ${selectedWodId === w.id ? "active" : ""}" style="padding:0; overflow:hidden;">
         <button style="flex:1; padding:12px 14px; text-align:right;" data-action="pick-wod" data-id="${esc(w.id)}">
           <div>
@@ -7782,8 +7890,27 @@ function renderWodPickerList(query) {
           ${selectedWodId === w.id ? `<div class="dot" style="background:var(--brass);"></div>` : ""}
         </button>
         ${w.category === "Custom" && wodEntriesFor(w.id).length === 0 ? `<button data-action="delete-custom-wod" data-id="${esc(w.id)}" aria-label="מחיקת ${esc(w.name)}" style="padding:12px; color:var(--red-text);">✕</button>` : ""}
-        </div>`).join("")}
-    </div>`).join("");
+        </div>`;
+  // Q-57: the WODs this member logged most recently come first (no search), and "build a new WOD" sits after
+  // the list.
+  const seenW = new Set(), recentW = [];
+  if (!q) for (const e of [...wodEntries].sort((a, b) => (b.ts || 0) - (a.ts || 0))) {
+    if (seenW.has(e.wodId)) continue;
+    seenW.add(e.wodId);
+    const w = wodById(e.wodId);
+    if (w) recentW.push(w);
+    if (recentW.length >= 5) break;
+  }
+  const recentHtml = recentW.length ? `
+    <div class="cat-group" id="wodPickerRecent">
+      <div class="cat-head"><h3 class="cat-name">אחרונים</h3></div>
+      ${recentW.map(wodRow).join("")}
+    </div>` : "";
+  list.innerHTML = recentHtml + cats.map((cat) => `
+    <div class="cat-group">
+      <div class="cat-head"><div class="dot" style="background:${esc(catColor(cat))}"></div><h3 class="cat-name">${esc(wodCatLabel(cat))}</h3></div>
+      ${byCategory[cat].map(wodRow).join("")}
+    </div>`).join("") + `<div class="picker-add">${addRow}</div>`;
 }
 
 // ---------- Service worker update handshake ----------
@@ -8212,6 +8339,8 @@ document.addEventListener("click", (e) => {
   else if (action === "repeat-last-set") { repeatLastSet(); }
   else if (action === "cancel-edit-entry") { cancelEditEntry(); }
   else if (action === "edit-entry") { startEditEntry(el.dataset.id); }
+  else if (action === "club-share-later") { shareLoggedToClub(String(el.dataset.ids || "").split(",").filter(Boolean)); }
+  else if (action === "club-unshare") { unshareLoggedFromClub(String(el.dataset.ids || "").split(",").filter(Boolean)); }
   else if (action === "view-log-wod-date-calendar") {
     tab = "calendar";
     const d = new Date(wodLogDate + "T00:00:00");
@@ -8850,9 +8979,22 @@ function setUpServiceWorker() {
 // The header date was written once at boot, so an app left open overnight
 // (the normal life of an installed PWA) showed yesterday's date all morning.
 // Rewritten on every return to the foreground (audit 2026-11, finding 20).
+// Q-51 CQ-06: #dateLabel left with the old header (Q-43a), so this updated nothing. The date a member sees is the
+// log date (the "היום ▾" chip) and the WOD log date; past midnight they stayed on yesterday while saveSet()
+// used today. A date the member did not choose follows the clock; a chosen one is left alone.
 function refreshDateLabel() {
-  const el = document.getElementById("dateLabel");
-  if (el) el.textContent = new Date().toLocaleDateString("he-IL", { weekday: "short", day: "numeric", month: "short" });
+  const today = todayISO();
+  let moved = false;
+  if (!logDateExplicitlyChosen && logDate !== today) { logDate = today; moved = true; }
+  if (!wodLogDateExplicitlyChosen && wodLogDate !== today) { wodLogDate = today; moved = true; }
+  if (moved && typeof render === "function") { try { render(); } catch (e) { /* the next render catches up */ } }
+  return moved;
+}
+// Also on every render (an app left in front over midnight catches up on the next tap), without a timer.
+function followTodayIfUnchosen() {
+  const today = todayISO();
+  if (!logDateExplicitlyChosen && logDate !== today) logDate = today;
+  if (!wodLogDateExplicitlyChosen && wodLogDate !== today) wodLogDate = today;
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshDateLabel();
@@ -8872,6 +9014,22 @@ if (window.visualViewport) {
     if (a && window.visualViewport.height < window.innerHeight * 0.85) keepFieldInView(a);
   });
 }
+// Q-51 CQ-02: another tab wrote to IndexedDB. Reload this tab's copy before it can write a stale one back; an
+// edit of a set or WOD the other tab deleted ends here instead of saving it again. Debounced: a save is several
+// writes. Reads only, so two tabs cannot ping-pong.
+let dbSyncTimer = null;
+try {
+  if (typeof dbChannel !== "undefined" && dbChannel) dbChannel.addEventListener("message", (ev) => {
+    if (!ev || !ev.data || ev.data.type !== "db-write") return;
+    clearTimeout(dbSyncTimer);
+    dbSyncTimer = setTimeout(async () => {
+      if (!(await reloadFromDb())) return;
+      if (editingEntryId && !entries.some((e) => e.id === editingEntryId)) { editingEntryId = null; logDateExplicitlyChosen = false; logDate = todayISO(); }
+      if (editingWodEntryId && !wodEntries.some((e) => e.id === editingWodEntryId)) { editingWodEntryId = null; }
+      try { render(); } catch (e) { /* the next render catches up */ }
+    }, 250);
+  });
+} catch (e) { /* no cross-tab sync */ }
 // init() had no catch: a boot exception left the loading screen up for good.
 // src/boot-guard.js turns it into a message with a reload button.
 init().catch((e) => {

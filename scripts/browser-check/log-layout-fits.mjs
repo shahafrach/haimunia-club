@@ -117,7 +117,7 @@ function report(label, r) {
 for (const [w, h, name] of [[390, 844, "390x844"], [360, 780, "360x780"]]) {
   const { ctx, page, errors } = await openWithHistory({ width: w, height: h });
   await pickBackSquat(page);
-  const values = await page.$$eval(".log-controls input.stepper-val", (els) => els.map((e) => e.value));
+  const values = await page.evaluate(() => ["weight", "reps", "sets"].map((f) => document.querySelector(`.log-controls input.stepper-val[data-field="${f}"]`)?.value));
   check(`${name}: picking prefills the last session (100×5×1)`, values.join(",") === "100,5,1", values.join(","));
   check(`${name}: the last session is on screen`, await page.$eval(".log-controls .log-last", (e) => /פעם קודמת/.test(e.textContent)).catch(() => false));
   report(`${name}: after picking, the steppers, plate visualizer and save are on screen and hit, no scroll`, await reachable(page, CONTROLS));
