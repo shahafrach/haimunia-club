@@ -723,12 +723,12 @@
     var id = "connect-" + name;
     var described = [hint ? id + "-hint" : "", err ? id + "-err" : ""].filter(Boolean).join(" ");
     var gap = err || hint || type === "password" ? "6" : "14";
-    return '<label for="' + id + '" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">' + esc(label) + "</label>" +
+    return '<label for="' + id + '" style="display:block; color:var(--steel); font-size:var(--fs-1); margin-bottom:6px;">' + esc(label) + "</label>" +
       '<input id="' + id + '" name="' + name + '" class="text-input" type="' + type + '" value="' + esc(val) + '" ' + (extra || "") +
       (err ? ' aria-invalid="true"' : "") + (described ? ' aria-describedby="' + described + '"' : "") + ' style="margin-bottom:' + gap + 'px;" />' +
       (hint ? '<div id="' + id + '-hint" class="join-hint">' + esc(hint) + "</div>" : "") +
       (type === "password" ? '<button type="button" class="link-btn link-btn--tap pw-toggle" data-connect="toggle-pw" data-for="' + id + '" aria-controls="' + id + '" aria-pressed="false">הצגת הסיסמה</button>' : "") +
-      (err ? '<div id="' + id + '-err" role="alert" style="color:var(--red-text); font-size:12.5px; margin-bottom:14px;">' + esc(err) + "</div>" : (type === "password" || hint ? '<div style="height:8px;"></div>' : ""));
+      (err ? '<div id="' + id + '-err" role="alert" style="color:var(--red-text); font-size:var(--fs-1); margin-bottom:14px;">' + esc(err) + "</div>" : (type === "password" || hint ? '<div style="height:8px;"></div>' : ""));
   }
   function errorHtml() { return S.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(S.error) + "</span></div>" : ""; }
   // Q-37: the join screens are for older members: one large field, large error text.
@@ -818,8 +818,8 @@
   function submitBtn(label) { return '<button type="submit" class="save-btn" style="max-width:none; margin-bottom:10px;"' + (S.busy ? " disabled" : "") + ">" + esc(S.busy ? "רגע…" : label) + "</button>"; }
   function linkBtn(label, attrs) { return '<button type="button" class="link-btn link-btn--tap" ' + attrs + ">" + esc(label) + "</button>"; }
   function head(title, sub) {
-    return '<div style="text-align:center; margin-bottom:16px;"><div style="font-weight:800; font-size:17px; margin-bottom:4px;">' + esc(title) + "</div>" +
-      (sub ? '<div style="color:var(--steel); font-size:13px;">' + esc(sub) + "</div>" : "") + "</div>";
+    return '<div style="text-align:center; margin-bottom:16px;"><div style="font-weight:800; font-size:var(--fs-4); margin-bottom:4px;">' + esc(title) + "</div>" +
+      (sub ? '<div style="color:var(--steel); font-size:var(--fs-2);">' + esc(sub) + "</div>" : "") + "</div>";
   }
 
   function viewHtml() {
@@ -899,16 +899,16 @@
       if (S.busy) return head("רגע, מכינים קוד שחזור…");
       if (!S.code) return head("קוד שחזור") + errorHtml() + btn("ניסיון חוזר", 'data-connect="retry-code"') + '<div style="text-align:center;">' + linkBtn("להמשיך בלי קוד", 'data-connect="after-code"') + "</div>";
       return head("קוד השחזור שלכם", "שומרים אותו במקום בטוח: בעזרתו מחליפים סיסמה שנשכחה. אפשר לראות אותו שוב במסך המועדון כל עוד מחוברים בטלפון הזה.") +
-        '<div dir="ltr" id="connectRecoveryCode" style="text-align:center; font-family:ui-monospace,monospace; font-weight:800; font-size:20px; letter-spacing:1px; padding:14px 8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); margin-bottom:12px; user-select:all;">' + esc(S.code) + "</div>" +
+        '<div dir="ltr" id="connectRecoveryCode" style="text-align:center; font-family:ui-monospace,monospace; font-weight:800; font-size:var(--fs-5); letter-spacing:1px; padding:14px 8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); margin-bottom:12px; user-select:all;">' + esc(S.code) + "</div>" +
         btn("שמירה כתמונה או שליחה", 'data-connect="share-code"') +
         '<div style="text-align:center; margin-bottom:12px;">' + btn(S.copied ? "הועתק" : "העתקה", 'data-connect="copy-code"', "chip-btn") + "</div>" +
-        '<label class="flex items-center gap-8" style="font-size:13.5px; margin-bottom:14px; min-height:44px;"><input type="checkbox" id="connectSaved" data-connect-saved' + (S.saved ? " checked" : "") + " /> שמרתי את הקוד</label>" +
+        '<label class="flex items-center gap-8" style="font-size:var(--fs-2); margin-bottom:14px; min-height:44px;"><input type="checkbox" id="connectSaved" data-connect-saved' + (S.saved ? " checked" : "") + " /> שמרתי את הקוד</label>" +
         '<button type="button" class="save-btn" data-connect="after-code" style="max-width:none;"' + (S.saved ? "" : " disabled") + ">המשך</button>";
     }
     if (v === "code-view") {
       return head("קוד השחזור שלכם", "שמור בטלפון הזה כל עוד מחוברים. בעזרתו מחליפים סיסמה שנשכחה.") +
         (S.code
-          ? '<div dir="ltr" id="connectRecoveryCode" style="text-align:center; font-family:ui-monospace,monospace; font-weight:800; font-size:20px; letter-spacing:1px; padding:14px 8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); margin-bottom:12px; user-select:all;">' + esc(S.code) + "</div>" +
+          ? '<div dir="ltr" id="connectRecoveryCode" style="text-align:center; font-family:ui-monospace,monospace; font-weight:800; font-size:var(--fs-5); letter-spacing:1px; padding:14px 8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); margin-bottom:12px; user-select:all;">' + esc(S.code) + "</div>" +
             btn("שמירה כתמונה או שליחה", 'data-connect="share-code"') +
             '<div style="text-align:center; margin-bottom:12px;">' + btn(S.copied ? "הועתק" : "העתקה", 'data-connect="copy-code"', "chip-btn") + "</div>"
           : '<div class="join-lead">הקוד לא שמור בטלפון הזה. אפשר ליצור קוד חדש; הקודם יפסיק לעבוד.</div>') +
@@ -926,7 +926,7 @@
     if (v === "delete") {
       if (S.busy) return head("מוחקים את החשבון…");
       return head("למחוק את החשבון?") + errorHtml() +
-        '<div class="settings-block" style="margin-bottom:12px; font-size:13.5px; line-height:1.6;">' +
+        '<div class="settings-block" style="margin-bottom:12px; font-size:var(--fs-2); line-height:1.6;">' +
         '<div style="font-weight:700; margin-bottom:4px;">מה יימחק מהשרת</div>' +
         '<div id="connectDeleteWhat" style="color:var(--steel);">שם המשתמש והחשבון, השם והאימוג׳י במועדון, החברות במועדון, כל האימונים ששיתפתם במועדון, הריאקציות שנתתם, ההתראות וההרשמה להתראות בטלפון.</div>' +
         '<div style="font-weight:700; margin:10px 0 4px;">מה נשאר</div>' +
@@ -960,10 +960,10 @@
     var name = memberName();
     var uname = signedIn() && S.user.email ? String(S.user.email).split("@")[0] : "";
     return head(S.user ? "מחוברים" + (name ? " כ" + name : "") : "לא מחוברים") +
-      (uname ? '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:13.5px;">שם המשתמש לכניסה: <strong dir="ltr" id="connectUsername">' + esc(uname) + "</strong></div>" +
-        '<div style="color:var(--steel); font-size:12px; margin-top:4px;">רק אתם רואים אותו. בעזרתו ובסיסמה נכנסים בטלפון חדש.</div></div>' : "") +
-      '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:13.5px; font-weight:700;">' + (S.inClub ? "חברים במועדון" : "עדיין לא במועדון") + "</div>" +
-      '<div style="color:var(--steel); font-size:12px; margin-top:4px;">האימונים והמשקלים שלכם נשארים בטלפון הזה. למועדון נשלחים רק אימונים שבחרתם לשתף.</div></div>' +
+      (uname ? '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:var(--fs-2);">שם המשתמש לכניסה: <strong dir="ltr" id="connectUsername">' + esc(uname) + "</strong></div>" +
+        '<div style="color:var(--steel); font-size:var(--fs-1); margin-top:4px;">רק אתם רואים אותו. בעזרתו ובסיסמה נכנסים בטלפון חדש.</div></div>' : "") +
+      '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:var(--fs-2); font-weight:700;">' + (S.inClub ? "חברים במועדון" : "עדיין לא במועדון") + "</div>" +
+      '<div style="color:var(--steel); font-size:var(--fs-1); margin-top:4px;">האימונים והמשקלים שלכם נשארים בטלפון הזה. למועדון נשלחים רק אימונים שבחרתם לשתף.</div></div>' +
       (S.inClub === false ? btn("הצטרפות למועדון", 'data-connect="go-join"') : "") +
       (S.inClub ? '<div style="text-align:center;">' + linkBtn("שינוי השם והאימוג'י במועדון", 'data-connect="go-profile"') + "</div>" : "") +
       (signedIn() && passkeyReady() ? '<div style="text-align:center;">' + linkBtn("הפעלת כניסה עם " + passkeyName() + "", 'data-connect="passkey-register-status"') + "</div>" : "") +

@@ -266,25 +266,25 @@
   // members row, and, for staff only, everything that changes the club behind "ניהול המועדון".
   function annCard(x, tools) {
     return '<div class="card" style="margin-bottom:10px;">' +
-      (x.pinned ? '<div style="color:var(--steel); font-size:11.5px; font-weight:700; margin-bottom:4px;">📌 נעוץ</div>' : "") +
-      '<div style="white-space:pre-wrap; font-size:14px; line-height:1.55;" dir="auto">' + bidiText(x.body) + "</div>" +
-      '<div style="color:var(--steel); font-size:11.5px; margin-top:6px;">' + esc(when(x.created_at)) + "</div>" + (tools || "") + "</div>";
+      (x.pinned ? '<div style="color:var(--steel); font-size:var(--fs-caption); font-weight:700; margin-bottom:4px;">📌 נעוץ</div>' : "") +
+      '<div style="white-space:pre-wrap; font-size:var(--fs-2); line-height:1.55;" dir="auto">' + bidiText(x.body) + "</div>" +
+      '<div style="color:var(--steel); font-size:var(--fs-caption); margin-top:6px;">' + esc(when(x.created_at)) + "</div>" + (tools || "") + "</div>";
   }
   // Decided by fixes, owner to confirm: the member view shows pinned announcements only; an unpinned one is
   // the coach's to pin or delete, under ניהול המועדון.
   function announcementsHtml() {
     var a = C.ann;
-    if (a.error) return '<div style="color:var(--steel); font-size:13px; margin-bottom:12px;">לא הצלחנו לטעון הודעות.</div>';
+    if (a.error) return '<div style="color:var(--steel); font-size:var(--fs-2); margin-bottom:12px;">לא הצלחנו לטעון הודעות.</div>';
     var rows = a.rows.filter(function (x) { return x.pinned; }).map(function (x) { return annCard(x); }).join("");
     return rows ? '<h2 class="section-label" style="margin-top:6px;">הודעות</h2>' + rows : "";
   }
   function annAdminHtml() {
     var a = C.ann;
     var form = '<form data-club-form="ann" class="card" style="margin-bottom:12px;" novalidate>' +
-        '<label for="clubAnnBody" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">הודעה חדשה לכל המועדון (עד 500 תווים, בלי התראה)</label>' +
+        '<label for="clubAnnBody" style="display:block; color:var(--steel); font-size:var(--fs-1); margin-bottom:6px;">הודעה חדשה לכל המועדון (עד 500 תווים, בלי התראה)</label>' +
         '<textarea id="clubAnnBody" name="body" class="text-input" rows="3" maxlength="500" dir="auto" style="margin-bottom:8px;">' + esc(C.postDraft) + "</textarea>" +
-        '<label class="flex items-center gap-8" style="font-size:13px; min-height:44px;"><input type="checkbox" name="pinned"' + (C.postPinned ? " checked" : "") + " /> לנעוץ בראש הדף</label>" +
-        (C.annError ? '<div role="alert" style="color:var(--red-text); font-size:12.5px; margin-bottom:8px;">' + esc(C.annError) + "</div>" : "") +
+        '<label class="flex items-center gap-8" style="font-size:var(--fs-2); min-height:44px;"><input type="checkbox" name="pinned"' + (C.postPinned ? " checked" : "") + " /> לנעוץ בראש הדף</label>" +
+        (C.annError ? '<div role="alert" style="color:var(--red-text); font-size:var(--fs-1); margin-bottom:8px;">' + esc(C.annError) + "</div>" : "") +
         '<button type="submit" class="save-btn" style="max-width:none;"' + (C.busy.ann ? " disabled" : "") + ">" + (C.busy.ann ? "רגע…" : "פרסום") + "</button></form>";
     var rows = a.rows.map(function (x) {
       return annCard(x, '<div class="chip-row" style="margin-top:8px;">' +
@@ -297,7 +297,7 @@
     // Open when the member left it open, and whenever a new join link is showing (it is shown once only).
     var open = C.adminOpen || !!C.newLink;
     return '<details class="club-admin" id="clubAdmin"' + (open ? " open" : "") + '>' +
-      '<summary class="exercise-row"><span style="font-weight:700; font-size:13.5px;">ניהול המועדון</span>' + chevron(open) + "</summary>" +
+      '<summary class="exercise-row"><span style="font-weight:700; font-size:var(--fs-2);">ניהול המועדון</span>' + chevron(open) + "</summary>" +
       annAdminHtml() + linkToolHtml() + "</details>";
   }
 
@@ -314,9 +314,9 @@
     return '<article class="card" style="margin-bottom:10px;" aria-label="' + esc("פוסט של " + (r.author_name || "חבר/ה")) + '">' +
       '<div class="who" style="margin:0 0 8px;"><div class="who-avatar" aria-hidden="true">' + esc(r.author_emoji || "🙂") + "</div>" +
       '<div style="flex:1; min-width:0;"><div class="who-name">' + name(r.author_name) + '</div><div class="who-sub">' + esc(when(r.published_at)) + "</div></div></div>" +
-      (r.title ? '<div style="font-weight:800; font-size:15px;" dir="auto">' + bidiText(r.title) + "</div>" : "") +
-      (r.result_text ? '<div style="font-size:14px; margin-top:2px;" dir="auto">' + bidiText(r.result_text) + "</div>" : "") +
-      (r.body ? '<div style="color:var(--steel); font-size:13.5px; margin-top:6px; white-space:pre-wrap;" dir="auto">' + bidiText(r.body) + "</div>" : "") +
+      (r.title ? '<div style="font-weight:800; font-size:var(--fs-3);" dir="auto">' + bidiText(r.title) + "</div>" : "") +
+      (r.result_text ? '<div style="font-size:var(--fs-2); margin-top:2px;" dir="auto">' + bidiText(r.result_text) + "</div>" : "") +
+      (r.body ? '<div style="color:var(--steel); font-size:var(--fs-2); margin-top:6px; white-space:pre-wrap;" dir="auto">' + bidiText(r.body) + "</div>" : "") +
       reactionsHtml(r) + (del ? '<div style="margin-top:4px;">' + del + "</div>" : "") + "</article>";
   }
   function feedHtml(staff) {
@@ -338,7 +338,7 @@
 
   function membersHtml(i) {
     var m = C.members;
-    var toggle = '<button class="exercise-row" data-club="members" aria-expanded="' + m.open + '" style="margin-top:14px;"><span style="font-weight:700; font-size:13.5px;">חברי המועדון' +
+    var toggle = '<button class="exercise-row" data-club="members" aria-expanded="' + m.open + '" style="margin-top:14px;"><span style="font-weight:700; font-size:var(--fs-2);">חברי המועדון' +
       (m.loaded ? " (" + m.rows.length + ")" : "") + "</span>" + chevron(m.open) + "</button>";
     if (!m.open) return toggle;
     if (m.error) return toggle + '<div class="card" style="text-align:center;"><div style="margin-bottom:10px;">לא הצלחנו לטעון את החברים.</div><button class="chip-btn" data-club="members-retry">ניסיון חוזר</button></div>';
@@ -356,8 +356,8 @@
     var code = C.newCode;
     var out = C.newLink
       ? '<div class="card join-invite" id="clubInvite" style="margin-bottom:10px;">' +
-        '<div style="font-weight:700; font-size:14px; margin-bottom:4px;">קישור ההצטרפות החדש</div>' +
-        '<div style="color:var(--steel); font-size:12.5px; margin-bottom:10px;">מוצג פעם אחת בלבד, והקישור הישן כבר לא עובד. שולחים אותו עכשיו, או מדפיסים.</div>' +
+        '<div style="font-weight:700; font-size:var(--fs-2); margin-bottom:4px;">קישור ההצטרפות החדש</div>' +
+        '<div style="color:var(--steel); font-size:var(--fs-1); margin-bottom:10px;">מוצג פעם אחת בלבד, והקישור הישן כבר לא עובד. שולחים אותו עכשיו, או מדפיסים.</div>' +
         (C.qr ? '<div class="join-qr-wrap">' + C.qr + "</div>" : "") +
         (code ? '<div class="join-code-label">קוד הצטרפות</div><div class="join-code-big" dir="ltr" id="clubInviteCode" aria-label="' + esc(code.split("").join(" ")) + '">' + esc(codeGroups(code)) + "</div>" : "") +
         '<div dir="ltr" class="join-link-text" id="clubInviteLink">' + esc(C.newLink) + "</div>" +
@@ -369,8 +369,8 @@
         printCardHtml()
       : "";
     return '<h3 class="section-label" style="margin-top:16px;">קישור הצטרפות</h3>' + out +
-      '<button class="exercise-row" data-club="rotate"><div style="text-align:right;"><div style="font-weight:700; font-size:13.5px;">קישור הצטרפות חדש</div>' +
-      '<div style="color:var(--steel); font-size:12px; margin-top:2px;">מחליף את הקישור הקבוע. הישן מפסיק לעבוד.</div></div></button>';
+      '<button class="exercise-row" data-club="rotate"><div style="text-align:right;"><div style="font-weight:700; font-size:var(--fs-2);">קישור הצטרפות חדש</div>' +
+      '<div style="color:var(--steel); font-size:var(--fs-1); margin-top:2px;">מחליף את הקישור הקבוע. הישן מפסיק לעבוד.</div></div></button>';
   }
 
   // The printed sheet for the front desk: the QR, three steps and the code, black on white. index.html's

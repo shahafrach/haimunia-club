@@ -75,8 +75,6 @@ const OPTIONAL_ASSETS = [
   "./assets/fonts/rubik-700-hebrew.woff2",
   "./assets/fonts/rubik-800-latin.woff2",
   "./assets/fonts/rubik-800-hebrew.woff2",
-  "./assets/fonts/rubik-900-latin.woff2",
-  "./assets/fonts/rubik-900-hebrew.woff2",
   "./assets/fonts/jbmono-500-latin.woff2",
   "./assets/fonts/jbmono-700-latin.woff2",
   "./assets/fonts/anton-400-latin.woff2",

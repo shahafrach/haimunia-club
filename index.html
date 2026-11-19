@@ -115,8 +115,6 @@
   @font-face{ font-family:'Rubik'; font-style:normal; font-weight:700; font-display:swap; src:url('./assets/fonts/rubik-700-hebrew.woff2') format('woff2'); unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F; }
   @font-face{ font-family:'Rubik'; font-style:normal; font-weight:800; font-display:swap; src:url('./assets/fonts/rubik-800-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face{ font-family:'Rubik'; font-style:normal; font-weight:800; font-display:swap; src:url('./assets/fonts/rubik-800-hebrew.woff2') format('woff2'); unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F; }
-  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:900; font-display:swap; src:url('./assets/fonts/rubik-900-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-  @font-face{ font-family:'Rubik'; font-style:normal; font-weight:900; font-display:swap; src:url('./assets/fonts/rubik-900-hebrew.woff2') format('woff2'); unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F; }
   @font-face{ font-family:'JetBrains Mono'; font-style:normal; font-weight:500; font-display:swap; src:url('./assets/fonts/jbmono-500-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face{ font-family:'JetBrains Mono'; font-style:normal; font-weight:700; font-display:swap; src:url('./assets/fonts/jbmono-700-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face{ font-family:'Anton'; font-style:normal; font-weight:400; font-display:swap; src:url('./assets/fonts/anton-400-latin.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
@@ -373,9 +371,9 @@
     --on-energy:var(--p-1a0d08); --danger-text:var(--red-text);
     /* Q-44 (owner approved 2026-11-18): one scale for type, space, buttons and tap targets. Type is in rem so
        iOS Dynamic Type (html's -apple-system-body below) moves it; six steps, 12/14/16/18/22/30 at 16px. */
-    --fs-1:.75rem; --fs-2:.875rem; --fs-3:1rem; --fs-4:1.125rem; --fs-5:1.375rem; --fs-6:1.875rem;
+    --fs-caption:.6875rem; --fs-1:.75rem; --fs-2:.875rem; --fs-3:1rem; --fs-4:1.125rem; --fs-5:1.375rem; --fs-6:1.875rem; --fs-display:2.5rem;
     --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
-    --tap-min:44px; --btn-height:44px; --btn-height-lg:52px; --btn-radius:14px;
+    --header-height:64px; --color-accent:var(--club-coral); --color-selected:var(--club-coral); --color-focus-ring:var(--brass); --color-input-border:var(--steel); --hero-title-scrim:radial-gradient(closest-side, var(--p-081523-a72) 0%, var(--p-081523-a72) 60%, transparent 100%); --tap-min:44px; --btn-height:44px; --btn-height-lg:52px; --btn-radius:14px;
 }
   
   :root[data-scheme="dark"]{
@@ -496,9 +494,9 @@
   body{ min-height:100svh; }
   button, input, textarea { font-family:inherit; }
   button{ background:none; border:none; color:inherit; cursor:pointer; padding:0; }
-  input{ font-size:16px; }
+  input{ font-size:var(--fs-3); }
   html[data-text-scale="large"]{ zoom:var(--text-scale); }
-  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--brass); outline-offset:2px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--color-focus-ring); outline-offset:2px; }
   /* 'Rubik' before the generic for the same reason as .save-btn/.page-title
      (see the @font-face block's comment). .mono is not digits-only:
      entrySummary()/ladderRoundSummary() render strings like `100 ק״ג × 5`
@@ -510,8 +508,8 @@
   .items-center{ align-items:center; }
   .justify-between{ justify-content:space-between; }
   .justify-center{ justify-content:center; }
-  .flex-1{ flex:1; }
-  .gap-6{ gap:6px; } .gap-8{ gap:8px; } .gap-10{ gap:10px; } .gap-16{ gap:16px; }
+  
+  .gap-6{ gap:6px; } .gap-8{ gap:8px; } .gap-10{ gap:10px; } 
   .wrap{ flex-wrap:wrap; }
   /* max(env(...), 28px): some Android WebView/Chrome combinations report
      safe-area-inset-top as 0 on an installed (standalone) PWA even though
@@ -568,9 +566,9 @@
      size follows the bar's own width (container query): 12px from a 375px bar up, never under 10px. */
   .tabbar{ container-type:inline-size; }
   .tabbtn > span:last-child{ font-size:clamp(10px, 3.2cqi, 12px); }
-  @container (max-width: 260px){ .tabbtn{ padding-inline:0; } .tabbtn > span:last-child{ font-size:9.5px; letter-spacing:-.2px; } }
+  @container (max-width: 260px){ .tabbtn{ padding-inline:0; } .tabbtn > span:last-child{ font-size:.59375rem; letter-spacing:-.2px; } }
   /* Q-49: five tabs (מועדון for a guest too) on the same narrow bar: one step smaller (renders 17px at 200%). */
-  @container (max-width: 260px){ .tabbar:has(> .tabbtn:nth-child(5)) .tabbtn > span:last-child{ font-size:8.5px; letter-spacing:-.3px; } }
+  @container (max-width: 260px){ .tabbar:has(> .tabbtn:nth-child(5)) .tabbtn > span:last-child{ font-size:.53125rem; letter-spacing:-.3px; } }
   .tabbar:has(> .tabbtn:nth-child(5)){ padding-inline:4px; gap:0; }
   .tabbar{ max-width:480px; margin:0 auto; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px); gap:2px; box-shadow:0 -4px 16px var(--p-000000-a18); }
   /* font-size raised from 10.5px (UX audit, defect 3): this labels the
@@ -580,7 +578,7 @@
      live in and .tabbtn is white-space:nowrap, where 14px overflows the
      segment. The 44px touch target the accessibility-floor test pins (see
      test/audit-ux-fixes.test.mjs) is untouched. */
-  .tabbtn{ position:relative; flex:1; min-width:0; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px 2px 8px; border-radius:14px; font-weight:700; font-size:12px; color:var(--steel); border:1px solid transparent; transition:background-color .15s, color .15s; white-space:nowrap; }
+  .tabbtn{ position:relative; flex:1; min-width:0; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px 2px 8px; border-radius:14px; font-weight:700; font-size:var(--fs-1); color:var(--steel); border:1px solid transparent; transition:background-color .15s, color .15s; white-space:nowrap; }
   .tabbtn.active{ background:color-mix(in srgb, var(--energy) 14%, transparent); color:var(--energy-text); box-shadow:var(--shadow-sm); }
   /* A short energy-colored cap above the active tab: the tinted background
      alone reads as "slightly different" at a glance mid-workout, which is
@@ -591,7 +589,7 @@
   /* COMM-343: an explicit unchosen-exercise prompt (dashed, no category
      dot - there's nothing to color yet) instead of the normal chosen look,
      for whenever COMM-360 starts actually leaving selectedId unset. */
-  .exercise-select.log-empty-hint{ border-style:dashed; border-color:var(--brass); color:var(--brass); }
+  
   /* ---- The log screen's primary action --------------------------------
      `מה עשינו היום?` is the one thing the whole app is for, and until an
      exercise is chosen nothing else on the screen can be done at all. It
@@ -608,7 +606,7 @@
      reads as this app's card rather than a generically tinted button. */
   .exercise-select.pick-hero{ position:relative; overflow:hidden; gap:12px; padding:16px; padding-inline-start:28px; border-color:color-mix(in srgb, var(--energy) 55%, var(--border)); background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 14%, var(--surface)), var(--surface) 78%); }
   .pick-hero::before{ content:""; position:absolute; top:0; bottom:0; inset-inline-start:0; width:10px; background-image:var(--stripe); }
-  .pick-hero-title{ font-weight:800; font-size:19px; line-height:1.25; color:var(--chalk); min-width:0; overflow-wrap:anywhere; }
+  .pick-hero-title{ font-weight:800; font-size:var(--fs-4); line-height:1.25; color:var(--chalk); min-width:0; overflow-wrap:anywhere; }
   /* Q-49: at large text the title and its button stack instead of the title running out of the card. */
   .exercise-select.pick-hero{ flex-wrap:wrap; }
   .exercise-select.pick-hero .pick-hero-cta{ min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
@@ -620,7 +618,7 @@
      contrast violation. 8% measures 4.87:1 dark / 5.36:1 light, which
      leaves room for the token to be nudged later without silently
      dropping under the floor. The border carries the accent instead. */
-  .pick-hero-cta{ display:inline-flex; align-items:center; gap:6px; flex-shrink:0; padding:9px 13px; border-radius:999px; font-size:13px; font-weight:800; color:var(--energy-text); background:color-mix(in srgb, var(--energy) 8%, var(--surface)); border:1px solid color-mix(in srgb, var(--energy) 50%, transparent); }
+  .pick-hero-cta{ display:inline-flex; align-items:center; gap:6px; flex-shrink:0; padding:9px 13px; border-radius:999px; font-size:var(--fs-2); font-weight:800; color:var(--energy-text); background:color-mix(in srgb, var(--energy) 8%, var(--surface)); border:1px solid color-mix(in srgb, var(--energy) 50%, transparent); }
   /* ---- The four-slot empty state, on the log screen -------------------
      Same shape as cloud.js's emptyStateHtml() (d540a34): a decorative icon,
      a forward-looking headline, one line of explanation, and one when-line
@@ -632,21 +630,21 @@
      say what will fill it, which is a bigger job than the small in-pane
      empties in the community module; the dashed frame gives the space an
      edge, and the ring around the icon is the app's bumper-plate motif. */
-  .log-empty{ display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; border:1px dashed var(--border); border-radius:18px; padding:24px 20px; margin-bottom:12px; }
-  .log-empty-medal{ width:56px; height:56px; flex-shrink:0; border-radius:999px; display:flex; align-items:center; justify-content:center; color:var(--brass); background:color-mix(in srgb, var(--brass) 14%, var(--surface)); border:2px solid color-mix(in srgb, var(--brass) 55%, transparent); box-shadow:var(--shadow-card); }
+  
+  
   /* Headline and explanation are ONE block with the helper's 6px gap; the
      10px above is the container's, between slots. Same nesting as
      emptyStateHtml(), so the two read at the same rhythm. */
-  .log-empty-text{ max-width:34ch; display:flex; flex-direction:column; gap:6px; }
-  .log-empty-head{ font-size:15px; font-weight:700; line-height:1.5; color:var(--chalk); }
-  .log-empty-body{ font-size:13px; line-height:1.6; color:var(--steel); }
-  .log-empty-when{ max-width:34ch; font-size:12.5px; line-height:1.6; color:var(--steel); }
+  
+  
+  
+  
   /* The day's own log when it is empty. Deliberately slimmer and quieter
      than .log-empty above, because on a first run BOTH render at once and
      they answer two different questions - "what goes in the card above"
      and "what has been logged today". Two identical blocks would just read
      as the screen having failed twice. */
-  .day-empty{ display:flex; align-items:center; justify-content:center; gap:8px; border:1px dashed var(--border); border-radius:14px; padding:14px 16px; color:var(--steel); font-size:13px; line-height:1.5; text-align:center; }
+  .day-empty{ display:flex; align-items:center; justify-content:center; gap:8px; border:1px dashed var(--border); border-radius:14px; padding:14px 16px; color:var(--steel); font-size:var(--fs-2); line-height:1.5; text-align:center; }
   .day-empty > svg{ flex-shrink:0; opacity:.75; }
   /* The tour offer. It keeps its place directly under the picker and its
      64px target (scripts/browser-check/first-run-sequence.mjs pins both),
@@ -664,12 +662,12 @@
      a slightly heavier accent than a plain .stat-card elsewhere (progress/
      history) - they're the reason this screen exists, not incidental data. */
   .stat-hero{ border-color:var(--brass); background:color-mix(in srgb, var(--brass) 6%, var(--surface)); }
-  .stat-hero .stat-value{ font-size:18px; }
-  .stat-label{ color:var(--steel); font-size:12px; font-weight:600; }
-  .stat-value{ font-weight:800; font-size:16px; }
+  .stat-hero .stat-value{ font-size:var(--fs-4); }
+  .stat-label{ color:var(--steel); font-size:var(--fs-1); font-weight:600; }
+  .stat-value{ font-weight:800; font-size:var(--fs-3); }
   .bar-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:20px; margin-bottom:16px; position:relative; overflow:hidden; transition:border-color .3s; box-shadow:var(--shadow-card); }
   .bar-wrap.pr{ border-color:var(--brass); animation:pop .4s ease; }
-  .pr-flash{ position:absolute; inset:0; background-image:var(--stripe); display:flex; align-items:center; justify-content:center; gap:6px; color:var(--p-fff); font-weight:800; font-size:14px; z-index:1; text-shadow:0 1px 3px var(--p-000000-a50); }
+  .pr-flash{ position:absolute; inset:0; background-image:var(--stripe); display:flex; align-items:center; justify-content:center; gap:6px; color:var(--p-fff); font-weight:800; font-size:var(--fs-2); z-index:1; text-shadow:0 1px 3px var(--p-000000-a50); }
   @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.04);} 100%{transform:scale(1);} }
   .barbell{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:14px 0; }
   .bar-row{ display:flex; align-items:center; height:78px; }
@@ -687,19 +685,19 @@
      --surface/--bg specifically (see its own :root comment, 5.03:1/4.61:1),
      never against --surface2, which reads slightly lighter/bluer in light
      theme and measured 4.35:1 here - just under the 4.5:1 floor. */
-  .bar-center{ width:64px; height:20px; display:flex; align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border); border-radius:6px; font-weight:700; font-size:13px; color:var(--brass); flex-shrink:0; direction:ltr; unicode-bidi:isolate; }
-  .bar-caption{ color:var(--steel); font-size:12px; }
+  .bar-center{ width:64px; height:20px; display:flex; align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border); border-radius:6px; font-weight:700; font-size:var(--fs-2); color:var(--brass); flex-shrink:0; direction:ltr; unicode-bidi:isolate; }
+  .bar-caption{ color:var(--steel); font-size:var(--fs-1); }
   .steppers{ display:flex; gap:8px; margin-bottom:16px; }
   .stepper{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
-  .stepper-label{ color:var(--steel); font-size:12px; font-weight:600; white-space:nowrap; }
+  .stepper-label{ color:var(--steel); font-size:var(--fs-1); font-weight:600; white-space:nowrap; }
   .stepper-box{ width:100%; min-width:0; display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:14px; border:1px solid var(--border); }
   .stepper-btn{ width:44px; height:44px; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:opacity .15s; }
   .stepper-btn:active{ opacity:.6; }
-  .stepper-val{ min-height:44px; font-weight:700; font-size:16px; min-width:0; text-align:center; background:transparent; border:none; padding:4px 0; flex:1 1 0; color:var(--chalk); }
-  .est-line{ text-align:center; color:var(--steel); font-size:12px; margin-bottom:20px; }
+  .stepper-val{ min-height:44px; font-weight:700; font-size:var(--fs-3); min-width:0; text-align:center; background:transparent; border:none; padding:4px 0; flex:1 1 0; color:var(--chalk); }
+  .est-line{ text-align:center; color:var(--steel); font-size:var(--fs-1); margin-bottom:20px; }
   .est-line b{ color:var(--brass); font-weight:700; }
-  .section-label{ color:var(--steel); font-size:12px; font-weight:700; margin-bottom:10px; letter-spacing:.5px; }
-  .empty{ color:var(--steel); font-size:13px; text-align:center; padding:24px 0; }
+  .section-label{ color:var(--steel); font-size:var(--fs-1); font-weight:700; margin-bottom:10px; letter-spacing:.5px; }
+  .empty{ color:var(--steel); font-size:var(--fs-2); text-align:center; padding:24px 0; }
   .log-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-card); }
   /* UX audit, defect 3 - THE MOST DANGEROUS PAIR IN THE APP. A logged
      entry's edit and delete icons measured 23x26 CSS px and sat flush
@@ -724,8 +722,8 @@
   .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px; margin-bottom:16px; box-shadow:var(--shadow-card); }
   .rep-table{ display:flex; gap:6px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
   .rep-cell{ flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:8px 4px; text-align:center; }
-  .rep-cell-label{ color:var(--steel); font-size:11.5px; font-weight:700; }
-  .rep-cell-val{ font-weight:700; font-size:13px; }
+  .rep-cell-label{ color:var(--steel); font-size:var(--fs-caption); font-weight:700; }
+  .rep-cell-val{ font-weight:700; font-size:var(--fs-2); }
   /* Direction 06 "Club Balance" handoff: a shallow real-photo strip at the
      top of a screen, identifying the club without competing with the task
      below it. aspect-ratio 3.6/1 (inside README1.md's 3:1-4:1 range) keeps
@@ -803,9 +801,13 @@
      matters on a device with a very short viewport, where 34svh alone
      could land inside the header's own 64px band. */
   .scene-page__intro{ position:absolute; inset-block-start:max(34svh, calc(env(safe-area-inset-top,0px) + 64px + 24px)); inset-inline:var(--scene-inline); color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a46); }
-  .scene-page__brand{ font-size:12px; font-weight:700; letter-spacing:.5px; opacity:.85; margin-bottom:6px; }
-  .scene-page__title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:36px; line-height:1.05; color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a48); margin:0 0 6px; display:flex; align-items:center; gap:10px; }
-  .scene-page__subtitle{ font-size:14px; font-weight:600; opacity:.92; margin:0; }
+  .scene-page__brand{ font-size:var(--fs-1); font-weight:700; letter-spacing:.5px; opacity:.85; margin-bottom:6px; }
+  .scene-page__title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:var(--fs-display); line-height:1.05; color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a48); margin:0 0 6px; display:flex; align-items:center; gap:10px; }
+  .scene-page__subtitle{ font-size:var(--fs-2); font-weight:600; margin:0; }
+  /* Q-53: a scrim behind the photo titles, so white text keeps 4.5:1 over any part of the photo (white text on
+     the 72% navy core measures above 7:1 even over a white pixel). */
+  .scene-page__intro{ isolation:isolate; }
+  .scene-page__intro::before{ content:""; position:absolute; inset:-28px -24px; background:var(--hero-title-scrim); z-index:-1; pointer-events:none; }
   /* svh, not dvh - see body's own comment above for why: this is the rule
      that actually caused the reported vibration, since every scene screen
      (Add/History/Progress/Library/Community) hits it on every tab switch. */
@@ -841,7 +843,7 @@
     background:var(--p-081523-a96); color:var(--chalk);
   }
   
-  .scene-sheet-title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:22px; margin:0 0 14px; }
+  
   /* Header/brand-stripe become a transparent overlay riding on top of the
      photo, instead of taking flow space above #content - body[data-scene]
      is stamped by render() (app.js) from PAGE_SCENES, one attribute driving
@@ -883,9 +885,10 @@
   body[data-scene] #app{ position:relative; }
   body[data-scene] .header{
     position:absolute; z-index:20; inset-block-start:env(safe-area-inset-top,0px); inset-inline:0;
-    height:64px; padding-inline:16px; padding-block-start:0; margin:0;
+    height:var(--header-height); padding-inline:16px; padding-block-start:0; margin:0;
     display:grid; grid-template-columns:44px 1fr 44px 8px 44px; align-items:center;
-    background:transparent;
+    /* Q-53: the white logo stays readable over a white part of the photo (the רישום stripes, light mode). */
+    background:linear-gradient(to bottom, var(--p-081523-a72) 0%, var(--p-081523-a32) 70%, transparent 100%);
   }
   body[data-scene] .header > div:first-child{ display:contents; }
   body[data-scene] .header > div:last-child{ display:none; }
@@ -972,7 +975,7 @@
      theme's own --energy-text is what actually measures safe here,
      regardless of the user's theme choice. */
   body[data-scene] .tabbtn.active{ color:var(--p-ff8f6b); background:transparent; box-shadow:none; }
-  body[data-scene] .tabbtn.active::before{ background:var(--club-coral); }
+  body[data-scene] .tabbtn.active::before{ background:var(--color-selected); }
   /* Save action (spec: 52px height; current .save-btn's own padding/font
      yields 62px, 10px over tolerance) - scoped to the scene bottom bar only,
      .save-btn elsewhere (dialogs, forms) is untouched. */
@@ -1005,28 +1008,28 @@
      chosen; the last session, "עוד סט זהה", the plate visualizer and the steppers come first. */
   .scene-page--add.scene-page--compact{ --scene-photo-height:132px; }
   .scene-page--add.scene-page--compact .scene-page__intro{ inset-block-start:calc(env(safe-area-inset-top,0px) + 64px); }
-  .scene-page--add.scene-page--compact .scene-page__title{ font-size:24px; }
+  .scene-page--add.scene-page--compact .scene-page__title{ font-size:var(--fs-5); }
   .scene-page--add.scene-page--compact .scene-page__subtitle{ display:none; }
-  .log-last{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; min-height:22px; color:var(--steel); font-size:12.5px; font-weight:700; margin-bottom:8px; }
+  .log-last{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; min-height:22px; color:var(--steel); font-size:var(--fs-1); font-weight:700; margin-bottom:8px; }
   .log-last-label{ display:inline-flex; align-items:center; gap:4px; flex-shrink:0; }
-  .log-last-value{ color:var(--chalk); font-size:14px; text-align:end; }
+  .log-last-value{ color:var(--chalk); font-size:var(--fs-2); text-align:end; }
   .log-last--none{ justify-content:flex-start; }
   .log-last--saved .log-last-label{ color:var(--chalk); }
-  .log-repeat{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; font-size:15px; font-weight:800; margin-bottom:10px; }
+  .log-repeat{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; font-size:var(--fs-3); font-weight:800; margin-bottom:10px; }
   .log-controls .bar-wrap{ margin-bottom:10px; }
   .log-controls #barbellVisual{ transform:scale(.8); transform-origin:center top; margin-bottom:-24px; }
   .log-controls .steppers{ flex-wrap:wrap; margin-bottom:10px; }
   .log-controls .steppers .stepper:last-child{ flex-basis:100%; }
   .log-controls .stepper-btn{ width:56px; height:56px; }
-  .log-controls .stepper-val{ min-height:56px; font-size:20px; }
+  .log-controls .stepper-val{ min-height:56px; font-size:var(--fs-5); }
   .log-controls .est-line{ margin-bottom:6px; }
   .log-more{ margin-block:4px 14px; }
-  .log-more > summary{ list-style:none; display:block; font-size:12.5px; }
+  .log-more > summary{ list-style:none; display:block; font-size:var(--fs-1); }
   .log-more > summary::-webkit-details-marker{ display:none; }
 
   .club-admin{ margin-top:14px; }
   /* Q-48: the רישום screen. */
-  .date-chip{ position:relative; display:inline-flex; align-items:center; gap:6px; min-height:var(--tap-min); padding:0 14px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); color:var(--chalk); font-size:14px; font-weight:800; cursor:pointer; }
+  .date-chip{ position:relative; display:inline-flex; align-items:center; gap:6px; min-height:var(--tap-min); padding:0 14px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); color:var(--chalk); font-size:var(--fs-2); font-weight:800; cursor:pointer; }
   .date-chip input[type="date"]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; cursor:pointer; }
   .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:8px; }
   .scene-page--add .log-controls .steppers.steppers--row .stepper:last-child:nth-child(3){ grid-column:auto; }
@@ -1036,28 +1039,28 @@
   .steppers--row .stepper-btn[data-dir="1"]{ grid-area:plus; width:auto; }
   .steppers--row .stepper-val{ grid-area:val; width:100%; }
   .log-controls .steppers--row .stepper-btn{ width:auto; height:44px; }
-  .log-controls .steppers--row .stepper-val{ min-height:48px; font-size:20px; }
+  .log-controls .steppers--row .stepper-val{ min-height:48px; font-size:var(--fs-5); }
   .log-controls .steppers--row .stepper:last-child{ flex-basis:auto; }
-  .est-line{ font-size:12px; }
-  .tools-btn{ list-style:none; display:flex; align-items:center; justify-content:center; min-height:var(--tap-min); padding:0 14px; border-radius:var(--btn-radius); border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-size:13.5px; font-weight:700; cursor:pointer; text-align:center; }
+  .est-line{ font-size:var(--fs-1); }
+  .tools-btn{ list-style:none; display:flex; align-items:center; justify-content:center; min-height:var(--tap-min); padding:0 14px; border-radius:var(--btn-radius); border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-size:var(--fs-2); font-weight:700; cursor:pointer; text-align:center; }
   .tools-btn::-webkit-details-marker{ display:none; }
   .day-log-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:14px 0 8px; }
-  .day-log-total{ color:var(--steel); font-size:13px; font-weight:700; }
+  .day-log-total{ color:var(--steel); font-size:var(--fs-2); font-weight:700; }
   #pickerList .movement-btn{ min-height:48px; }
   .picker-add{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
   .movement-btn-names{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:start; min-width:0; }
-  .movement-he{ color:var(--steel); font-size:12px; font-weight:500; }
+  .movement-he{ color:var(--steel); font-size:var(--fs-1); font-weight:500; }
   .club-share-line{ display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin:2px 0 8px; }
   .club-share-line .chip-btn{ min-height:44px; }
-  .club-shared-tag{ color:var(--green-text); font-weight:700; font-size:13px; }
+  .club-shared-tag{ color:var(--green-text); font-weight:700; font-size:var(--fs-2); }
   .club-pr-share{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:8px; }
-  .club-pr-share-label{ color:var(--steel); font-size:13px; }
+  .club-pr-share-label{ color:var(--steel); font-size:var(--fs-2); }
   .measure-fold{ margin-top:8px; }
   .measure-fold > summary{ list-style:none; cursor:pointer; margin-bottom:10px; }
   .measure-fold > summary::-webkit-details-marker{ display:none; }
   .club-admin > summary{ list-style:none; cursor:pointer; margin-bottom:10px; }
   .club-admin > summary::-webkit-details-marker{ display:none; }
-  .club-share-check, .club-share-default{ display:flex; align-items:center; gap:10px; min-height:44px; font-weight:700; font-size:15px; color:var(--chalk); cursor:pointer; }
+  .club-share-check, .club-share-default{ display:flex; align-items:center; gap:10px; min-height:44px; font-weight:700; font-size:var(--fs-3); color:var(--chalk); cursor:pointer; }
   .club-share-check{ flex:0 0 auto; padding-inline-end:4px; }
   .club-share-check[hidden]{ display:none; }
   .club-share-check input, .club-share-default input{ width:22px; height:22px; flex-shrink:0; accent-color:var(--brass); }
@@ -1169,7 +1172,7 @@
      untouched - this only grows the transparent area around it, so nothing
      moves visually. */
   .icon-btn{ min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:12px; }
-  .save-btn{ width:100%; max-width:448px; background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 78%, var(--p-fff-50)), var(--energy)); color:var(--p-1a0d08); font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:0.5px; font-size:19px; padding:16px 0; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 10px 26px -6px var(--p-e85d3d-a50); transition:opacity .15s; }
+  .save-btn{ width:100%; max-width:448px; background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 78%, var(--p-fff-50)), var(--energy)); color:var(--p-1a0d08); font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:0.5px; font-size:var(--fs-4); padding:16px 0; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 10px 26px -6px var(--p-e85d3d-a50); transition:opacity .15s; }
   .save-btn:active{ opacity:.85; }
   /* Shared tinted icon chip, reused by the Phase 2 nav menu and anywhere a
      generic gray icon badge would otherwise be re-derived inline per call
@@ -1218,9 +1221,9 @@
      was one full inline style, byte-identical, copy-pasted between the Add
      and WOD tabs (app.js) - not yet diverged, but the one place two
      buttons duplicated a whole ad-hoc style instead of sharing a class. */
-  .reset-date-btn{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 16px; color:var(--steel); font-weight:700; font-size:13px; white-space:nowrap; }
+  
   .footer{ text-align:center; margin-top:28px; }
-  .footer-note{ color:var(--steel); font-size:12px; margin-bottom:8px; }
+  .footer-note{ color:var(--steel); font-size:var(--fs-1); margin-bottom:8px; }
     /* Launch-readiness audit, A5 (axe, WCAG 2.2 AA 2.5.8 target-size).
      These rendered 42x13 and 92x13 CSS px - well under the 24x24
      minimum - so sign-out and delete-account were genuinely hard to
@@ -1237,7 +1240,7 @@
      .chip-btn or .save-btn instead; the two places where a .link-btn was
      genuinely standing in for a CONTROL (appearance, text size) get the
      segmented treatment just below. */
-  .link-btn{ min-height:var(--tap-min); color:var(--steel); font-size:13px; text-decoration:underline;
+  .link-btn{ min-height:var(--tap-min); color:var(--steel); font-size:var(--fs-2); text-decoration:underline;
     display:inline-flex; align-items:center; min-height:36px; padding:4px 6px; }
   /* UX review, finding 4. The 36px floor above is right for the INLINE
      idiom it was written for - two or three links on one line, one of them
@@ -1296,7 +1299,7 @@
      labels + aria-labelledby, which live in app.js's renderThemeRow()/
      renderTextScaleRow(). Until then, separate them enough to read as two. */
   #textScaleRow{ margin-top:12px; }
-  .segmented-opt, #themeRow [role="radio"], #textScaleRow [role="radio"]{ min-width:0; min-height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:15px; font-weight:600; color:var(--steel); background:transparent; border:1px solid transparent; text-decoration:none; padding:8px 6px; }
+  .segmented-opt, #themeRow [role="radio"], #textScaleRow [role="radio"]{ min-width:0; min-height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:var(--fs-3); font-weight:600; color:var(--steel); background:transparent; border:1px solid transparent; text-decoration:none; padding:8px 6px; }
   .segmented-opt[aria-checked="true"], #themeRow [role="radio"][aria-checked="true"], #textScaleRow [role="radio"][aria-checked="true"]{ background:var(--surface); color:var(--chalk); font-weight:800; border-color:var(--brass); box-shadow:var(--shadow-card); }
   /* COMM-323: card-based Settings redesign. Noam's own .settings-* CSS
      wasn't something this workspace could copy verbatim (crossfit-pwa-Noam
@@ -1308,11 +1311,11 @@
      zone. Replaces the old flat .divider-label + bare .card list. */
   .settings-pane{ display:flex; flex-direction:column; gap:16px; }
   .settings-block{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 16px; box-shadow:var(--shadow-card); }
-  .settings-block-title{ font-weight:800; font-size:13px; color:var(--steel); letter-spacing:.3px; margin-bottom:10px; }
+  .settings-block-title{ font-weight:800; font-size:var(--fs-2); color:var(--steel); letter-spacing:.3px; margin-bottom:10px; }
   /* COMM-355: same cloud-aware 5/30-day staleness signal as before, now
      with the icon+box treatment a plain colored line lost somewhere along
      the way, instead of reverting to a flat rule with no cloud-awareness. */
-  .settings-warn{ display:flex; align-items:flex-start; gap:8px; background:color-mix(in srgb, var(--yellow) 14%, transparent); border:1px solid var(--yellow); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:12.5px; color:var(--chalk); }
+  .settings-warn{ display:flex; align-items:flex-start; gap:8px; background:color-mix(in srgb, var(--yellow) 14%, transparent); border:1px solid var(--yellow); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:var(--fs-1); color:var(--chalk); }
   .modal-overlay{ position:fixed; inset:0; background:var(--p-000000-a60); z-index:50; display:none; align-items:flex-end; overflow:hidden; }
   /* THE CONFIRM SHEET MUST WIN EVERY TIE. Live bug hunt, fresh round 5
      (2026-09-15) - HIGH, reproduced live.
@@ -1380,7 +1383,7 @@
   @media (display-mode: standalone){
     #navMenuSheet > .modal-head, #settingsSheet > .modal-head, #achievementsOverlay .modal-head{ padding-top:calc(max(env(safe-area-inset-top,0px), 28px) + 16px); }
   }
-  .modal-title{ color:var(--chalk); font-weight:800; font-size:16px; }
+  .modal-title{ color:var(--chalk); font-weight:800; font-size:var(--fs-3); }
   .search-box{ display:flex; align-items:center; margin:0 16px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:8px 12px; gap:8px; }
   /* The input itself is intentionally borderless/transparent (it sits
      inside .search-box's own decorated pill), but that meant outline:none
@@ -1403,7 +1406,7 @@
   #navMenuList{ display:flex; flex-direction:column; }
   /* Nav menu (replaces the old top tabbar) and its user-info card. */
   .who{ display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px; margin:4px 0 18px; box-shadow:var(--shadow-card); }
-  .who-avatar{ width:42px; height:42px; border-radius:50%; background:linear-gradient(160deg, color-mix(in srgb, var(--brass) 45%, var(--p-fff-55)), var(--brass)); color:var(--p-241a0d); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0; }
+  .who-avatar{ width:42px; height:42px; border-radius:50%; background:linear-gradient(160deg, color-mix(in srgb, var(--brass) 45%, var(--p-fff-55)), var(--brass)); color:var(--p-241a0d); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:var(--fs-3); flex-shrink:0; }
   /* Live bug hunt (2026-09-11): an 80-char unbreakable name (cleanStr's own
      cap, e.g. one long repeated character with no spaces) overflowed this
      flex item's edge and bled under the settings edit-icon button and card
@@ -1412,7 +1415,7 @@
      break instead of overflowing. Community's post-body composer already
      wraps the same kind of extreme input correctly; this brings .who-name
      in line with it. */
-  .who-name{ font-weight:800; font-size:15px; overflow-wrap:anywhere; }
+  .who-name{ font-weight:800; font-size:var(--fs-3); overflow-wrap:anywhere; }
   /* The same break rule .who-name carries, for the member rows that render a
      name from the server. Live bug hunt, fresh round 7 (2026-09-15): the
      overflow-wrap fix was added for one screen and scoped to that one
@@ -1421,8 +1424,8 @@
      row - measured bleeding to -440px, off the edge of the viewport and
      under the row's own buttons. A long single-token name is not exotic in
      Hebrew, and these rows take their text from whatever a member typed. */
-  .member-name{ overflow-wrap:anywhere; min-width:0; }
-  .who-sub{ color:var(--steel); font-size:12.5px; margin-top:2px; }
+  
+  .who-sub{ color:var(--steel); font-size:var(--fs-1); margin-top:2px; }
   .navrow{ width:100%; display:flex; align-items:center; gap:10px; padding:12px 10px; border-radius:14px; text-align:right; min-height:44px; }
   .navrow.active{ background:color-mix(in srgb, var(--energy) 10%, transparent); }
   .navrow.active .nav-label{ color:var(--energy); }
@@ -1443,7 +1446,7 @@
      Same specificity as .tabbtn (0,1,0 each) and .navrow comes later in this
      file, which is why every OTHER property in that rule did get cancelled
      and these two were the exact pair left over. */
-  .navrow.tabbtn{ flex:none; min-width:0; flex-direction:row; justify-content:flex-start; padding:12px 10px; border-radius:14px; font-size:15px; color:inherit; border:none; box-shadow:none; white-space:normal; }
+  .navrow.tabbtn{ flex:none; min-width:0; flex-direction:row; justify-content:flex-start; padding:12px 10px; border-radius:14px; font-size:var(--fs-3); color:inherit; border:none; box-shadow:none; white-space:normal; }
   /* COMM-350: same tint percentage and shadow as .tabbtn.active (bottom tab
      bar) now that COMM-327 settled the nav IA - both are the same "which
      section am I in" idiom, just rendered as a row instead of a bar
@@ -1453,18 +1456,18 @@
      .subtabbtn (WOD Rx/Scaled) stays its own solid-pill segmented-control
      treatment on purpose - a different widget convention, not a nav tab. */
   .navrow.tabbtn.active{ background:color-mix(in srgb, var(--energy) 14%, transparent); border-color:transparent; box-shadow:var(--shadow-sm); }
-  .nav-label{ font-weight:700; font-size:15px; flex:1; }
-  .nav-sub{ color:var(--steel); font-size:12px; margin-top:1px; }
+  .nav-label{ font-weight:700; font-size:var(--fs-3); flex:1; }
+  
   .subnav{ padding:0 0 8px 52px; display:flex; flex-direction:column; gap:2px; }
-  .subitem{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:9px 10px; font-size:13.5px; font-weight:600; color:var(--steel); border-radius:10px; min-height:44px; text-align:right; }
-  .nav-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:var(--energy); color:var(--p-fff); font-size:10px; font-weight:800; flex-shrink:0; }
-  .divider-label{ color:var(--steel); font-size:11.5px; font-weight:700; letter-spacing:.5px; padding:16px 10px 6px; }
+  
+  
+  .divider-label{ color:var(--steel); font-size:var(--fs-caption); font-weight:700; letter-spacing:.5px; padding:16px 10px 6px; }
   /* Phase 6: each of the 4 solo tabs gets a small page-title at the top of
      its own content, additive above what was already there (the calendar's
      own prev/next-month row, for example, is untouched below this) - the
      only page identity before this was the one global header shared by
      every tab. */
-  .page-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:.3px; font-size:22px; color:var(--chalk); margin-bottom:14px; }
+  .page-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; letter-spacing:.3px; font-size:var(--fs-5); color:var(--chalk); margin-bottom:14px; }
   /* Desktop / wide-viewport layout. Everything here lives inside the media
      query on purpose - below 900px .app-shell/.desktop-sidebar have no
      rules at all, so the mobile layout (#app centered, max-width:480px,
@@ -1474,7 +1477,7 @@
      .desktop-sidebar directly above - #contextCol is in the markup at every
      width but is display:none by default, so the phone layout cannot see
      it. See the ≥1200px block further down for what it becomes. */
-  .context-col{ display:none; }
+  
   @media (min-width: 900px){
     .app-shell{ display:flex; align-items:flex-start; justify-content:center; gap:32px; max-width:1100px; margin:0 auto; padding:28px 24px; }
     .desktop-sidebar{ display:flex; flex-direction:column; width:248px; flex-shrink:0; position:sticky; top:28px; background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:18px 14px; box-shadow:var(--shadow-card); }
@@ -1628,8 +1631,7 @@
        once there is a third column in the row, #app goes back to
        sharing it instead of claiming 940px of it. Written this way so
        that reordering these two blocks cannot change the outcome. */
-    .app-shell:not(:has(> .context-col > *)) #app:has(#content .subtabbar[aria-label="ניווט בניהול"]),
-    .app-shell:not(:has(> .context-col > *)) #app:has(#content .subtabbar #manageTab-moderation){ max-width:940px; }
+    
     /* (4b) The same rule, extended 2026-09-17 on the owner's instruction to
        widen the other surfaces that are tables rather than forms.
 
@@ -1657,39 +1659,12 @@
        every community sub-tab, so matching the id alone would widen the feed
        and the account form too. The manage rule can match on presence
        because the whole manage BAR only exists on that tab. */
-    .app-shell:not(:has(> .context-col > *)) #app:has(#content .subtabbar #commTab-directory[aria-selected="true"]){ max-width:940px; }
+    
   }
-  @media (min-width: 1280px){
-    /* (3) Every rule below is gated on the column actually having an
-       element child. Nothing here can put an empty box on screen. */
-    .app-shell:has(> .context-col > *){ gap:24px; padding-inline:20px; }
-    /* (1), and this line is the whole of it. The ≥900 block gives #app
-       `flex:1` with `max-width:560px`, which reads as "560px" only while
-       there are two columns in the row. Add a third flex item and the
-       grow/shrink maths reasserts itself: measured at 1280px before this
-       rule, #app collapsed to 424px because the context column reached
-       its 520px cap and the remainder was all #app had left. 560px is a
-       constraint, not a preference - it is the width the logging screen
-       was designed at - so in three-column mode #app stops being
-       flexible at all and the context column absorbs every pixel of the
-       difference (384px at 1280, 520px at 1440 and above). */
-    .app-shell:has(> .context-col > *) > #app{ flex:0 0 560px; }
-    .app-shell:has(> .context-col > *) > .context-col{
-      display:block; flex:1 1 380px; min-width:380px; max-width:520px;
-      /* Same card as .desktop-sidebar, deliberately identical so the two
-         side columns read as one shell rather than two components. */
-      position:sticky; top:28px; background:var(--surface); border:1px solid var(--border);
-      border-radius:20px; padding:18px 16px; box-shadow:var(--shadow-card);
-      /* The sidebar is short enough to never need this; the context
-         column hosts history tables and badge grids, so it scrolls
-         inside its own sticky card instead of growing past the viewport
-         and taking the stick with it. */
-      max-height:calc(100dvh - 56px); overflow-y:auto; overscroll-behavior:contain;
-    }
-  }
+  
   .cat-group{ margin-bottom:14px; }
   .cat-head{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-  .cat-name{ color:var(--steel); font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
+  .cat-name{ color:var(--steel); font-size:var(--fs-1); font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
   /* Security hunt round 8: the delete-custom-wod X had zero gap to the
      pick-wod button beside it - pick-wod is flex:1 and fills all remaining
      row width, so space-between alone left nothing between them. gap is
@@ -1707,16 +1682,16 @@
      surface (.card/.chart-card) in this app. */
   .cal-panel{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px; box-shadow:var(--shadow-card); margin-bottom:16px; overflow:hidden; }
   .cal-legend{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:4px; }
-  .cal-legend-item{ display:flex; align-items:center; gap:6px; color:var(--steel); font-size:12px; }
+  .cal-legend-item{ display:flex; align-items:center; gap:6px; color:var(--steel); font-size:var(--fs-1); }
   .cal-month-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
   .cal-month-stat{ text-align:center; background:var(--surface2); border-radius:12px; padding:10px 6px; }
-  .cal-month-stat-value{ font-weight:800; font-size:18px; color:var(--chalk); }
-  .cal-month-stat-label{ color:var(--steel); font-size:12px; margin-top:2px; }
+  .cal-month-stat-value{ font-weight:800; font-size:var(--fs-4); color:var(--chalk); }
+  .cal-month-stat-label{ color:var(--steel); font-size:var(--fs-1); margin-top:2px; }
   .cal-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   .cal-nav-btn{ width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
-  .cal-month-label{ font-weight:800; font-size:15px; }
+  .cal-month-label{ font-weight:800; font-size:var(--fs-3); }
   .cal-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:6px; }
-  .cal-weekday{ text-align:center; color:var(--steel); font-size:12px; font-weight:700; }
+  .cal-weekday{ text-align:center; color:var(--steel); font-size:var(--fs-1); font-weight:700; }
   .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:18px; }
   /* UX audit, defect 3: seven cells share a ~326px row inside
      .cal-panel, which fixes their WIDTH at about 43px - there is no width
@@ -1741,7 +1716,7 @@
   .cal-cell.empty{ background:transparent; border-color:transparent; }
   .cal-cell.today{ border-color:var(--chalk); }
   .cal-cell.selected{ background:var(--surface2); border-color:var(--brass); }
-  .cal-daynum{ font-size:13px; font-weight:600; color:var(--chalk); }
+  .cal-daynum{ font-size:var(--fs-2); font-weight:600; color:var(--chalk); }
   .cal-dot{ width:5px; height:5px; border-radius:999px; background:var(--steel); }
   .cal-dot.pr{ background:var(--brass); }
   /* Scene-scoped calendar redesign (2026-09-08 redline): every cell had
@@ -1761,7 +1736,7 @@
      a layout. 34px keeps the 44px cell itself as the tap target, which is
      what the accessibility floor measures. */
   body[data-scene] .cal-cell{ aspect-ratio:1; min-height:44px; min-width:0; display:grid; grid-template-rows:1fr 7px; justify-items:center; align-items:center; border-radius:0; background:transparent; border:none; position:relative; }
-  body[data-scene] .cal-daynum{ display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:999px; font-size:14px; font-weight:600; color:var(--chalk); }
+  body[data-scene] .cal-daynum{ display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:999px; font-size:var(--fs-2); font-weight:600; color:var(--chalk); }
   /* Today: a subtle ring, not a filled shape - distinguishable from
      "selected" without relying on color alone (SCREEN_ACCEPTANCE.md:
      "selected date, workout date and today remain distinguishable without
@@ -1780,13 +1755,13 @@
      treatment the plot's own PR dots and the card's headline use. */
   .chart-compact{ display:flex; flex-direction:column; gap:6px; padding:10px 0 2px; }
   .chart-compact-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:8px 12px; }
-  .chart-compact-value{ font-weight:700; font-size:15px; color:var(--chalk); }
+  .chart-compact-value{ font-weight:700; font-size:var(--fs-3); color:var(--chalk); }
   .chart-compact-value.pr{ color:var(--brass); }
-  .chart-compact-date{ font-size:12px; color:var(--steel); font-weight:600; }
+  .chart-compact-date{ font-size:var(--fs-1); color:var(--steel); font-weight:600; }
   .report-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; box-shadow:var(--shadow-card); }
-  .report-flag{ font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .report-flag{ font-size:var(--fs-1); font-weight:700; padding:2px 8px; border-radius:999px; }
   .subtabbar{ display:flex; background:var(--surface2); border-radius:12px; padding:3px; margin-bottom:16px; border:1px solid var(--border); }
-  .subtabbtn{ flex:1; min-height:44px; padding:8px 0; border-radius:9px; font-weight:700; font-size:13px; color:var(--steel); }
+  .subtabbtn{ flex:1; min-height:44px; padding:8px 0; border-radius:9px; font-weight:700; font-size:var(--fs-2); color:var(--steel); }
   .subtabbtn.active{ background:var(--surface); color:var(--chalk); box-shadow:var(--shadow-sm); }
   /* Design spec section 3.6 — RX IS THE DEFAULT AND THAT IS A DATA-INTEGRITY
      BUG, NOT A COPY BUG.
@@ -1833,16 +1808,18 @@
      there is nothing to mirror into the two dark blocks. */
   .rx-toggle{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
   .rx-toggle.unset{ border:1px dashed var(--brass); border-radius:14px; padding:4px; gap:4px; }
-  .rx-btn{ flex:1 1 30%; min-width:104px; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:8px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:15px; color:var(--steel); line-height:1.2; }
-  .rx-btn.active-rx{ background:var(--p-3f8455-a15); border-color:var(--green); color:var(--green); }
-  .rx-btn.active-scaled{ background:var(--p-e0b23c-a15); border-color:var(--yellow); color:var(--yellow); }
+  .rx-btn{ flex:1 1 30%; min-width:104px; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:8px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:var(--fs-3); color:var(--steel); line-height:1.2; }
+  /* Q-53: the selected chips name their state in --chalk (AA on the tinted fill); green, yellow and blue stay in the
+     border and the fill. */
+  .rx-btn.active-rx{ background:var(--p-3f8455-a15); border-color:var(--green); color:var(--chalk); }
+  .rx-btn.active-scaled{ background:var(--p-e0b23c-a15); border-color:var(--yellow); color:var(--chalk); }
   /* Rx+ — "heavier than prescribed". Built from color-mix over var(--blue)
      rather than a literal rgba, which is the fix the .active-type comment
      just below spells out: a hard-coded tint cannot follow a token across
      themes, and --blue is a different colour in light and dark. Because
      every part of this rule is a token, it themes itself and needs no copy
      in either dark block. */
-  .rx-btn.active-plus{ background:color-mix(in srgb, var(--blue) 15%, transparent); border-color:var(--blue); color:var(--blue); }
+  .rx-btn.active-plus{ background:color-mix(in srgb, var(--blue) 15%, transparent); border-color:var(--blue); color:var(--chalk); }
   /* Direction 06 token fix: this literal (201,75,41) was the PRE-redesign
      light --energy's rgb, so once light --energy moved to match dark's
      coral, this tint silently stopped matching its own border-color/color
@@ -1856,10 +1833,12 @@
      same way .format-chip.active .format-chip-sub does — a steel-grey
      subtitle on a green chip reads as disabled text rather than part of the
      selected option. Slightly dimmed so it stays subordinate to the label. */
-  .rx-btn .term-sub{ font-size:12px; margin-top:1px; }
-  .rx-btn.active-rx .term-sub, .rx-btn.active-scaled .term-sub, .rx-btn.active-plus .term-sub, .rx-btn.active-type .term-sub{ color:inherit; opacity:.8; }
-  .wod-desc{ color:var(--steel); font-size:12px; margin-top:2px; }
-  .text-input{ width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:10px 12px; color:var(--chalk); font-size:16px; }
+  .rx-btn .term-sub{ font-size:var(--fs-1); margin-top:1px; }
+  .rx-btn.active-rx .term-sub, .rx-btn.active-scaled .term-sub, .rx-btn.active-plus .term-sub, .rx-btn.active-type .term-sub{ color:inherit; }
+  .wod-desc{ color:var(--steel); font-size:var(--fs-1); margin-top:2px; }
+  /* Q-53: field borders at 3:1 against their surface (WCAG 1.4.11), placeholders at 4.5:1. */
+  ::placeholder{ color:var(--steel); opacity:1; }
+  .text-input{ width:100%; background:var(--surface2); border:1px solid var(--color-input-border); border-radius:12px; padding:10px 12px; color:var(--chalk); font-size:var(--fs-3); }
   /* Live bug hunt (2026-09-11): the ≥1200px staff-tier rule widens #app to
      ~940px for genuinely tabular admin work (roster, moderation queue,
      analytics) - see that rule's own comment further down. The person-
@@ -1902,7 +1881,7 @@
   :root[data-scheme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
   :root[data-scheme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   :root[data-scheme="dark"] input[type="time"]::-webkit-calendar-picker-indicator{ filter:invert(1) brightness(1.4); }
-  .format-chip{ min-height:44px; padding:10px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:13px; color:var(--steel); text-align:center; flex:1; }
+  .format-chip{ min-height:44px; padding:10px 6px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-weight:700; font-size:var(--fs-2); color:var(--steel); text-align:center; flex:1; }
   /* color:var(--energy-text), not --energy: found by a light-theme axe
      pass this session - --energy (#E85D3D since it was unified across
      themes earlier today) is a FILL/border tone, 3.46:1 against white,
@@ -1923,7 +1902,7 @@
      instead of re-deriving it; .format-chip-sub is kept as the selector the
      existing markup already uses, sharing the identical declaration rather
      than being a second, drifting copy of it. */
-  .format-chip-sub, .term-sub{ display:block; font-weight:600; font-size:13px; color:var(--steel); margin-top:3px; line-height:1.3; }
+  .format-chip-sub, .term-sub{ display:block; font-weight:600; font-size:var(--fs-2); color:var(--steel); margin-top:3px; line-height:1.3; }
   .format-chip.active .format-chip-sub{ color:var(--energy); opacity:.85; }
   /* ...and the format row becomes 2x2 rather than 4-across. At 390px, four
      flex:1 chips are ~85px wide, where a 13px gloss like "כמה סיבובים
@@ -2027,13 +2006,13 @@
   .medal-shape.shape-circle{ height:64px; }
   .capstone-badge{ width:auto; }
   .capstone-badge .medal-shape{ width:104px; height:104px; }
-  .capstone-badge .medal-name{ font-size:14px; }
+  .capstone-badge .medal-name{ font-size:var(--fs-2); }
   .capstone-badge.earned .medal-shape{ filter:drop-shadow(0 0 14px var(--glow-color)); }
   @media (prefers-reduced-motion: no-preference){
     .capstone-badge.earned .medal-shape{ animation:medalGlowBig 2.6s ease-in-out infinite; }
   }
   @keyframes medalGlowBig{ 0%,100%{ filter:drop-shadow(0 0 8px var(--glow-color)); } 50%{ filter:drop-shadow(0 0 18px var(--glow-color)); } }
-  .medal-name{ font-size:12px; font-weight:700; color:var(--chalk); margin-top:6px; line-height:1.3; }
+  .medal-name{ font-size:var(--fs-1); font-weight:700; color:var(--chalk); margin-top:6px; line-height:1.3; }
   .medal-badge.locked .medal-name{ color:var(--steel); }
   /* UX audit, defect 3: 9px was the smallest text in the app after the
      nav labels, and it is real content - the criteria that explain how a
@@ -2052,7 +2031,7 @@
      still refuses to break a word when it would fit on a line of its own,
      which is exactly this case at this width. Property only, no colour, so
      it needs no dark-theme twin. */
-  .medal-rule{ font-size:11px; color:var(--steel); margin-top:2px; line-height:1.3; opacity:.85; overflow-wrap:anywhere; }
+  .medal-rule{ font-size:var(--fs-caption); color:var(--steel); margin-top:2px; line-height:1.3; opacity:.85; overflow-wrap:anywhere; }
   .medal-badge.locked .medal-shape{ filter:grayscale(1) brightness(.55); opacity:.4; }
   /* :not(.medal-shape-plate) - a plate's glow is box-shadow on .medal-plate
      now (see that rule above); the shield/circle SVG shapes below keep
@@ -2067,9 +2046,9 @@
   }
 
   .ach-summary{ text-align:center; padding:4px 0 18px; }
-  .ach-summary-level{ font-weight:800; font-size:15px; color:var(--energy); letter-spacing:.3px; margin-bottom:2px; }
-  .ach-summary-num{ font-weight:700; font-size:22px; color:var(--chalk); }
-  .ach-summary-label{ color:var(--steel); font-size:12px; margin-top:2px; }
+  .ach-summary-level{ font-weight:800; font-size:var(--fs-3); color:var(--energy); letter-spacing:.3px; margin-bottom:2px; }
+  .ach-summary-num{ font-weight:700; font-size:var(--fs-5); color:var(--chalk); }
+  .ach-summary-label{ color:var(--steel); font-size:var(--fs-1); margin-top:2px; }
   .ach-level-bar{ width:100%; max-width:220px; height:6px; border-radius:999px; background:var(--surface2); border:1px solid var(--border); margin:10px auto 4px; overflow:hidden; }
   .ach-level-fill{ height:100%; background:var(--energy); border-radius:999px; }
   .ach-section{ margin-bottom:22px; }
@@ -2081,7 +2060,7 @@
      800 here would make the browser synthesise a fake bold and smear both
      faces - the same reason .page-title and .celebration-title above are 400.
      Size goes up a little to carry the lighter weight. */
-  .ach-section-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:15.5px; letter-spacing:.2px; color:var(--chalk); }
+  .ach-section-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:var(--fs-3); letter-spacing:.2px; color:var(--chalk); }
   /* THE FEED'S SCOPE FILTER, riding the "הפיד שלי" section head instead of
      a rail of its own (cloud.js, filterHtml + sectionHead's `trailing`).
      It was four .chip-btn role="tab"s in a .chip-row, measured at 96px tall
@@ -2099,7 +2078,7 @@
      min-height:44px keeps it a real tap target; the smaller font is what
      stops the longest scope label ("אחרי מי שאני עוקב/ת") from truncating
      at 390px, measured, not assumed. */
-  .feed-scope-select{ margin-inline-start:auto; width:auto; max-width:62%; min-height:44px; padding:6px 10px; font-size:13.5px; font-weight:700; }
+  
   /* Usability pass: the Manage tab's "ניהול" sub-tab (cloud.js
      renderManageApp) stacks five rare admin tools - moderation, audit log,
      club settings, analytics, onboarding content - one after another, which
@@ -2111,12 +2090,12 @@
      .ach-section-head/.ach-section-title directly: those sit INSIDE each
      area too (one per sub-section), and a summary needs a disclosure
      affordance those don't. */
-  details.manage-area{ margin-top:18px; }
-  details.manage-area > summary{ display:flex; align-items:center; gap:8px; padding:4px 0; cursor:pointer; list-style:none; font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:15.5px; letter-spacing:.2px; color:var(--chalk); }
-  details.manage-area > summary::-webkit-details-marker{ display:none; }
-  details.manage-area > summary::before{ content:"›"; display:inline-block; color:var(--steel); transition:transform .15s ease; flex-shrink:0; }
-  details.manage-area[open] > summary::before{ transform:rotate(90deg); }
-  details.manage-area > .manage-area-body{ margin-top:12px; }
+  
+  
+  
+  
+  
+  
   .ach-row{ display:flex; gap:14px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; }
   /* Community tab: real buttons and admin-only framing, instead of the
      11px underlined .link-btn (meant for a de-emphasized action like
@@ -2130,7 +2109,7 @@
      (2026-09-15). Chips carry real actions in the Community dialogs (RSVP,
      leave a challenge, share, and the X that closes challengeView and
      eventView), so this is a thumb-accuracy floor, not decoration. */
-  .chip-btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:9px 16px; min-height:44px; border-radius:12px; border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-weight:700; font-size:13px; white-space:nowrap; }
+  .chip-btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:9px 16px; min-height:44px; border-radius:12px; border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-weight:700; font-size:var(--fs-2); white-space:nowrap; }
   /* The primary action carries a tinted shadow so it reads as the one thing
      to press, matching .save-btn's existing treatment rather than inventing a
      second language for the same idea. Tinted with --energy, not black: a
@@ -2182,12 +2161,12 @@
      still the right answer for a secondary action, and this rule is scoped
      to the gate rather than offered app-wide so it cannot quietly become a
      fourth button size. */
-  .gate-alt{ display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:10px 18px; border-radius:12px; border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-weight:700; font-size:14px; text-decoration:none; }
+  
   /* The "‹ חזרה" control on the invite and login steps. Same 44px floor: it
      is the only way out of the invite step that is not the bottom tab bar
      (spec 7.2), and a member who tapped in by accident is exactly the
      member least likely to persevere with a small target. */
-  .gate-back{ display:inline-flex; align-items:center; gap:4px; min-height:44px; padding:8px 10px; color:var(--steel); font-size:14px; font-weight:700; background:none; border:none; }
+  
   /* Design spec section 3, TIER 2 - THE `?` MARKER.
      A term that has an explanation carries a small circle after it. The
      circle is 20px so it does not disturb the line it sits in; the ::after
@@ -2199,21 +2178,21 @@
      The marker never restyles the term itself - an expert reading `AMRAP 20`
      sees exactly today's text plus one grey circle, which is what makes
      tier 2 safe to apply to content rather than only to controls. */
-  .term-mark{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; border:1px solid var(--steel); color:var(--steel); font-size:11px; font-weight:700; line-height:1; margin-inline-start:4px; vertical-align:middle; position:relative; background:none; flex-shrink:0; }
-  .term-mark::after{ content:""; position:absolute; inset:-12px; }
-  .term-mark:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+  
+  
+  
   /* The term sheet (tier 3). A bottom sheet, not a full-screen modal: the
      member must still be able to see the thing they were looking at when
      they asked what the word meant. Nothing here blocks a tap. */
-  .term-sheet-term{ font-size:20px; font-weight:800; color:var(--chalk); line-height:1.2; }
-  .term-sheet-gloss{ font-size:15px; font-weight:700; color:var(--chalk); margin-top:4px; line-height:1.4; }
-  .term-sheet-body{ font-size:14px; color:var(--steel); line-height:1.55; margin-top:10px; }
+  
+  
+  
   /* "אצלך:" - the optional worked example. Brass, because it is the one line
      on the sheet that is about this member's own numbers. */
-  .term-sheet-you{ font-size:14px; color:var(--brass); line-height:1.55; margin-top:8px; }
-  .term-glossary-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; min-height:44px; padding:10px 0; border-top:1px solid var(--border); color:var(--chalk); font-weight:700; font-size:14px; margin-top:14px; }
-  .term-glossary-item{ padding:12px 0; border-bottom:1px solid var(--border); }
-  .term-glossary-item:last-child{ border-bottom:none; }
+  
+  
+  
+  
   /* No rule anywhere styled [disabled] - 75+ disabled buttons across the
      app (a busy submit, a parked filter, a checkbox mid-save) rendered
      pixel-identical to an enabled one, cursor:pointer included. One rule,
@@ -2230,8 +2209,7 @@
      rendered and merely invisible: it stays in the layout, stays
      focusable, stays label-activatable, and is still impossible to see or
      accidentally hit. Not display:none, never for a file input. */
-  .file-input-hidden{ position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-    overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; }
+  
   /* The screen-reader-only class. It was already IN USE (cloud.js's staff
      rail spells the moderation badge's count out for a reader beside an
      aria-hidden numeral) and had no rule anywhere, so that sentence was
@@ -2287,16 +2265,16 @@
      --energy is contrast-safe as a fill/border (this rule's own background/
      border-color), never as small text - the exact distinction this file's
      token comments already establish elsewhere. */
-  .admin-tag{ display:inline-flex; align-items:center; font-size:10px; font-weight:800; letter-spacing:.3px; color:var(--energy-text); background:var(--p-e85d3d-a12); border:1px solid var(--energy); border-radius:999px; padding:2px 9px; margin-inline-start:8px; }
+  
   /* Generic small status pill for non-admin badges (challenge/event "joined",
      completed) - previously these overrode .admin-tag's background only,
      leaving its energy-orange text/border in place underneath a brass fill:
      a two-tone badge for a status with no admin meaning at all. .admin-tag
      itself now stays reserved for real admin-context labels ("ניהול"). */
-  .tag{ display:inline-flex; align-items:center; font-size:10px; font-weight:800; letter-spacing:.3px; border-radius:999px; padding:2px 9px; margin-inline-start:8px; border:1px solid transparent; }
-  .tag-brass{ background:var(--brass); border-color:var(--brass); color:var(--avatar-ink); }
-  .admin-card{ border-color:var(--energy); }
-  .field-label{ font-size:11px; font-weight:700; color:var(--steel); display:block; margin-bottom:4px; }
+  .tag{ display:inline-flex; align-items:center; font-size:var(--fs-caption); font-weight:800; letter-spacing:.3px; border-radius:999px; padding:2px 9px; margin-inline-start:8px; border:1px solid transparent; }
+  
+  
+  
   .field + .field{ margin-top:10px; }
   /* ...but only when the fields are actually stacked. The two-up form rows
      (`<div class="flex gap-10 field">` around two field() labels) make those
@@ -2315,13 +2293,13 @@
      the flex default of min-width:auto, which is what was refusing to
      shrink the input below its content size in the first place. */
   .flex:not(.col) > .field{ flex:1; min-width:0; }
-  .field-error{ display:block; color:var(--red-text); font-size:12px; margin-top:5px; }
+  
   .text-input[aria-invalid="true"]{ border-color:var(--red); }
   .ach-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(72px,1fr)); gap:16px 8px; }
 
   /* Community: identity + timing, so a feed post reads as a person and a
      moment rather than an anonymous card of numbers. */
-  .avatar-badge{ display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:50%; color:var(--avatar-ink); font-weight:800; line-height:1; }
+  
   /* THE CLUB BOARD (design direction C, "לוח הקיר"). Today's programming is
      the one thing on this screen that exists physically in the gym - it is
      written on a board on the wall - so it is drawn as that board rather than
@@ -2330,39 +2308,23 @@
      room, not blend into the feed.
      Slate is darker than --surface in BOTH themes on purpose; it is a
      material, not an elevation, so it does not follow the card ramp. */
-  .wod-board{
-    position:relative;
-    background:
-      radial-gradient(90% 60% at 25% 8%, var(--p-f2ece1-a5_5), transparent 62%),
-      radial-gradient(70% 50% at 85% 95%, var(--p-f2ece1-a3_5), transparent 60%),
-      linear-gradient(178deg, var(--p-1b2531), var(--p-141c27));
-    border:1px solid var(--p-0a0f16);
-    border-radius:8px;
-    padding:20px 18px 18px;
-    margin-bottom:12px;
-    box-shadow:0 1px 0 var(--p-f2ece1-a8) inset, 0 22px 40px -22px var(--p-000000-a95);
-    overflow:hidden;
-    color:var(--p-f2ece1);
-  }
+  
   /* Chalk dust. A data URI, so it costs no request and nothing for the CSP
      to allow. */
-  .wod-board::after{
-    content:""; position:absolute; inset:0; pointer-events:none; opacity:.40; mix-blend-mode:soft-light;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/></filter><rect width='160' height='160' filter='url(%23c)' opacity='.42'/></svg>");
-  }
-  .wod-board > *{ position:relative; }
-  .wod-board-eyebrow{ font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.16em; }
-  .wod-board-date{ font-size:11px; color:var(--p-f2ece1-a45); font-weight:600; }
-  .wod-board-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:21px; line-height:1.15; color:var(--p-fffdf8); margin:14px 0; }
-  .wod-board-lines{ font-family:'JetBrains Mono','Rubik',ui-monospace,monospace; font-size:15px; line-height:1.9; direction:ltr; text-align:left; color:var(--p-f2ece1); white-space:pre-wrap; }
-  .wod-board-rule{ height:1px; background:var(--p-f2ece1-a15); margin:16px 0 14px; }
-  .wod-board-label{ font-size:10.5px; color:var(--p-f2ece1-a45); font-weight:700; letter-spacing:.14em; margin-bottom:9px; }
-  .wod-board-names{ display:flex; flex-wrap:wrap; align-items:center; font-size:14px; font-weight:600; color:var(--p-f2ece1); }
-  .wod-board-sep{ color:var(--p-f2ece1-a28); padding:0 9px; }
-  .wod-board-ghost{ background:var(--p-f2ece1-a6); border-color:var(--p-f2ece1-a15); color:var(--p-f2ece1); }
-  .post-card{ padding:16px; }
-  .post-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .post-head-text{ display:flex; flex-direction:column; gap:1px; min-width:0; flex:1 1 auto; }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   /* THE NAME LINE: the profile link, then the role badge, on ONE line.
      Measured on a 390px phone, both halves of this were wrong. The name is a
      real <button> carrying .link-btn, so it inherited that idiom's UNDERLINE
@@ -2376,26 +2338,25 @@
      underlined. `min-width:0` on both the row and the link is what actually
      lets a flex item shrink below its content width - without it the
      ellipsis never triggers. */
-  .post-author-row{ display:flex; align-items:center; gap:6px; min-width:0; }
-  .post-author{ font-weight:800; font-size:14px; color:var(--chalk); min-width:0; max-width:100%;
-    display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  
+  
   /* Beats .link-btn (two classes to its one) on exactly the three properties
      that idiom sets and this one cannot live with. Everything else about
      .link-btn - that it is a button, its cursor, its focus ring - is kept. */
-  .post-author.link-btn{ text-decoration:none; display:block; min-height:0; padding:0; font-size:14px; }
-  .post-author.link-btn:hover{ text-decoration:none; }
-  .post-author-row .badge-tag{ flex:0 0 auto; font-size:9.5px; padding:1px 6px; }
-  .post-time{ color:var(--steel); font-size:11px; }
-  .post-title{ font-size:16px; margin-bottom:4px; }
-  .post-result{ color:var(--brass); font-weight:700; }
-  .post-photo{ width:100%; max-height:360px; object-fit:cover; border-radius:12px; margin-top:10px; display:block; }
+  
+  
+  
+  
+  
+  
+  
   /* 2-4 photos lay out as a 2-column grid (matching .ach-grid's visual
      weight) instead of stacking full-width - each cell keeps .post-photo's
      own rounding but drops its standalone margin-top in favor of the
      grid's own gap. */
-  .post-media-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:10px; }
-  .post-media-grid .post-photo{ margin-top:0; max-height:200px; }
-  .post-actions{ margin-top:12px; }
+  
+  
+  
   /* Feed polish pass. The action row used to be two identical grey
      .chip-btn boxes - a reaction and a comment count looked exactly like
      any utility toggle elsewhere in the app (a filter chip, a subtab).
@@ -2405,8 +2366,8 @@
      against the actual tinted background, not the untinted --surface -
      both still AA; comments stays a plain, quieter icon+count since it
      opens a thread rather than registering a reaction. */
-  .post-actions .chip-btn[data-community-action="cheer"]{ background:color-mix(in srgb, var(--energy) 8%, var(--surface)); border-color:color-mix(in srgb, var(--energy) 50%, transparent); color:var(--energy-text); font-weight:800; }
-  .post-actions .chip-btn[data-community-action="toggle-comments"]{ background:transparent; border-color:transparent; color:var(--steel); font-weight:600; }
+  
+  
   /* A club-wide notice used to be indistinguishable from any other card
      except for a badge string and an emoji typed into the title - now a
      visibly separate voice in the feed, the same color-mix pattern as the
@@ -2414,32 +2375,32 @@
      background this text sits on, not the untinted --surface: --brass
      .post-title text on this 8% tint measures 5.13:1 light / 6.19:1 dark -
      both still comfortably AA. */
-  .post-card[data-post-type="POST_ANNOUNCEMENT"]{ background:color-mix(in srgb, var(--brass) 8%, var(--surface)); border-color:color-mix(in srgb, var(--brass) 35%, var(--border)); }
-  .post-mark-icon{ background:color-mix(in srgb, var(--brass) 22%, var(--surface)); border:1px solid color-mix(in srgb, var(--brass) 45%, transparent); }
+  
+  
   /* A thin top accent instead of a repainted card - a PR or achievement is
      still an ordinary post, just one worth a half-second longer glance
      scrolling past it, not a second visual language. */
-  .post-card[data-post-type="POST_PR"],.post-card[data-post-type="POST_ACHIEVEMENT"],.post-card[data-post-type="POST_ATTENDANCE_MILESTONE"]{ border-top:3px solid color-mix(in srgb, var(--brass) 55%, transparent); }
+  
   /* Same accent, the two other link-card types that shipped with only a
      bare emoji in their title and nothing else - challenge/event get their
      own hues rather than reusing brass, matching sectionHead("var(--teal)",
      ...)/("var(--blue)", ...) already used for these exact categories
      elsewhere in Community. */
-  .post-card[data-post-type="POST_CHALLENGE"]{ border-top:3px solid color-mix(in srgb, var(--teal) 55%, transparent); }
-  .post-card[data-post-type="POST_EVENT"]{ border-top:3px solid color-mix(in srgb, var(--blue) 55%, transparent); }
+  
+  
   /* The composer trigger - was a plain .chip-btn, now the fake-input row
      every social feed uses for the same tap target: own avatar + a
      placeholder-styled label, full-width, left-aligned text (RTL: text
      starts at the trailing edge, same reading direction as a real input). */
-  .post-composer-trigger{ display:flex; align-items:center; gap:10px; width:100%; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:8px 14px 8px 8px; margin:0 0 10px; box-shadow:var(--shadow-card); text-align:start; }
-  .post-composer-trigger-text{ color:var(--steel); font-size:13.5px; }
-  .comment-row{ display:flex; align-items:flex-start; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:8px 10px; }
-  .tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; margin-inline-start:6px; border-radius:999px; background:var(--red); color:var(--p-fff); font-size:10px; font-weight:800; }
+  
+  
+  
+  .tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; margin-inline-start:6px; border-radius:999px; background:var(--red); color:var(--p-fff); font-size:var(--fs-caption); font-weight:800; }
   /* Promoted from ~19 classless, inline-styled cloud.js elements (COMM-347):
      each of these instances used to retype its whole look inline, in some
      cases identically at 2-3 call sites. Only genuinely dynamic values
      (a computed width, a conditional accent color) stay inline now. */
-  .reaction-strip{ display:flex; align-items:center; gap:6px; margin-top:8px; }
+  
   /* .coach-badge and .pr-badge were two independently-inlined copies of the
      exact same small filled pill - one shared rule, matching how
      .admin-tag/.tag already centralize their own pill look. */
@@ -2458,8 +2419,8 @@
      pill is a LABEL ("מאמן/ת ראשי/ת"), and a label that breaks across two
      lines or picks up the underline of whatever link it happens to sit
      inside is wrong on the comment rows too. */
-  .badge-tag{ display:inline-block; vertical-align:middle; font-size:10px; font-weight:800; color:var(--p-0c0c0c); background:var(--brass); border-radius:999px; padding:1px 7px; white-space:nowrap; text-decoration:none; }
-  .post-menu-wrap{ position:relative; margin-inline-start:auto; flex:0 0 auto; }
+  
+  
   /* THE ⋯ MENU, ANCHORED ON THE SIDE THE ROOM IS ON.
      `margin-inline-start:auto` above puts the button at the card's
      inline-END - the LEFT edge on a Hebrew screen. The panel was anchored
@@ -2473,20 +2434,15 @@
      stays aligned to the control that opened it. The width is capped against
      the viewport as well, so a longer label or a larger text scale cannot
      push it back out. */
-  .post-menu{ position:absolute; inset-inline-end:0; top:calc(100% + 6px); z-index:60;
-    min-width:172px; max-width:min(240px, calc(100vw - 48px));
-    background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:4px;
-    box-shadow:0 10px 30px var(--p-000000-a25); }
+  
   /* 44px is this app's own tap-target floor (.tabbtn, .icon-btn, .link-btn--tap
      all declare it) and these are destructive actions being tapped with a
      thumb. A label too long for one line wraps INSIDE the item and the item
      grows - the panel is an overlay, so it costs the card nothing. */
-  .post-menu-item{ display:flex; align-items:center; width:100%; text-align:start; padding:10px 12px;
-    background:none; border:0; border-radius:8px; color:var(--chalk); font-size:13px; line-height:1.4;
-    min-height:44px; cursor:pointer; }
-  .post-menu-item:hover{ background:var(--surface2); }
-  .post-menu-item:focus-visible{ background:var(--surface2); }
-  .post-menu-item.danger{ color:var(--red-text); }
+  
+  
+  
+  
 
 
   /* ===== מסך תצוגה במועדון (202609230005) =============================
@@ -2496,32 +2452,22 @@
      how it reads from the far side of a room, on a screen nobody will ever
      zoom. */
   :root[data-gym-display="1"] body{ overflow:hidden; }
-  .gd-root{ position:fixed; inset:0; z-index:100; display:flex; flex-direction:column;
-    gap:2.2vmin; padding:4vmin 5vmin; background:var(--club-navy); color:var(--chalk);
-    font-family:inherit; overflow:hidden; }
-  .gd-head{ display:flex; align-items:baseline; justify-content:space-between; gap:2vmin; }
-  .gd-brand{ font-size:3.2vmin; font-weight:800; letter-spacing:.04em; color:var(--brass); }
-  .gd-clock{ font-size:3.2vmin; font-weight:700; color:var(--steel);
-    font-variant-numeric:tabular-nums; }
-  .gd-title{ margin:0; font-size:8vmin; font-weight:800; line-height:1.05; text-wrap:balance; }
-  .gd-note{ font-size:3.2vmin; color:var(--steel); }
-  .gd-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column;
-    gap:1.2vmin; overflow:hidden; flex:1; }
-  .gd-row{ display:flex; align-items:center; gap:2.4vmin; background:var(--surface);
-    border:1px solid var(--border); border-radius:1.6vmin; padding:1.6vmin 2.4vmin; }
-  .gd-rank{ font-size:3.6vmin; font-weight:800; color:var(--steel); min-width:5vmin;
-    font-variant-numeric:tabular-nums; }
-  .gd-name{ font-size:4.4vmin; font-weight:700; flex:1; min-width:0;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .gd-result{ font-size:4.4vmin; font-weight:800; color:var(--energy-text);
-    display:flex; align-items:center; gap:1.2vmin; font-variant-numeric:tabular-nums; }
-  .gd-rx{ font-size:2.2vmin; font-weight:800; color:var(--club-navy);
-    background:var(--brass); border-radius:999px; padding:.3vmin 1.2vmin; }
-  .gd-empty{ flex:1; display:flex; flex-direction:column; align-items:center;
-    justify-content:center; gap:1.6vmin; text-align:center; }
-  .gd-empty-title{ font-size:6vmin; font-weight:800; }
-  .gd-empty-sub{ font-size:3.2vmin; color:var(--steel); }
-  .gd-foot{ font-size:2.2vmin; color:var(--steel); text-align:center; }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
   /* ===== The social feed pass =========================================
      EVERY RULE BELOW IS BUILT FROM TOKENS (--surface, --surface2, --border,
@@ -2533,40 +2479,40 @@
 
   /* The type tag on the head's time line. Was a `· word` glued onto the
      timestamp, which read as part of the date. */
-  .post-type-tag{ display:inline-block; vertical-align:baseline; margin-inline-start:6px; padding:1px 7px; border-radius:999px; background:var(--surface2); color:var(--steel); font-size:10px; font-weight:800; letter-spacing:.02em; }
+  
 
   /* The structured half of a card - a workout's figures, a PR's rows, an
      event's meta - separated from the member's own words above it by a hair
      rather than by a box, so a card with one still reads as one card. */
-  .post-result-block{ margin-top:10px; }
-  .post-result-block:first-child{ margin-top:0; }
+  
+  
 
   /* The reaction pill. Same filled-pill treatment the cheer chip already
      had, plus a pressed state: one reaction per member, so the button is
      either pressed or it is not, and aria-pressed says which. */
-  .reaction-pill{ display:inline-flex; align-items:center; gap:6px; background:color-mix(in srgb, var(--energy) 8%, var(--surface)); border-color:color-mix(in srgb, var(--energy) 50%, transparent); color:var(--energy-text); font-weight:800; }
-  .reaction-pill.is-mine{ background:color-mix(in srgb, var(--energy) 18%, var(--surface)); border-color:var(--energy); }
-  .reaction-pill .reaction-icon{ flex:0 0 auto; }
-  .reaction-pill .reaction-count{ font-variant-numeric:tabular-nums; }
+  
+  
+  
+  
   /* The comment count beside it: the same pill geometry so the two line up,
      but deliberately NOT the same filled treatment - it opens a thread
      rather than registering a reaction, and the rule just below keeps it
      transparent and quiet. Its glyph is a stroke icon on currentColor, so it
      takes --steel from that rule in both themes. */
-  .comment-pill{ display:inline-flex; align-items:center; gap:6px; }
-  .comment-pill .action-icon{ flex:0 0 auto; }
-  .comment-pill .reaction-count{ font-variant-numeric:tabular-nums; }
+  
+  
+  
   /* "דנה ועוד 4" - a name, not a number, and a real button because tapping
      it opens the list of who. */
-  .reaction-summary{ color:var(--steel); font-size:12px; font-weight:600; padding:0 2px; }
-  .reaction-summary:hover{ color:var(--chalk); text-decoration:underline; }
+  
+  
 
   /* Comments under every card: the two latest, the reply links and the
      always-present "הוספת תגובה…" box. The hairline is what separates the
      conversation from the post without adding a second card edge. */
-  .comment-preview-wrap{ margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
-  .comment-preview .comment-row{ background:var(--surface2); border-color:transparent; }
-  .comment-more{ color:var(--steel); font-size:12px; font-weight:600; }
+  
+  
+  
 
   /* THE SEND CONTROL LIVES INSIDE THE FIELD, AND ONLY ONCE THERE IS TEXT.
      It used to be a filled orange .chip-btn beside the input, and on a 390px
@@ -2583,19 +2529,17 @@
      it replaced were carrying: .mention-picker is `position:absolute;
      top:100%` and hangs off THIS element, so dropping `position:relative`
      here would send the @-picker to the initial containing block. */
-  .comment-form{ position:relative; margin-top:8px; }
-  .comment-form .text-input{ width:100%; padding-inline-end:46px; }
-  .comment-send{ position:absolute; inset-inline-end:5px; top:50%; transform:translateY(-50%);
-    width:36px; height:36px; border:0; border-radius:999px; padding:0; background:transparent;
-    color:var(--energy-text); cursor:pointer; display:none; align-items:center; justify-content:center; }
-  .comment-form[data-has-text="1"] .comment-send{ display:inline-flex; }
-  .comment-send:hover{ background:color-mix(in srgb, var(--energy) 12%, transparent); }
-  .comment-send:disabled{ color:var(--steel); cursor:default; }
+  
+  
+  
+  
+  
+  
 
   /* The composer row: the fake input plus the camera beside it. */
-  .post-composer-row{ display:flex; align-items:center; gap:8px; margin:0 0 10px; }
-  .post-composer-row .post-composer-trigger{ flex:1 1 auto; margin:0; }
-  .composer-photo-btn{ flex:0 0 auto; width:40px; height:40px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--steel); font-size:17px; line-height:1; box-shadow:var(--shadow-card); display:flex; align-items:center; justify-content:center; }
+  
+  
+  
 
   /* The streak figure on "החברים הפעילים במועדון". It used to be a .mono
      span holding the WHOLE phrase, and .mono is `direction:ltr;
@@ -2605,8 +2549,8 @@
      the string carried no digit at all. Only the NUMBER is monospaced now -
      digits are what .mono is for - and the words around it stay in the
      document's own direction. */
-  .streak-count{ color:var(--brass); font-weight:700; font-size:12.5px; white-space:nowrap; flex:0 0 auto; }
-  .streak-count .streak-days{ font-weight:800; font-size:13px; }
+  .streak-count{ color:var(--brass); font-weight:700; font-size:var(--fs-1); white-space:nowrap; flex:0 0 auto; }
+  .streak-count .streak-days{ font-weight:800; font-size:var(--fs-2); }
   /* THE SAME UNDERLINE, ONE CARD DOWN. The rows of that list put the avatar
      and the member's name inside one .link-btn, which is this app's INLINE
      link idiom - so the name carried the same rule under it that the post
@@ -2617,62 +2561,57 @@
      eleven other member-name links in this module still carry the underline
      on surfaces this pass did not photograph - see the PR - and this is what
      they move to. */
-  .member-row-link{ display:flex; align-items:center; gap:10px; min-width:0; padding:0; min-height:0;
-    color:inherit; text-decoration:none; text-align:start; }
-  .member-row-link .member-row-name{ font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  
+  
 
   /* "התאמנו היום" - the same rows the card used, laid out as faces. Scrolls
      horizontally rather than wrapping, so six classmates cost one row at any
      width. RTL: the row is a plain flex and inherits the document direction,
      so the first face sits at the trailing (right) edge like every other
      list on this screen. */
-  .classmates-strip{ margin:0 0 12px; }
-  .classmates-strip-row{ display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
-  .classmate-cell{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:5px; width:62px; }
-  .classmate-chip{ display:flex; flex-direction:column; align-items:center; gap:5px; width:100%; background:none; border:0; padding:0; color:inherit; cursor:pointer; }
-  .classmate-chip-name{ font-size:11px; color:var(--steel); max-width:62px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  
+  
+  
+  
+  
   /* The card's follow control, at strip size. Only the metrics change - the
      button, its action and follow() behind it are the shared ones. */
-  .classmate-chip-follow .chip-btn{ padding:2px 10px; font-size:10.5px; min-height:0; }
+  
 
   /* Stacked avatars on the club-WOD roll-up. The negative inline margin is
      what makes them overlap; :first-child cancels it so the group still
      starts flush with whatever precedes it. */
-  .stacked-avatars{ display:flex; align-items:center; }
-  .stacked-avatar{ display:inline-flex; margin-inline-start:-8px; border-radius:50%; box-shadow:0 0 0 2px var(--surface); }
-  .stacked-avatar:first-child{ margin-inline-start:0; }
-  .stacked-avatar-more{ width:28px; height:28px; align-items:center; justify-content:center; background:var(--surface2); color:var(--steel); font-size:11px; font-weight:800; }
-  .club-wod-rollup .field-label{ margin-bottom:4px; }
+  
+  
+  
+  
+  
 
   /* "פוסטים חדשים". Sticky rather than fixed, so it rides the top of the
      feed panel and never covers the tab bar or the composer. */
-  .new-posts-pill-wrap{ position:sticky; top:8px; z-index:20; display:flex; justify-content:center; pointer-events:none; height:0; }
-  .new-posts-pill{ pointer-events:auto; box-shadow:0 6px 18px var(--p-000000-a18); }
+  
+  
 
   /* Pull to refresh. Height is written by the touchmove handler, never by a
      render; data-ready flips once the pull passes the trigger distance. */
-  .pull-refresh{ height:0; overflow:hidden; display:flex; align-items:center; justify-content:center; transition:height .18s ease; }
-  .pull-refresh-mark{ width:22px; height:22px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--brass); }
-  .pull-refresh[data-ready="1"] .pull-refresh-mark{ border-color:var(--brass); border-top-color:var(--energy); }
-  @media (prefers-reduced-motion: no-preference){
-    .pull-refresh[data-ready="1"] .pull-refresh-mark{ animation:pullSpin .9s linear infinite; }
-  }
+  
+  
+  
+  
   @keyframes pullSpin{ to{ transform:rotate(360deg); } }
 
   /* Skeleton blocks. One rule for all six shapes the loading card uses, and
      the shimmer is behind a reduced-motion guard like every other animation
      in this file. */
-  .skeleton-block{ background:var(--border); border-radius:8px; }
-  @media (prefers-reduced-motion: no-preference){
-    .skeleton-block{ background:linear-gradient(90deg, var(--border) 25%, var(--surface2) 50%, var(--border) 75%); background-size:200% 100%; animation:skeletonShimmer 1.4s ease-in-out infinite; }
-  }
+  
+  
   @keyframes skeletonShimmer{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
-  .progress-track{ background:var(--border); border-radius:999px; height:6px; overflow:hidden; margin-top:4px; }
-  .progress-track > div{ height:100%; background:var(--brass); }
-  .notif-group{ border-inline-start:3px solid transparent; }
-  .notif-group.emphasise{ border-inline-start-color:var(--energy); }
-  .notif-group-body{ padding-inline-start:8px; }
-  .badge-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  
+  
+  
+  
+  
+  
 
   .celebration-stars{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
   .cstar{ position:absolute; opacity:.35; }
@@ -2680,9 +2619,9 @@
     .cstar{ animation:starTwinkle 1.8s ease-in-out infinite; }
   }
   @keyframes starTwinkle{ 0%,100%{ opacity:.3; transform:scale(.8) rotate(0deg); } 50%{ opacity:1; transform:scale(1.2) rotate(15deg); } }
-  .celebration-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:30px; color:var(--brass); margin-bottom:6px; letter-spacing:.5px; }
-  .celebration-pr-line{ font-size:15px; font-weight:700; color:var(--chalk); margin-bottom:6px; }
-  .celebration-sub{ color:var(--steel); font-size:14px; margin-bottom:20px; }
+  .celebration-title{ font-family:'Anton','Secular One','Rubik',sans-serif; font-weight:400; font-size:var(--fs-6); color:var(--brass); margin-bottom:6px; letter-spacing:.5px; }
+  .celebration-pr-line{ font-size:var(--fs-3); font-weight:700; color:var(--chalk); margin-bottom:6px; }
+  .celebration-sub{ color:var(--steel); font-size:var(--fs-2); margin-bottom:20px; }
   .celebration-medals{ display:flex; justify-content:center; gap:16px; flex-wrap:wrap; }
   @media (prefers-reduced-motion: no-preference){
     .celebration-sheet{ animation:celebrationPop .35s cubic-bezier(.34,1.56,.64,1); }
@@ -2755,29 +2694,29 @@
   .join-qr{ width:220px; max-width:100%; height:auto; aspect-ratio:1; display:block; border-radius:10px; }
   .join-qr-bg{ fill:var(--p-ffffff); }
   .join-qr-fg{ fill:var(--p-000000); }
-  .join-code-label{ text-align:center; color:var(--steel); font-size:14px; font-weight:700; margin-bottom:4px; }
+  .join-code-label{ text-align:center; color:var(--steel); font-size:var(--fs-2); font-weight:700; margin-bottom:4px; }
   .join-code-big{ display:flex; flex-wrap:wrap; justify-content:center; column-gap:0.5em; text-align:center;
-    font-family:ui-monospace, 'JetBrains Mono', monospace; font-weight:800; font-size:40px; line-height:1.15;
+    font-family:ui-monospace, 'JetBrains Mono', monospace; font-weight:800; font-size:var(--fs-display); line-height:1.15;
     letter-spacing:3px; padding:12px 8px; margin-bottom:12px; border:2px solid var(--border); border-radius:14px;
     background:var(--surface2); user-select:all; overflow-wrap:anywhere; }
-  .join-link-text{ text-align:center; font-family:ui-monospace, monospace; font-size:14px; overflow-wrap:anywhere; user-select:all; margin-bottom:12px; }
-  .join-field-label{ display:block; font-size:17px; font-weight:700; margin-bottom:8px; }
-  .join-field{ width:100%; box-sizing:border-box; min-height:64px; font-size:30px; font-weight:800; text-align:center; letter-spacing:3px;
+  .join-link-text{ text-align:center; font-family:ui-monospace, monospace; font-size:var(--fs-2); overflow-wrap:anywhere; user-select:all; margin-bottom:12px; }
+  .join-field-label{ display:block; font-size:var(--fs-4); font-weight:700; margin-bottom:8px; }
+  .join-field{ width:100%; box-sizing:border-box; min-height:64px; font-size:var(--fs-6); font-weight:800; text-align:center; letter-spacing:3px;
     font-family:ui-monospace, 'JetBrains Mono', monospace; text-transform:uppercase; margin-bottom:12px; }
-  .join-field::placeholder{ font-size:20px; letter-spacing:1px; font-weight:600; text-transform:none; }
-  .join-err{ color:var(--red-text); font-size:17px; font-weight:700; line-height:1.5; margin-bottom:14px; }
-  .join-lead{ font-size:16px; line-height:1.6; margin-bottom:14px; text-align:center; }
+  .join-field::placeholder{ font-size:var(--fs-5); letter-spacing:1px; font-weight:600; text-transform:none; }
+  .join-err{ color:var(--red-text); font-size:var(--fs-4); font-weight:700; line-height:1.5; margin-bottom:14px; }
+  .join-lead{ font-size:var(--fs-3); line-height:1.6; margin-bottom:14px; text-align:center; }
   .join-steps{ list-style:none; margin:0 0 14px; padding:0; display:flex; flex-direction:column; gap:10px; }
-  .join-step{ display:flex; align-items:center; gap:12px; font-size:16px; line-height:1.5; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); }
+  .join-step{ display:flex; align-items:center; gap:12px; font-size:var(--fs-3); line-height:1.5; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); }
   .join-step-pic{ flex-shrink:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--surface); color:var(--blue); }
   .join-step-pic img{ width:36px; height:36px; border-radius:8px; }
   .join-step-num{ font-weight:800; }
   /* Q-38b: every field in the connect dialog (sign-up, login, forgot) is at least 48px tall with 17px text. */
-  #connectBody .text-input:not(.join-field){ min-height:48px; font-size:17px; }
-  .join-hint{ color:var(--steel); font-size:14px; line-height:1.5; margin-bottom:6px; }
-  .pw-toggle{ display:inline-flex; align-items:center; min-height:44px; font-size:15px; padding:4px 0; }
+  #connectBody .text-input:not(.join-field){ min-height:48px; font-size:var(--fs-4); }
+  .join-hint{ color:var(--steel); font-size:var(--fs-2); line-height:1.5; margin-bottom:6px; }
+  .pw-toggle{ display:inline-flex; align-items:center; min-height:44px; font-size:var(--fs-3); padding:4px 0; }
   .more-options{ margin-top:8px; text-align:center; }
-  .more-options > summary{ display:inline-flex; align-items:center; min-height:44px; padding:0 8px; cursor:pointer; color:var(--steel); font-size:15px; font-weight:700; }
+  .more-options > summary{ display:inline-flex; align-items:center; min-height:44px; padding:0 8px; cursor:pointer; color:var(--steel); font-size:var(--fs-3); font-weight:700; }
   .header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
   /* Q-43a: the header is the logo and one 44px gear; on a scene screen the grid is spacer / logo / gear. */
   #settingsGearBtn{ width:auto; min-width:52px; min-height:52px; height:auto; padding:4px 6px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
@@ -2803,9 +2742,9 @@
   .segmented-opt, #themeRow [role="radio"], #textScaleRow [role="radio"]{ overflow-wrap:anywhere; text-align:center; line-height:1.2; }
   .gear-dot{ position:absolute; top:6px; inset-inline-start:6px; width:10px; height:10px; border-radius:50%; background:var(--energy); box-shadow:0 0 0 2px var(--surface); }
   .settings-advanced{ margin-top:4px; }
-  .settings-advanced > summary{ display:flex; align-items:center; min-height:48px; padding:0 4px; cursor:pointer; font-weight:800; font-size:15px; color:var(--chalk); }
-  .join-forgot{ font-size:17px; font-weight:700; min-height:44px; padding:8px 12px; }
-  .join-after{ font-size:17px; font-weight:700; line-height:1.6; text-align:center; margin-bottom:14px; }
+  .settings-advanced > summary{ display:flex; align-items:center; min-height:48px; padding:0 4px; cursor:pointer; font-weight:800; font-size:var(--fs-3); color:var(--chalk); }
+  .join-forgot{ font-size:var(--fs-4); font-weight:700; min-height:44px; padding:8px 12px; }
+  .join-after{ font-size:var(--fs-4); font-weight:700; line-height:1.6; text-align:center; margin-bottom:14px; }
   /* Approved immersive composition — shared by the existing render paths. */
   :root{ --club-coral:var(--p-f0443e); --club-blue:var(--p-1455b8); }
   /* THE SAME REDUCTION THE ADD SCREEN ALREADY HAD, on the three screens that
@@ -2839,7 +2778,7 @@
   .scene-page__media::after{ content:""; position:absolute; inset:0; background:inherit; background-size:auto max(450px, 54svh); background-position:center top; background-repeat:no-repeat; }
   .scene-page__intro{ inset-block-start:auto; top:calc(var(--scene-photo-height) - 100px); }
   .scene-page__brand{ display:none; }
-  .scene-page__title{ font-size:34px; }
+  .scene-page__title{ font-size:var(--fs-display); }
   .scene-page__subtitle{ margin-top:4px; }
   .scene-sheet{ background:var(--club-paper); }
   .scene-page--history .cal-panel{ padding:0; border:0; background:transparent; box-shadow:none; }
@@ -2871,7 +2810,7 @@
      white-on-energy is 2.83:1 and would have failed AA outright. */
   body[data-scene] .cal-cell.selected .cal-daynum{ background:var(--energy); color:var(--on-energy); }
   @media(min-width:900px){ .scene-page{margin-inline:-16px;} }
-  .scene-summary-meta{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; font-weight:700; margin-bottom:12px; }
+  .scene-summary-meta{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:var(--fs-1); font-weight:700; margin-bottom:12px; }
   .scene-page--add .pick-hero{ background:var(--surface); border-color:var(--border); margin-top:16px; }
   .scene-page--add .pick-hero::before,.scene-page--add .pick-hero::after{ display:none; }
   .scene-page--add .chart-card{ padding:8px 12px; }
@@ -2929,9 +2868,9 @@
   .scene-page--progress .scene-sheet > .stat-row{order:2; margin-top:16px;}
   .scene-page--progress .scene-sheet > .weekly-streak{order:2;}
   .scene-page--progress .scene-sheet > .monthly-summary{order:2;}
-  .scene-progress-primary{margin-bottom:16px;}
-  .scene-progress-primary > .chart-card{border-radius:16px !important; border:1px solid var(--border) !important;}
-  .settings-club-edge{height:5px; background:linear-gradient(110deg,var(--club-blue) 0 65%,var(--club-cream) 65% 72%,var(--club-coral) 72% 80%,var(--club-cream) 80%);}
+  
+  
+  .settings-club-edge{height:5px; background:linear-gradient(110deg,var(--club-blue) 0 65%,var(--club-cream) 65% 72%,var(--color-accent) 72% 80%,var(--club-cream) 80%);}
   #achievementsOverlay .modal-sheet{position:relative;}
   #achievementsOverlay .modal-head{position:absolute; top:0; inset-inline:0; z-index:3; background:var(--p-081523-a85); color:var(--p-fff);}
   #achievementsOverlay .modal-head .icon-btn{color:var(--p-fff) !important;}
@@ -2977,8 +2916,8 @@
   #achievementsOverlay{align-items:stretch; padding:0;}
   #achievementsOverlay .modal-sheet{height:100svh; max-height:100svh; border-radius:0;}
   #achievementsOverlay .modal-title{color:var(--p-fff);}
-  .scene-page--progress svg[role="img"] polyline{stroke:var(--club-coral);}
-  .scene-page--progress svg[role="img"] circle{fill:var(--club-coral); stroke:var(--club-coral);}
+  .scene-page--progress svg[role="img"] polyline{stroke:var(--color-accent);}
+  .scene-page--progress svg[role="img"] circle{fill:var(--color-accent); stroke:var(--color-accent);}
 
   @media(max-width:320px){
     .scene-page__intro{top:calc(var(--scene-photo-height) - 140px);}
@@ -3006,7 +2945,7 @@
   .scene-page--add .steppers .stepper:last-child:nth-child(3){grid-column:1/-1;}
   .scene-page--add .stepper-val,.scene-page--add .stepper-btn{min-width:44px; min-height:44px;}
   @media(min-width:900px){.scene-page--add .steppers{grid-template-columns:repeat(3,minmax(0,1fr));}.scene-page--add .steppers .stepper:last-child:nth-child(3){grid-column:auto;}}
-  .scene-page--gymnastics{--scene-image:url('./assets/club-photos/library-rings.jpg');}
+  
   body[data-scene] .cal-cell.today .cal-daynum{text-decoration:underline; text-underline-offset:4px;}
 
   :root .scene-page > .scene-sheet{background:var(--club-paper);}
@@ -3047,7 +2986,7 @@
     background:var(--surface); backdrop-filter:none; -webkit-backdrop-filter:none;
   }
   .scene-page--achievements .medal-rule{opacity:1; color:var(--steel);}
-  .cal-view-btn{min-height:44px; min-width:44px; padding:4px; color:var(--steel); font-size:12px; font-weight:700;}
+  .cal-view-btn{min-height:44px; min-width:44px; padding:4px; color:var(--steel); font-size:var(--fs-1); font-weight:700;}
   .cal-panel[data-calendar-view="list"] .cal-grid,.cal-panel[data-calendar-view="list"] .cal-weekdays,.cal-panel[data-calendar-view="list"] .cal-legend{display:none;}
   .history-month-list section{margin-bottom:20px;}
 
@@ -3056,9 +2995,7 @@
   @media(min-width:900px){
     #bottomNavWrap{left:max(24px,calc(50% - 420px)); right:auto; width:560px;}
   }
-  @media(min-width:1280px){
-    body:has(.app-shell > .context-col > *) #bottomNavWrap{left:auto; right:calc((100vw - min(1376px,100vw - 40px))/2 + 272px);}
-  }
+  
 
   /* ==== "Navy Stripe" direction — Add screen only (2026-09) ==============
      Approved after several rounds of interactive mockups (glass, bold
@@ -3245,88 +3182,59 @@
     width:264px; flex-shrink:0; position:sticky; top:28px;
     max-height:calc(100dvh - 56px); overflow-y:auto; overscroll-behavior:contain;
   }
-  html[data-layout="desktop"][data-staff="1"] .nav-group{ margin-bottom:14px; }
-  html[data-layout="desktop"][data-staff="1"] .nav-group-head{
-    color:var(--steel); font-size:11px; font-weight:800; letter-spacing:.08em;
-    text-transform:uppercase; padding:6px 10px 4px;
-  }
+  
+  
   /* THE CENTRE COLUMN, and the one tab it applies to. #app is the logging
      column on every other tab and keeps its own width there; only the staff
      home widens, which is what :has() is checking for. Same mechanism the
      ניהול tab's 940px rule already uses two blocks up. */
-  html[data-layout="desktop"][data-staff="1"] #app:has(#content .staff-home){
-    max-width:none; flex:1 1 auto; min-width:0;
-  }
+  
   /* THE LEFT CONTEXT COLUMN. The ≥1280 rules above already reveal
      #contextCol once it has an element child and style it as a sticky card;
      this only sets its measure for the staff shell and makes it appear from
      1024 rather than 1280, since at this width it is the point of the
      screen rather than an extra. */
-  html[data-layout="desktop"][data-staff="1"] .app-shell:has(> .context-col > *) > .context-col{
-    display:block; flex:0 0 320px; min-width:300px; max-width:360px;
-    position:sticky; top:28px; background:var(--surface); border:1px solid var(--border);
-    border-radius:20px; padding:16px 14px; box-shadow:var(--shadow-card);
-    max-height:calc(100dvh - 56px); overflow-y:auto; overscroll-behavior:contain;
-  }
-  html[data-layout="desktop"][data-staff="1"] .context-col-head{
-    font-size:13px; font-weight:800; color:var(--steel); margin:0 0 10px;
-    letter-spacing:.04em;
-  }
+  
+  
   /* The rail holds the same coach sections the phone renders, so its cards
      lose the outer margins they need in a single-column scroll. */
-  html[data-layout="desktop"][data-staff="1"] .context-col .chart-card{ margin-bottom:10px; }
-  html[data-layout="desktop"][data-staff="1"] .context-col .ach-section{ margin-bottom:10px; }
+  
+  
   /* Below 1180 the three columns stop fitting: the rail is the one that
      goes, because the centre column is the work and the sidebar is the
      navigation. Nothing is lost - every section in it is also on the coach
      sub-tab, which the sidebar still reaches. */
-  @media (max-width: 1180px){
-    html[data-layout="desktop"][data-staff="1"] .app-shell:has(> .context-col > *) > .context-col{ display:none; }
-  }
+  
 
   /* ---- The week strip ------------------------------------------------ */
   /* Seven boxes, published or empty, and the state is a WORD in every one
      of them rather than a colour alone. */
-  html[data-layout="desktop"][data-staff="1"] .staff-week{
-    display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:8px;
-  }
-  html[data-layout="desktop"][data-staff="1"] .staff-week-day{
-    min-height:72px; display:flex; flex-direction:column; gap:4px;
-    border:1px solid var(--border); border-radius:12px; padding:8px;
-    background:var(--surface2); color:var(--steel); text-align:start;
-  }
-  html[data-layout="desktop"][data-staff="1"] .staff-week-day.is-published{
-    background:var(--surface); color:var(--chalk); border-color:var(--brass);
-  }
-  html[data-layout="desktop"][data-staff="1"] .staff-week-day[aria-current="date"]{
-    box-shadow:inset 0 0 0 1px var(--teal);
-  }
-  html[data-layout="desktop"][data-staff="1"] .staff-week-when{
-    font-size:11px; font-weight:800; color:var(--steel);
-  }
-  html[data-layout="desktop"][data-staff="1"] .staff-week-what{
-    font-size:12.5px; font-weight:700; overflow-wrap:anywhere;
-  }
-  html[data-layout="desktop"][data-staff="1"] .staff-home > .page-title{ margin-bottom:14px; }
+  
+  
+  
+  
+  
+  
+  
 
   /* ---- Audit 2026-11 fixes ---- */
   /* 8: backup actions are real buttons, export first. */
   .backup-actions{ display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
-  .backup-btn{ width:100%; min-height:48px; border-radius:14px; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .backup-btn{ width:100%; min-height:48px; border-radius:14px; font-size:var(--fs-3); font-weight:800; display:flex; align-items:center; justify-content:center; }
   .backup-btn-primary{ background:var(--energy); color:var(--on-energy); border:0; }
   .backup-btn-secondary{ min-height:44px; background:transparent; color:var(--chalk); border:1px solid var(--border); font-weight:700; }
   /* 9: the welcome title and subtitle get their own dark scrim, so they
      read on any part of the striped photo, in either theme. White on this
      panel over pure white is about 7:1. */
   #welcomeOverlay .scene-page__intro{ background:linear-gradient(180deg, var(--p-081523-a72), var(--p-081523-a86)); border-radius:16px; padding:12px 16px 14px; text-shadow:none; }
-  #welcomeOverlay .scene-page__title{ text-shadow:none; font-size:32px; justify-content:center; }
+  #welcomeOverlay .scene-page__title{ text-shadow:none; font-size:var(--fs-6); justify-content:center; }
   #welcomeOverlay .scene-page__subtitle{ opacity:1; max-width:none; }
   /* Anchored by its BOTTOM edge just above the sheet, so a title that wraps
      to two lines grows upward over the photo instead of under the sheet. */
   #welcomeOverlay .scene-page__intro{ top:calc(var(--scene-photo-height) - 12px); transform:translateY(-100%); }
   /* 12: one line on usage counting. */
-  .welcome-usage-note{ margin:14px auto 0; max-width:34ch; color:var(--steel); font-size:12px; line-height:1.6; }
-  .welcome-usage-note .link-btn{ display:flex; margin:0 auto; font-size:12px; min-height:44px; padding:0 8px; }
+  .welcome-usage-note{ margin:14px auto 0; max-width:34ch; color:var(--steel); font-size:var(--fs-1); line-height:1.6; }
+  .welcome-usage-note .link-btn{ display:flex; margin:0 auto; font-size:var(--fs-1); min-height:44px; padding:0 8px; }
   #settingsOverlay.above-welcome{ z-index:60; }
   /* 10: on a desktop the welcome sheet stands on an opaque backdrop - the
      half-visible app behind it, with its sidebar text clipped, read as a
@@ -3342,7 +3250,7 @@
   .report-counts, .report-flag{ white-space:nowrap; }
   /* 16: the profile edit button was a 30x30 target. */
   #settingsBody [data-action="edit-user-name"]{ min-width:44px; min-height:44px; }
-  .badge-new{ display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; background:var(--energy); color:var(--on-energy); font-size:11px; font-weight:800; }
+  .badge-new{ display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; background:var(--energy); color:var(--on-energy); font-size:var(--fs-caption); font-weight:800; }
 </style>
 </head>
 <body>
@@ -3352,8 +3260,8 @@
      reopen the app — rather than implying a tap alone is enough. Tapping
      still fires the same SKIP_WAITING handshake as a bonus shortcut. -->
 <button id="updateBanner" data-action="reload-app" role="status" aria-live="polite" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
-  <div style="font-weight:800; font-size:16px; margin-bottom:3px;">עדכון חדש זמין</div>
-  <div style="font-weight:600; font-size:13px; opacity:.85;">סגרו את האפליקציה ופתחו אותה מחדש כדי לעדכן</div>
+  <div style="font-weight:800; font-size:var(--fs-3); margin-bottom:3px;">עדכון חדש זמין</div>
+  <div style="font-weight:600; font-size:var(--fs-2); opacity:.85;">סגרו את האפליקציה ופתחו אותה מחדש כדי לעדכן</div>
 </button>
 
 <!-- The two "add to home screen" banners used to live here, as their own
@@ -3368,7 +3276,7 @@
      instance was missed then because it isn't a scene page. -->
 <div id="loading" role="status" aria-live="polite" style="min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;">
   <img src="./assets/mark.png" alt="" width="40" height="46" style="opacity:.85;" />
-  <div style="color:var(--steel); font-size:13px; font-weight:700;">טוען את היומן שלך…</div>
+  <div style="color:var(--steel); font-size:var(--fs-2); font-weight:700;">טוען את היומן שלך…</div>
 </div>
 
 <!-- Plain block below the desktop breakpoint (#appShell/#desktopSidebar's
@@ -3470,13 +3378,13 @@
           <img src="./assets/mark.png" alt="" style="width:30px; height:auto;" />
         </div>
         <div>
-          <div style="font-weight:800; font-size:15px; color:var(--chalk);">התקינו את האימוניה</div>
-          <div style="font-weight:600; font-size:14px; color:var(--steel);">גישה מהירה ישירות ממסך הבית</div>
+          <div style="font-weight:800; font-size:var(--fs-3); color:var(--chalk);">התקינו את האימוניה</div>
+          <div style="font-weight:600; font-size:var(--fs-2); color:var(--steel);">גישה מהירה ישירות ממסך הבית</div>
         </div>
       </div>
       <div class="brand-stripe" style="height:4px; margin-bottom:14px;"></div>
       <div class="flex items-center gap-10">
-        <button data-action="install-app" class="save-btn" style="flex:1; max-width:none; font-family:inherit; font-weight:800; font-size:15px; padding:12px 0; box-shadow:none;">התקנה</button>
+        <button data-action="install-app" class="save-btn" style="flex:1; max-width:none; font-family:inherit; font-weight:800; font-size:var(--fs-3); padding:12px 0; box-shadow:none;">התקנה</button>
         <button data-action="dismiss-install-hint" class="icon-btn" aria-label="סגירה" style="color:var(--steel);">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -3494,7 +3402,7 @@
       <!-- F-024 (3.17.1): on the log screen the dock is this one line, so it never sits over the log controls
            (app.js syncIOSInstallDock). "איך מתקינים?" opens the full two steps below. -->
       <div class="install-dock-line">
-        <span style="flex:1; min-width:0; font-weight:700; font-size:13.5px; color:var(--chalk);">מתקינים במסך הבית? קודם מגבים.</span>
+        <span style="flex:1; min-width:0; font-weight:700; font-size:var(--fs-2); color:var(--chalk);">מתקינים במסך הבית? קודם מגבים.</span>
         <button data-action="ios-install-expand" class="chip-btn" style="min-height:44px; flex-shrink:0;">איך מתקינים?</button>
         <button data-action="dismiss-ios-install-hint" class="icon-btn" aria-label="סגירה" style="color:var(--steel);">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -3506,14 +3414,14 @@
           <img src="./assets/mark.png" alt="" style="width:30px; height:auto;" />
         </div>
         <div>
-          <div style="font-weight:800; font-size:15px; color:var(--chalk);">מתקינים במסך הבית, בשני שלבים</div>
-          <div style="font-weight:600; font-size:13px; color:var(--steel);">האפליקציה במסך הבית נפתחת ריקה עד שמייבאים אליה את הנתונים.</div>
+          <div style="font-weight:800; font-size:var(--fs-3); color:var(--chalk);">מתקינים במסך הבית, בשני שלבים</div>
+          <div style="font-weight:600; font-size:var(--fs-2); color:var(--steel);">האפליקציה במסך הבית נפתחת ריקה עד שמייבאים אליה את הנתונים.</div>
         </div>
       </div>
       <!-- F-001: the two steps, in order. Step one moves whatever is logged in this tab; step two
            installs. The installed app offers the import on its first launch (app.js
            maybeOfferFirstImport). -->
-      <div id="iosInstallSteps" style="font-size:13.5px; color:var(--chalk); line-height:1.55; margin-bottom:12px;">
+      <div id="iosInstallSteps" style="font-size:var(--fs-2); color:var(--chalk); line-height:1.55; margin-bottom:12px;">
         <div style="font-weight:700;">1. קודם מגבים</div>
         <div style="color:var(--steel); margin-bottom:8px;">כבר רשמתם כאן משהו? יוצרים קוד העברה או שומרים קובץ גיבוי.</div>
         <div class="flex items-center gap-10" style="margin-bottom:12px;">
@@ -3543,10 +3451,10 @@
            Both colour and spacing come from tokens already on the two lines
            above, so it themes itself in light and dark with no new rule in
            either of the two dark blocks. -->
-      <div style="font-weight:600; font-size:13px; color:var(--steel); margin-bottom:12px;">גם התראות עובדות רק מהאפליקציה המותקנת — בדפדפן iOS לא ניתן לקבל אותן.</div>
+      <div style="font-weight:600; font-size:var(--fs-2); color:var(--steel); margin-bottom:12px;">גם התראות עובדות רק מהאפליקציה המותקנת — בדפדפן iOS לא ניתן לקבל אותן.</div>
       <div class="brand-stripe" style="height:4px; margin-bottom:12px;"></div>
       <div class="flex items-center gap-10">
-        <button data-action="dismiss-ios-install-hint" class="save-btn" style="flex:1; max-width:none; min-height:44px; font-family:inherit; font-weight:800; font-size:15px; padding:12px 0; box-shadow:none;">הבנתי</button>
+        <button data-action="dismiss-ios-install-hint" class="save-btn" style="flex:1; max-width:none; min-height:44px; font-family:inherit; font-weight:800; font-size:var(--fs-3); padding:12px 0; box-shadow:none;">הבנתי</button>
       </div>
       </div>
     </div>
@@ -3609,24 +3517,24 @@
     </div>
     <div class="modal-list" style="padding:0 16px calc(env(safe-area-inset-bottom, 0px) + 16px);">
       <div class="wodbuild-card-details">
-        <div style="color:var(--steel); font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:6px;" id="wodBuilderNameLabel">שם</div>
+        <div style="color:var(--steel); font-size:var(--fs-caption); font-weight:700; letter-spacing:.5px; margin-bottom:6px;" id="wodBuilderNameLabel">שם</div>
         <input id="wodBuilderName" class="text-input" dir="auto" maxlength="80" autocomplete="off" placeholder="לדוגמה: אימון יום שני" aria-labelledby="wodBuilderNameLabel" aria-describedby="wodBuilderNameHint" style="margin-bottom:6px;" />
-        <div id="wodBuilderNameHint" role="alert" style="color:var(--red-text); font-size:11px; margin-bottom:16px; display:none;"></div>
+        <div id="wodBuilderNameHint" role="alert" style="color:var(--red-text); font-size:var(--fs-caption); margin-bottom:16px; display:none;"></div>
 
-        <div style="color:var(--steel); font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:6px;" id="wodBuilderFormatLabel">פורמט</div>
+        <div style="color:var(--steel); font-size:var(--fs-caption); font-weight:700; letter-spacing:.5px; margin-bottom:6px;" id="wodBuilderFormatLabel">פורמט</div>
         <div class="flex" style="gap:8px; margin-bottom:4px;" id="wodBuilderFormats" role="radiogroup" aria-labelledby="wodBuilderFormatLabel" aria-describedby="wodBuilderFormatHint">
           <button class="format-chip" data-action="builder-set-format" data-format="time" role="radio" aria-checked="false">זמן<span class="format-chip-sub">כמה מהר סיימתם</span></button>
           <button class="format-chip" data-action="builder-set-format" data-format="amrap" role="radio" aria-checked="false">AMRAP<span class="format-chip-sub">כמה סיבובים הספקתם</span></button>
           <button class="format-chip" data-action="builder-set-format" data-format="load" role="radio" aria-checked="false">משקל מקסימלי<span class="format-chip-sub">המשקל הכי כבד שהרמתם</span></button>
           <button class="format-chip" data-action="builder-set-format" data-format="emom" role="radio" aria-checked="false">EMOM<span class="format-chip-sub">תרגיל חדש כל דקה</span></button>
         </div>
-        <div id="wodBuilderFormatHint" role="alert" style="color:var(--steel); font-size:11px; margin-bottom:0;">חובה לבחור אחד</div>
+        <div id="wodBuilderFormatHint" role="alert" style="color:var(--steel); font-size:var(--fs-caption); margin-bottom:0;">חובה לבחור אחד</div>
         <div id="wodBuilderEmomOptions"></div>
         <div id="wodBuilderTimeCapOptions"></div>
       </div>
 
       <div class="wodbuild-card-moves">
-        <div id="wodBuilderMovesLabel" style="color:var(--steel); font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:6px;">תרגילים (אופציונלי)</div>
+        <div id="wodBuilderMovesLabel" style="color:var(--steel); font-size:var(--fs-caption); font-weight:700; letter-spacing:.5px; margin-bottom:6px;">תרגילים (אופציונלי)</div>
         <div class="search-box" style="margin:0 0 12px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a8f97" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
           <input id="wodBuilderMoveSearch" dir="auto" maxlength="80" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="חיפוש תרגילים" aria-label="חיפוש תרגילים" />
@@ -3800,24 +3708,24 @@
   <div class="modal-sheet" style="border-radius:22px; border-bottom:1px solid var(--border); max-height:none;">
     <div style="padding:0 20px calc(env(safe-area-inset-bottom,0px) + 24px);">
       <div class="settings-club-edge" aria-hidden="true" style="margin-bottom:18px;"></div>
-      <div id="onboardingTitle" style="color:var(--chalk); font-weight:800; font-size:19px; margin-bottom:4px; text-align:center;">כמה מילים על האפליקציה</div>
-      <div style="color:var(--steel); font-size:13px; margin-bottom:22px; text-align:center;">ארבעה מסכים, כל אחד למטרה שלו</div>
+      <div id="onboardingTitle" style="color:var(--chalk); font-weight:800; font-size:var(--fs-4); margin-bottom:4px; text-align:center;">כמה מילים על האפליקציה</div>
+      <div style="color:var(--steel); font-size:var(--fs-2); margin-bottom:22px; text-align:center;">ארבעה מסכים, כל אחד למטרה שלו</div>
       <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px;">
         <div class="flex items-center gap-10">
           <span class="icon-chip icon-chip-brass"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9v6M20 9v6M2 10v4M22 10v4M7 12h10"/></svg></span>
-          <div><div style="font-weight:700; font-size:14px;">רישום</div><div style="color:var(--steel); font-size:12.5px;">רישום סטים ואימונים, כולל סולם של כמה סטים ברצף</div></div>
+          <div><div style="font-weight:700; font-size:var(--fs-2);">רישום</div><div style="color:var(--steel); font-size:var(--fs-1);">רישום סטים ואימונים, כולל סולם של כמה סטים ברצף</div></div>
         </div>
         <div class="flex items-center gap-10">
           <span class="icon-chip icon-chip-brass"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M12 20V4M20 20v-7"/></svg></span>
-          <div><div style="font-weight:700; font-size:14px;">התקדמות</div><div style="color:var(--steel); font-size:12.5px;">גרפים, שיאים אישיים, משקל גוף ומדדים</div></div>
+          <div><div style="font-weight:700; font-size:var(--fs-2);">התקדמות</div><div style="color:var(--steel); font-size:var(--fs-1);">גרפים, שיאים אישיים, משקל גוף ומדדים</div></div>
         </div>
         <div class="flex items-center gap-10">
           <span class="icon-chip icon-chip-brass"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
-          <div><div style="font-weight:700; font-size:14px;">לוח שנה</div><div style="color:var(--steel); font-size:12.5px;">כל האימונים שלכם לפי תאריך, ונפח אימון לפי קטגוריה</div></div>
+          <div><div style="font-weight:700; font-size:var(--fs-2);">לוח שנה</div><div style="color:var(--steel); font-size:var(--fs-1);">כל האימונים שלכם לפי תאריך, ונפח אימון לפי קטגוריה</div></div>
         </div>
         <div class="flex items-center gap-10">
           <span class="icon-chip icon-chip-brass"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg></span>
-          <div><div style="font-weight:700; font-size:14px;">אימונים</div><div style="color:var(--steel); font-size:12.5px;">רישום WOD, כולל בנצ׳מארקים מוכרים או אימון מותאם אישית</div></div>
+          <div><div style="font-weight:700; font-size:var(--fs-2);">אימונים</div><div style="color:var(--steel); font-size:var(--fs-1);">רישום WOD, כולל בנצ׳מארקים מוכרים או אימון מותאם אישית</div></div>
         </div>
       </div>
       <button data-action="close-onboarding" class="save-btn" style="max-width:none;">בואו נתחיל</button>
@@ -3842,7 +3750,7 @@
       <div class="celebration-pr-line" id="celebrationPrLine"></div>
       <div class="celebration-sub" id="celebrationSub">עיטור חדש נפתח — תמשיכו ככה!</div>
       <div class="celebration-medals" id="celebrationMedals"></div>
-      <div id="celebrationShare" style="margin-top:10px; font-size:13px;"></div>
+      <div id="celebrationShare" style="margin-top:10px; font-size:var(--fs-2);"></div>
       <button data-action="close-celebration" class="save-btn" style="max-width:none; margin-top:20px;">מעולה!</button>
     </div>
   </div>
@@ -3857,9 +3765,9 @@
       <p class="scene-page__subtitle">מתעדים אימונים שהושלמו, רואים התקדמות ונשארים מחוברים.</p>
     </div>
     <div class="scene-sheet" style="text-align:center;">
-      <div id="welcomeSubtitle" style="color:var(--steel); font-size:13px; margin-bottom:18px;">איך נקרא לך?</div>
+      <div id="welcomeSubtitle" style="color:var(--steel); font-size:var(--fs-2); margin-bottom:18px;">איך נקרא לך?</div>
       <input id="welcomeNameInput" class="text-input" dir="auto" maxlength="80" autocomplete="off" placeholder="השם שלך" aria-labelledby="welcomeSubtitle" style="margin-bottom:16px; text-align:center;" />
-      <div style="color:var(--steel); font-size:12px; margin-bottom:6px;" id="welcomeBoxStartLabel">מתי התחלתם להתאמן בבוקס? (לא חובה — פותח את עיטורי הוותק)</div>
+      <div style="color:var(--steel); font-size:var(--fs-1); margin-bottom:6px;" id="welcomeBoxStartLabel">מתי התחלתם להתאמן בבוקס? (לא חובה — פותח את עיטורי הוותק)</div>
       <input id="welcomeBoxStartInput" type="date" class="text-input" aria-labelledby="welcomeBoxStartLabel" style="margin-bottom:16px; text-align:center;" />
       <button data-action="save-user-name" class="save-btn" style="max-width:none; margin-bottom:10px;"><span id="welcomeSaveLabel">בואו נתחיל</span></button>
       <button id="welcomeSkipBtn" data-action="skip-user-name" class="link-btn">דלג</button>
