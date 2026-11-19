@@ -267,12 +267,6 @@ export async function switchTab(page, tabId) {
   // Library and staff tools retain their IDs in the secondary navigation.
   // Follow the visible menu route when a destination is not in the four-tab bar.
   // Q-43a: every screen is in the tab bar now; the ☰ menu route is gone.
-  // Q-43b: WOD is not a tab of its own; a member reaches it through אימון and the toggle at its top.
-  if (tabId === "tabWodBtn") {
-    await page.click("#tabAddBtn");
-    await page.click("#content .training-toggle [data-tab='wod']");
-    return;
-  }
   await page.click(`#${tabId}`);
 }
 
