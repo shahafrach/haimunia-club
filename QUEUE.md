@@ -48,6 +48,7 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 - NEXT for fixes: Q-46 (owner decision, back to the tour's four tabs). Then rebase club #48 (3.19.0) on top so the bump ships Q-46; do not ask the owner to merge #48 before that.
 - demo #191 (Q-45) migration-check red: 0162 test 30 'over the global ceiling even the right code waits' has already_member, wants rate_limited. Q-45 item 1 changed the order on purpose, so update the test (or the order) and say which in the PR. Fix after Q-46.
 - fixes 10:55: all three done. Q-46 = club #49 (tour tabs, no toggle; screenshots in chat). club #48 (3.19.0) has Q-46 merged in (b007962, full npm test 557/0/1 skipped): merging #48 alone ships both (#49 then becomes empty and closes with it). demo #191: the TEST was updated (0162 to the 3000 ceiling, 561bb00), the order of limits is unchanged; 0164 passed in CI; CI on 561bb00 running.
+- fixes 11:05: demo #191 all green on 561bb00 (migration-check, node-tests, browser-checks, user-tests, edge checks). Ready to merge (migration 202611190001; migration-status checks ~10 min after).
 
 ## Morning status (Claude, 2026-11-19 08:25)
 - ALL MERGED: demo #188 #190 #189, club #40..#47. set-auth-config run after #188 and after #189 (green). Cloudflare deploy of club main green.
