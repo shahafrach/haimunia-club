@@ -434,26 +434,126 @@
   function passkeyReady() { return !!(window.PublicKeyCredential && navigator.credentials); }
   function passkeyError(err) {
     var m = String((err && (err.code || err.error_code || err.name)) || "") + " " + String((err && err.message) || "");
-    if (/NotAllowed|ABORT|cancel/i.test(m)) return "הכניסה עם Face ID בוטלה. אפשר לנסות שוב, או להיכנס עם הסיסמה.";
-    if (/credential_not_found/i.test(m)) return "בטלפון הזה אין Face ID שמור לחשבון. נכנסים עם הסיסמה, ואז אפשר להפעיל Face ID.";
+    if (/NotAllowed|ABORT|cancel/i.test(m)) return "הכניסה עם " + passkeyName() + " בוטלה. אפשר לנסות שוב, או להיכנס עם הסיסמה.";
+    if (/credential_not_found/i.test(m)) return "בטלפון הזה אין " + passkeyName() + " שמור לחשבון. נכנסים עם הסיסמה, ואז אפשר להפעיל " + passkeyName() + ".";
     if (isNetwork(err)) return NET_FAIL;
-    return "הכניסה עם Face ID לא הצליחה. אפשר להיכנס עם הסיסמה.";
+    return "הכניסה עם " + passkeyName() + " לא הצליחה. אפשר להיכנס עם הסיסמה.";
   }
-  async function doPasskeySignIn() {
+  // Q-52: Safari keeps a tap's permission to start Face ID only until the first await, so the ceremony must start
+  // inside the tap. The challenge is fetched before (preparePasskey, when a screen with the button opens) and the
+  // button shows only once it is ready; the tap then calls navigator.credentials.get with nothing awaited first.
+  // A client without the split calls (older vendored build, tests) keeps the one-call path.
+  var PK = { prep: null, at: 0, loading: false, cond: null };
+  function passkeySplit(c) { return !!(c && c.auth && c.auth._startPasskeyAuthentication && c.auth._verifyPasskeyAuthentication); }
+  function passkeyName() {
+    var ua = String((navigator && navigator.userAgent) || "");
+    var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+    if (/iPhone|iPad|iPod/.test(ua) || touchMac) return "Face ID";
+    if (/Macintosh/.test(ua)) return "Touch ID";
+    return "טביעת אצבע או נעילת מסך";
+  }
+  function b64uToBuf(v) {
+    var b = String(v || "").replace(/-/g, "+").replace(/_/g, "/"); while (b.length % 4) b += "=";
+    var bin = atob(b), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+  function bufToB64u(buf) {
+    var bytes = new Uint8Array(buf), bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function toRequestOptions(o) {
+    try { if (window.PublicKeyCredential && PublicKeyCredential.parseRequestOptionsFromJSON) return PublicKeyCredential.parseRequestOptionsFromJSON(o); } catch (e) { /* by hand below */ }
+    var r = Object.assign({}, o, { challenge: b64uToBuf(o.challenge) });
+    if (Array.isArray(o.allowCredentials)) r.allowCredentials = o.allowCredentials.map(function (c) { return Object.assign({}, c, { id: b64uToBuf(c.id) }); });
+    return r;
+  }
+  function credentialJSON(c) {
+    try { if (c && typeof c.toJSON === "function") return c.toJSON(); } catch (e) { /* by hand below */ }
+    var r = c.response;
+    return { id: c.id, rawId: bufToB64u(c.rawId), type: c.type, authenticatorAttachment: c.authenticatorAttachment || null,
+      clientExtensionResults: c.getClientExtensionResults ? c.getClientExtensionResults() : {},
+      response: { clientDataJSON: bufToB64u(r.clientDataJSON), authenticatorData: bufToB64u(r.authenticatorData), signature: bufToB64u(r.signature), userHandle: r.userHandle ? bufToB64u(r.userHandle) : null } };
+  }
+  // Fetches a challenge ahead of the tap (good for two minutes), then repaints so the button appears, and starts
+  // the quiet autofill offer on the username field (conditional mediation) where the browser has it.
+  async function preparePasskey() {
+    if (!passkeyReady() || PK.loading) return;
+    if (PK.prep && Date.now() - PK.at < 120000) return;
+    PK.loading = true;
+    var had = !!PK.prep;
+    try {
+      var c = await getClient();
+      if (passkeySplit(c)) {
+        var r = await c.auth._startPasskeyAuthentication({ options: {} });
+        PK.prep = r && r.data && r.data.options ? r.data : null; PK.at = Date.now();
+      }
+    } catch (e) { PK.prep = null; }
+    finally { PK.loading = false; }
+    if (!had && el("connectBody") && /^(login|forgot|choice|status)$/.test(S.view || "choice")) paint();
+    startConditionalPasskey();
+  }
+  function startConditionalPasskey() {
+    var prep = PK.prep;
+    if (!prep || PK.cond || S.view !== "login" || !el("connect-username")) return;
+    if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) return;
+    PublicKeyCredential.isConditionalMediationAvailable().then(function (ok) {
+      if (!ok || PK.cond || PK.prep !== prep) return;
+      var ac = new AbortController(); PK.cond = ac;
+      var p;
+      try { p = navigator.credentials.get({ mediation: "conditional", publicKey: toRequestOptions(prep.options), signal: ac.signal }); } catch (e) { PK.cond = null; return; }
+      p.then(function (cred) { PK.cond = null; if (cred) { PK.prep = null; S.busy = true; paint(); finishPasskey(cred, prep, "login"); } },
+        function () { PK.cond = null; });
+    }, function () {});
+  }
+  // The button: shown once the tap can start Face ID at once (a prepared challenge, or the one-call client).
+  function passkeyBtn() {
+    if (!passkeyReady()) return "";
+    var ready = PK.prep || (client && client.auth && client.auth.signInWithPasskey && !passkeySplit(client));
+    if (!ready) { setTimeout(preparePasskey, 0); return ""; }
+    return btn("כניסה עם " + passkeyName(), 'data-connect="passkey-signin"');
+  }
+  function doPasskeySignIn() {
     if (S.busy) return;
     var from = S.view || "login";
+    var prep = PK.prep;
+    if (prep && client && passkeySplit(client)) {
+      if (PK.cond) { try { PK.cond.abort(); } catch (e) {} PK.cond = null; }
+      var p;
+      // Nothing awaited before this call: it runs inside the tap.
+      try { p = navigator.credentials.get({ publicKey: toRequestOptions(prep.options) }); } catch (e) { fail(from, {}, passkeyError(e)); return; }
+      PK.prep = null;
+      S.busy = true; S.error = ""; S.errors = {}; paint();
+      p.then(function (cred) { return finishPasskey(cred, prep, from); }, function (e) { fail(from, {}, passkeyError(e)); setTimeout(preparePasskey, 0); });
+      return;
+    }
+    legacyPasskeySignIn(from);
+  }
+  async function finishPasskey(cred, prep, from) {
+    try {
+      var c = await getClient();
+      var r = await c.auth._verifyPasskeyAuthentication({ challengeId: prep.challenge_id, credential: credentialJSON(cred) });
+      if (r && r.error) { setTimeout(preparePasskey, 0); return fail(from, {}, passkeyError(r.error)); }
+      await afterPasskeySignIn();
+    } catch (e) { setTimeout(preparePasskey, 0); fail(from, {}, passkeyError(e)); }
+  }
+  async function afterPasskeySignIn() {
+    setChoice("connected");
+    await loadAccount();
+    S.busy = false; S.drafts = {};
+    if (await shouldOfferRestore()) { S.view = "restore-offer"; paint(); return; }
+    S.view = nextView(); paint();
+    if (S.view === "join" && joinToken) joinWithToken(joinToken);
+  }
+  async function legacyPasskeySignIn(from) {
     S.busy = true; S.error = ""; S.errors = {}; paint();
     try {
       var c = await getClient();
-      if (!c.auth.signInWithPasskey) return fail(from, {}, "הכניסה עם Face ID לא זמינה כאן. אפשר להיכנס עם הסיסמה.");
+      if (!c.auth.signInWithPasskey) return fail(from, {}, "הכניסה עם " + passkeyName() + " לא זמינה כאן. אפשר להיכנס עם הסיסמה.");
       var r = await c.auth.signInWithPasskey();
       if (r.error) return fail(from, {}, passkeyError(r.error));
-      setChoice("connected");
-      await loadAccount();
-      S.busy = false; S.drafts = {};
-      if (await shouldOfferRestore()) { S.view = "restore-offer"; paint(); return; }
-      S.view = nextView(); paint();
-      if (S.view === "join" && joinToken) joinWithToken(joinToken);
+      await afterPasskeySignIn();
     } catch (e) { fail(from, {}, passkeyError(e)); }
   }
   // After sign-up's (or a recovery's) code screen, and from the status screen. The answer is shown as a toast;
@@ -464,7 +564,7 @@
       var c = await getClient();
       if (c.auth.registerPasskey) { var r = await c.auth.registerPasskey(); ok = !r.error; }
     } catch (e) { ok = false; }
-    if (typeof showToast === "function") showToast(ok ? "Face ID הופעל. בפעם הבאה נכנסים במבט." : "Face ID לא הופעל. אפשר להפעיל אחר כך במסך המועדון.");
+    if (typeof showToast === "function") showToast(ok ? "" + passkeyName() + " הופעל. בפעם הבאה נכנסים במבט." : "" + passkeyName() + " לא הופעל. אפשר להפעיל אחר כך במסך המועדון.");
     then();
   }
   function afterCodeScreen() {
@@ -659,10 +759,17 @@
   // Q-42: which browser is this? An in-app browser (WhatsApp, Instagram, Facebook) cannot install at all;
   // iOS 26 Safari keeps Share behind ⋯; Samsung Internet has its own menu; Chrome-like browsers that fired
   // beforeinstallprompt get one install button.
+  // Q-52: one install-help component for every banner and the join screen (window.haimuniaInstall below). Adds
+  // Telegram, iOS Chrome/Firefox/Edge (they can add to the home screen from iOS 16.4; before that only Safari).
+  function iosVersion(ua) { var m = ua.match(/OS (\d+)_(\d+)/); return m ? Number(m[1]) + Number(m[2]) / 100 : 0; }
   function browserKind() {
     var ua = String((navigator && navigator.userAgent) || "");
-    if (/WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Line\/|MicroMessenger/i.test(ua)) return "inapp";
-    if (onIOS()) { var m = ua.match(/OS (\d+)_/); return m && Number(m[1]) >= 26 ? "ios26" : "ios"; }
+    if (/WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Telegram|Line\/|MicroMessenger/i.test(ua)) return "inapp";
+    if (onIOS()) {
+      var v = iosVersion(ua);
+      if (/CriOS|FxiOS|EdgiOS/i.test(ua)) return v >= 16.04 ? "ios-other" : "ios-old-other";
+      return v >= 26 ? "ios26" : "ios";
+    }
     if (/SamsungBrowser/i.test(ua)) return "samsung";
     if (/Android/i.test(ua)) return "android";
     return "other";
@@ -670,14 +777,25 @@
   function canPromptInstall() { try { return typeof deferredInstallPrompt !== "undefined" && !!deferredInstallPrompt; } catch (e) { return false; } } // eslint-disable-line no-undef
   function stepsHtml(ios) {
     var kind = browserKind();
+    if (kind === "ios-old-other") {
+      return '<div class="join-err" id="connectInAppWarning" role="note">בגרסה הזו של iOS אפשר להתקין רק מ-Safari. מעתיקים את הקישור ופותחים אותו ב-Safari.</div>';
+    }
     if (kind === "inapp") {
-      return '<div class="join-err" id="connectInAppWarning" role="note">הדפדפן של WhatsApp או Instagram לא יכול להתקין אפליקציות. פותחים את הקישור ב-Safari או ב-Chrome:</div>' +
+      // On Android an intent:// link opens the same page in Chrome in one tap.
+      var android = /Android/i.test(String((navigator && navigator.userAgent) || ""));
+      var here = String(location.host + location.pathname + location.search + location.hash);
+      var escape = android ? '<a class="save-btn" id="connectOpenInChrome" style="display:flex; max-width:none; margin-bottom:10px; text-decoration:none;" href="intent://' + esc(here) + '#Intent;scheme=https;package=com.android.chrome;end">פתיחה ב-Chrome</a>' : "";
+      return '<div class="join-err" id="connectInAppWarning" role="note">הדפדפן של WhatsApp, Instagram, Facebook או Telegram לא יכול להתקין אפליקציות. פותחים את הקישור ב-Safari או ב-Chrome:</div>' + escape +
         '<ol class="join-steps" id="connectInstallSteps">' +
         '<li class="join-step"><span class="join-step-pic">' + PIC.dots + '</span><span><span class="join-step-num">1. לוחצים על ⋯ או על התפריט</span><br>בפינה של המסך.</span></li>' +
         '<li class="join-step"><span class="join-step-pic">' + PIC.share + '</span><span><span class="join-step-num">2. בוחרים "פתיחה בדפדפן"</span><br>או "פתיחה ב-Safari" / "פתיחה ב-Chrome".</span></li>' +
         '<li class="join-step"><span class="join-step-pic">' + PIC.icon + '</span><span><span class="join-step-num">3. שם ממשיכים להתקנה</span><br>המסך הזה יופיע שוב עם השלבים.</span></li></ol>';
     }
-    var steps = kind === "ios26"
+    var steps = kind === "ios-other"
+      ? [[PIC.share, "לוחצים על כפתור השיתוף", "בשורת הכתובת או בתפריט של הדפדפן."],
+         [PIC.add, "בוחרים \"הוספה למסך הבית\"", "אם לא רואים, גוללים מעט למטה ברשימה."],
+         [PIC.icon, "לוחצים \"הוספה\"", "האייקון של האימוניה יופיע במסך הבית."]]
+      : kind === "ios26"
       ? [[PIC.dots, "לוחצים על ⋯ (שלוש הנקודות)", "בסרגל של Safari, ואז על \"שיתוף\"."],
          [PIC.add, "בוחרים \"הוספה למסך הבית\"", "אם לא רואים, גוללים מעט למטה ברשימה."],
          [PIC.icon, "לוחצים \"הוספה\"", "האייקון של האימוניה יופיע במסך הבית."]]
@@ -746,9 +864,9 @@
     }
     if (v === "login") {
       return head("כניסה לחשבון") + errorHtml() +
-        (passkeyReady() ? btn("כניסה עם Face ID", 'data-connect="passkey-signin"') + '<div class="join-lead" style="margin-bottom:8px;">או עם שם משתמש וסיסמה:</div>' : "") +
+        (passkeyBtn() ? passkeyBtn() + '<div class="join-lead" style="margin-bottom:8px;">או עם שם משתמש וסיסמה:</div>' : "") +
         '<form id="connectForm" data-connect-form="login" novalidate>' +
-        fieldHtml("username", "שם לכניסה", "text", 'autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24"') +
+        fieldHtml("username", "שם לכניסה", "text", 'autocomplete="username webauthn" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24"') +
         fieldHtml("password", "סיסמה", "password", 'autocomplete="current-password" dir="ltr" maxlength="72"') +
         submitBtn("כניסה") + "</form>" + forgotLink() +
         '<div style="text-align:center;">' + linkBtn("חזרה", 'data-connect="go-choice"') + "</div>";
@@ -756,13 +874,13 @@
     if (v === "forgot") {
       if (S.busy) return head("רגע…");
       return head("שכחתי סיסמה") + bigErrorHtml() +
-        (passkeyReady() ? btn("כניסה עם Face ID", 'data-connect="passkey-signin"') : "") +
-        '<div class="join-lead">' + (passkeyReady() ? "או: " : "") + "שם המשתמש, קוד השחזור ששמרתם בהרשמה, וסיסמה חדשה.</div>" +
+        passkeyBtn() +
+        '<div class="join-lead">' + (passkeyBtn() ? "או: " : "") + "שם המשתמש, קוד השחזור ששמרתם בהרשמה, וסיסמה חדשה.</div>" +
         '<form id="connectForm" data-connect-form="recover" novalidate>' +
         fieldHtml("username", "שם משתמש", "text", 'autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24"') +
         fieldHtml("recoveryCode", "קוד שחזור (16 תווים)", "text", 'autocomplete="off" autocapitalize="characters" spellcheck="false" dir="ltr" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX"') +
         newPasswordFields() + submitBtn("שמירה וכניסה") + "</form>" +
-        '<div class="join-after" id="connectNewAccountNote">אין Face ID ואין קוד שחזור? פותחים חשבון חדש עם קוד ההצטרפות של המועדון: האימונים בטלפון נשארים כמו שהם, והחשבון הישן נמחק לבד אחרי שנה בלי שימוש.</div>' +
+        '<div class="join-after" id="connectNewAccountNote">אין ' + passkeyName() + ' ואין קוד שחזור? פותחים חשבון חדש עם קוד ההצטרפות של המועדון: האימונים בטלפון נשארים כמו שהם, והחשבון הישן נמחק לבד אחרי שנה בלי שימוש.</div>' +
         '<div style="text-align:center; margin-bottom:10px;">' + btn("פתיחת חשבון חדש", 'data-connect="new-account"', "chip-btn") + "</div>" +
         '<div style="text-align:center;">' + linkBtn("חזרה", 'data-connect="go-login"') + "</div>";
     }
@@ -773,8 +891,8 @@
         '<div style="text-align:center;">' + linkBtn("לא עכשיו", 'data-connect="restore-skip"') + "</div>";
     }
     if (v === "passkey") {
-      return head("כניסה מהירה עם Face ID", "בפעם הבאה נכנסים במבט אחד, בלי להקליד סיסמה. הסיסמה נשארת לגיבוי.") +
-        btn("הפעלת Face ID", 'data-connect="passkey-register"') +
+      return head("כניסה מהירה עם " + passkeyName() + "", "בפעם הבאה נכנסים במבט אחד, בלי להקליד סיסמה. הסיסמה נשארת לגיבוי.") +
+        btn("הפעלת " + passkeyName() + "", 'data-connect="passkey-register"') +
         '<div style="text-align:center;">' + linkBtn("לא עכשיו", 'data-connect="passkey-skip"') + "</div>";
     }
     if (v === "code") {
@@ -836,8 +954,8 @@
     if (S.choice === "connected" && !signedIn()) {
       return head("לא מחוברים") +
         '<div class="join-lead" id="connectSignedOut">החשבון לא מחובר בטלפון הזה. האימונים שלכם שמורים בטלפון. נכנסים שוב עם שם המשתמש והסיסמה.</div>' +
-        (passkeyReady() ? btn("כניסה עם Face ID", 'data-connect="passkey-signin"') : "") +
-        btn(passkeyReady() ? "כניסה עם סיסמה" : "כניסה", 'data-connect="go-login"') + forgotLink();
+        passkeyBtn() +
+        btn(passkeyBtn() ? "כניסה עם סיסמה" : "כניסה", 'data-connect="go-login"') + forgotLink();
     }
     var name = memberName();
     var uname = signedIn() && S.user.email ? String(S.user.email).split("@")[0] : "";
@@ -848,20 +966,20 @@
       '<div style="color:var(--steel); font-size:12px; margin-top:4px;">האימונים והמשקלים שלכם נשארים בטלפון הזה. למועדון נשלחים רק אימונים שבחרתם לשתף.</div></div>' +
       (S.inClub === false ? btn("הצטרפות למועדון", 'data-connect="go-join"') : "") +
       (S.inClub ? '<div style="text-align:center;">' + linkBtn("שינוי השם והאימוג'י במועדון", 'data-connect="go-profile"') + "</div>" : "") +
-      (signedIn() && passkeyReady() ? '<div style="text-align:center;">' + linkBtn("הפעלת כניסה עם Face ID", 'data-connect="passkey-register-status"') + "</div>" : "") +
+      (signedIn() && passkeyReady() ? '<div style="text-align:center;">' + linkBtn("הפעלת כניסה עם " + passkeyName() + "", 'data-connect="passkey-register-status"') + "</div>" : "") +
       (signedIn() ? '<div style="text-align:center;">' + linkBtn("קוד השחזור שלי", 'data-connect="go-code-view"') + "</div>" : "") +
       '<div style="text-align:center;">' + linkBtn("התנתקות", 'data-connect="signout"') + "</div>" +
       (signedIn() ? '<div style="text-align:center; margin-top:14px;">' + btn("מחיקת החשבון", 'data-connect="go-delete"', "chip-btn danger") + "</div>" : "");
   }
 
-  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", "code-view": "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", forgot: "שכחתי סיסמה", passkey: "Face ID", "restore-offer": "העברת אימונים", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
+  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", "code-view": "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", forgot: "שכחתי סיסמה", passkey: "" + passkeyName() + "", "restore-offer": "העברת אימונים", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
   function paint() {
     var body = el("connectBody");
     if (!body) return;
     var hadFocus = document.activeElement && body.contains(document.activeElement) ? document.activeElement.id : "";
     body.innerHTML = viewHtml();
     var t = el("connectTitle");
-    if (t) t.textContent = TITLES[S.view || "choice"] || "חיבור";
+    if (t) t.textContent = (S.view === "passkey" ? passkeyName() : TITLES[S.view || "choice"]) || "חיבור";
     var x = el("connectCloseBtn");
     if (x) x.style.display = S.firstRun && (S.view || "choice") === "choice" ? "none" : "";
     var f = hadFocus && el(hadFocus);
@@ -1019,6 +1137,8 @@
     }
   }
 
+  // Q-52: the one install-help component. Every install banner and the join screen read their steps from here.
+  window.haimuniaInstall = { kind: browserKind, stepsHtml: function () { return stepsHtml(onIOS()); }, canPrompt: canPromptInstall };
   window.haimuniaConnect = {
     init: init, open: open, close: close, openFirstRun: openFirstRun, forget: forget,
     isOpen: isOpen, enabled: enabled, parseToken: parseToken, isCode: isCode, opensInstall: opensInstall, joinWith: joinWith,

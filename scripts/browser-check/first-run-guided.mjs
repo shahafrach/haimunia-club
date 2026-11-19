@@ -80,7 +80,7 @@ for (const scale of [1, 2]) {
     await page.goto(target.url + "#j=ABCD2345", { waitUntil: "domcontentloaded" });
     await page.waitForSelector("#connectJoinCode", { timeout: 15000 });
     const t = await page.textContent("#connectBody");
-    const want = { ios26: /⋯/, whatsapp: /WhatsApp או Instagram/, samsung: /הוספת דף ל/ }[kind];
+    const want = { ios26: /⋯/, whatsapp: /WhatsApp, Instagram, Facebook או Telegram/, samsung: /הוספת דף ל/ }[kind];
     check(`[${tag}] C. install (${kind}): its own steps`, want.test(t));
     await screen(page, tag, `C. install (${kind})`, "#connectBody");
     if (scale === 1) await page.screenshot({ path: `${SHOTS}/q42-C-${kind}.png` }).catch(() => {});
