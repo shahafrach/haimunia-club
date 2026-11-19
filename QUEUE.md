@@ -43,6 +43,10 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
 
+## Morning status (Claude, 2026-11-19 06:45)
+- Owner merges demo #188, #190, runs set-auth-config, merges club #40 now.
+- fixes: demo #189 is DIRTY (conflicts with #188 in recovery.mjs). Rebase #189 on main after #188 merges, keep CI green, then rebase club #41..#47 if needed. Report in one line here when #189 is green.
+
 ## Morning merge order (fixes, 2026-11-18 night)
 Merge top to bottom. Each club PR is stacked on the one above it, so merge in this order and let each diff shrink. Before merging, update the branch from main and wait for green on the merge. Nothing was merged, tagged or deployed by hand, and the production database was not touched.
 
