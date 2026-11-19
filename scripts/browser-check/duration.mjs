@@ -101,8 +101,8 @@ for (const [daysBack, seconds] of [[2, 30], [4, 20]]) {
   const d = new Date();
   d.setDate(d.getDate() - daysBack);
   await openLogOptions(page);
-  await page.fill("#logDateInput", d.toISOString().slice(0, 10));
-  await page.dispatchEvent("#logDateInput", "change");
+  // Q-60: the date input is hidden (the app's date sheet writes it); set it as a script would.
+  await page.$eval("#logDateInput", (el, v) => { el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }, d.toISOString().slice(0, 10));
   await page.fill("[data-field='durationSeconds'].stepper-val", String(seconds));
   await page.dispatchEvent("[data-field='durationSeconds'].stepper-val", "change");
   await page.click("[data-action='save-set']");

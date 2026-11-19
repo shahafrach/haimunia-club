@@ -1,3 +1,18 @@
+# 3.20.1 — בחירת תאריך בתוך האפליקציה — 2026-11-19
+
+- Q-60: the date on רישום and אימונים opens the app's own sheet instead of the native iOS popover, which
+  vanished for a moment on a tap and did not look like the app. Seven one-tap days (היום, אתמול, שלשום, then
+  the weekday names), and "תאריך אחר" for a month grid: Sunday first, today ringed, no future days, days with a
+  workout dotted. One tap picks and closes. The chip says היום, אתמול, or the weekday and date. Every target is
+  44px, with full Hebrew dates for VoiceOver. One component for both screens.
+- Hotfix (#62): Settings showed the update check twice; once now.
+- Q-61: Settings cleaned up. Every segmented control (theme, text size, usage counting, the WOD library tabs, the
+  lift entry type) shows the selected option filled with white text, no gold outline, and wraps at large text
+  instead of breaking a word. "מתקדם" is a card row with its sections inside. Usage counting, deleting data and
+  the backup note are one short line each with "פרטים". פרטיות is a row like מה חדש. The version and the update
+  check are one small card at the very bottom. The profile name no longer breaks letter by letter at 200%.
+- No IndexedDB change.
+
 # 3.20.0 — רישום חדש, שיתוף בדיעבד, נגישות, עברית אחידה ופתיחה מהירה — 2026-11-19
 
 - Q-47 (#50): a workout already in לוח שנה, and a PR from its card, can be shared to the club later; not only

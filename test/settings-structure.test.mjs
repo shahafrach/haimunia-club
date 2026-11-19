@@ -19,7 +19,12 @@ test("Settings: four blocks, then a closed 'מתקדם' with backup, transfer co
   }
   assert.ok(adv.querySelector("#usageSettingsBlock"), "usage counting is under מתקדם");
   assert.ok(adv.querySelector("a[href='./privacy.html']"), "privacy is under מתקדם");
-  assert.match(adv.textContent, /v\d+\.\d+\.\d+/, "the version is under מתקדם");
+  // Q-61 (owner 2026-11-19): the version and the update check left the fold for one small card at the very bottom.
+  assert.ok(!/v\d+\.\d+\.\d+/.test(adv.textContent), "the version is not inside מתקדם any more");
+  const foot = doc.getElementById("settingsFooter");
+  assert.match(foot.textContent, /v\d+\.\d+\.\d+/);
+  assert.ok(foot.querySelector("[data-action='check-update']"), "with the update check");
+  assert.equal(foot, doc.querySelector("#settingsBody .settings-pane").lastElementChild, "at the very bottom");
   assert.ok(doc.querySelector("#settingsProfileBlock [data-action='edit-user-name']"), "the name in פרופיל");
   assert.ok(doc.querySelector("#settingsHelpBlock [data-feedback-open]"), "feedback in עזרה");
 });

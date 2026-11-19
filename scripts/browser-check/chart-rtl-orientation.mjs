@@ -75,8 +75,8 @@ for (let i = 3; i >= 0; i--) {
   session.push({ date: d.toISOString().slice(0, 10), weight: 60 + (3 - i) * 5 });
 }
 for (const { date, weight } of session) {
-  await page.fill("#logDateInput", date);
-  await page.dispatchEvent("#logDateInput", "change");
+  // Q-60: the date input is hidden (the app's date sheet writes it); set it as a script would.
+  await page.$eval("#logDateInput", (el, v) => { el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }, date);
   await page.fill("[data-field='weight'].stepper-val", String(weight));
   await page.dispatchEvent("[data-field='weight'].stepper-val", "change");
   await page.fill("[data-field='reps'].stepper-val", "5");

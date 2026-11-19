@@ -48,6 +48,9 @@ const PROVEN_SAFE = new Map([
   // literals, gated on RELEASE_NOTES.length (a const array's own length,
   // not a value that can carry user input).
   ["notifEmptyMessage", "ternary of two hardcoded literals in renderNotificationsList(), gated on RELEASE_NOTES.length"],
+  // Q-60 renderDateSheet(): the quick days, built by dateDayButton() from ISO dates the app computes (isoShift of
+  // todayISO), hardcoded Hebrew day names, and esc()'d aria-labels. No member text reaches it.
+  ["quick", "renderDateSheet(): app-computed ISO dates, hardcoded day names, esc()'d labels"],
 ]);
 
 function sinkLines(src) {
@@ -169,8 +172,9 @@ test("the sink count is pinned, so a new sink is a deliberate decision", () => {
   // fixed labels and a boolean - no member input reaches it.
   // 40 -> 39 on 2026-11-16 (Q-27): the support sheet and its #supportBody write are gone; the menu row
   // opens the feedback box (src/feedback.js) instead.
-  assert.equal(count, 40,
-    `app.js has ${count} innerHTML/outerHTML sinks, expected 40. If you added one, verify its interpolations are escaped and update this number; if you removed one, just update it.`);
+  // 40 -> 41 (3.20.1, Q-60): the date sheet's body (renderDateSheet) - app-computed dates, constants, esc().
+  assert.equal(count, 41,
+    `app.js has ${count} innerHTML/outerHTML sinks, expected 41. If you added one, verify its interpolations are escaped and update this number; if you removed one, just update it.`);
 });
 
 test("esc() is a single shared definition, so there is one escaping rule and not several", () => {
