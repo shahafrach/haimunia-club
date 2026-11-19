@@ -2097,6 +2097,48 @@ function confirmClubShare(p) {
   shareDayToClub(p.entry.date);
   if (p.prDetail) shareRecordToClub(p.entry, p.prDetail);
 }
+// Q-47 (owner, 2026-11-19): share a workout that is already in the log, from לוח שנה or the PR card in
+// התקדמות. The same path as the save bar's box (confirmClubShare: the per-workout answer, the day post, the PR
+// card); removing it is the same path a "no" takes (the answer, then the day post follows the log).
+function clubEntryById(id) {
+  return entries.find((e) => e.id === id) || wodEntries.find((e) => e.id === id) || null;
+}
+function shareLoggedToClub(ids) {
+  if (!clubShareAvailable()) return;
+  const prIds = celebratablePrEntryIds();
+  for (const id of ids) {
+    const e = clubEntryById(id);
+    if (!e) continue;
+    const isLift = entries.includes(e);
+    confirmClubShare({ entry: e, prDetail: isLift && prIds.has(e.id) ? prGainDetail(e) : null });
+  }
+  render();
+}
+function unshareLoggedFromClub(ids) {
+  if (!clubShareAvailable()) return;
+  const days = new Set();
+  for (const id of ids) {
+    const e = clubEntryById(id);
+    if (!e) continue;
+    try { window.haimuniaClub.setShared(e.id, false); } catch (err) { /* never in the way */ }
+    if (entries.includes(e)) removeRecordFromClub(e.id);
+    days.add(e.date);
+  }
+  for (const d of days) shareDayToClub(d);
+  render();
+}
+// The button under a logged lift, ladder or WOD: "שיתוף במועדון", or "שותף" with a way to take it back.
+// Only for a connected club member.
+function renderClubShareLine(ids, label) {
+  if (!clubShareAvailable() || !ids.length) return "";
+  let shared = false;
+  try { shared = ids.some((id) => window.haimuniaClub.isShared(id)); } catch (e) { shared = false; }
+  const list = esc(ids.join(","));
+  const what = label ? ` ${esc(label)}` : "";
+  return shared
+    ? `<div class="club-share-line"><span class="club-shared-tag">שותף במועדון</span><button class="link-btn link-btn--tap" data-action="club-unshare" data-ids="${list}" aria-label="הסרה מהמועדון${what}">הסרה</button></div>`
+    : `<div class="club-share-line"><button class="chip-btn" data-action="club-share-later" data-ids="${list}" aria-label="שיתוף במועדון${what}">שיתוף במועדון</button></div>`;
+}
 
 async function saveSet(sanityConfirmed) {
   if (savingSet) return;
@@ -5189,6 +5231,14 @@ function renderDurationDetailCard(m, durationEntries) {
     </div>`;
 }
 
+// Q-47: the PR card in התקדמות (an exercise's open detail) can share its latest personal record afterwards.
+function renderPrShareLine(m) {
+  if (!clubShareAvailable()) return "";
+  const prIds = celebratablePrEntryIds();
+  const pr = entriesFor(m.id).filter((e) => prIds.has(e.id)).sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+  if (!pr) return "";
+  return `<div class="club-pr-share"><span class="club-pr-share-label">השיא האחרון: <span class="mono">${bidiUnit(entrySummary(pr))}</span> · ${esc(fmtDate(pr.date))}</span>${renderClubShareLine([pr.id], m.name)}</div>`;
+}
 function renderHistoryListArea() {
   const area = document.getElementById("historyListArea");
   if (!area) return;
@@ -5238,7 +5288,7 @@ function renderHistoryListArea() {
         </span>`;
         })()}
       </button>`;
-    const detail = historyId === m.id ? renderDetailCard(m) + `<div style="height:8px;"></div>` : "";
+    const detail = historyId === m.id ? renderDetailCard(m) + renderPrShareLine(m) + `<div style="height:8px;"></div>` : "";
     return row + detail;
   }).join("");
 }
@@ -5462,7 +5512,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
             <button data-action="edit-entry" data-id="${esc(e.id)}" aria-label="עריכת סט" class="icon-btn-sm">${ICONS.edit}</button>
             <button data-action="delete-entry" data-id="${esc(e.id)}" aria-label="מחיקת סט" class="icon-btn-sm">${ICONS.trash}</button>
           </div>
-        </div>`;
+        </div>${renderClubShareLine([e.id], movementById(e.exerciseId) ? movementById(e.exerciseId).name : "")}`;
         }
         // Ladder or superset: one card, exercise name(s) + PR flame shown
         // once, then every round on its own line with its own edit/delete —
@@ -5492,7 +5542,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
               </div>
             </div>`).join("")}
           </div>
-        </div>`;
+        </div>${renderClubShareLine(group.map((e) => e.id), exerciseIds.map((id) => movementById(id) ? movementById(id).name : "").join(" + "))}`;
       }).join("")}
       ${dayWods.map((e) => {
         const w = wodById(e.wodId);
@@ -5511,7 +5561,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
             </div>
           </div>
           ${e.notes ? `<div style="color:var(--steel); font-size:12px; padding-inline-start:23px;">${bidiText(e.notes)}</div>` : ""}
-        </div>`;
+        </div>${renderClubShareLine([e.id], w ? w.name : "")}`;
       }).join("")}
     </div>`;
 }
@@ -8205,6 +8255,8 @@ document.addEventListener("click", (e) => {
   else if (action === "repeat-last-set") { repeatLastSet(); }
   else if (action === "cancel-edit-entry") { cancelEditEntry(); }
   else if (action === "edit-entry") { startEditEntry(el.dataset.id); }
+  else if (action === "club-share-later") { shareLoggedToClub(String(el.dataset.ids || "").split(",").filter(Boolean)); }
+  else if (action === "club-unshare") { unshareLoggedFromClub(String(el.dataset.ids || "").split(",").filter(Boolean)); }
   else if (action === "view-log-wod-date-calendar") {
     tab = "calendar";
     const d = new Date(wodLogDate + "T00:00:00");
