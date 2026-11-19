@@ -8,7 +8,7 @@ import { bootApp } from "./helpers/boot.mjs";
 const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const tourNames = () => {
   const o = html.slice(html.indexOf('id="onboardingOverlay"'), html.indexOf('data-action="close-onboarding"'));
-  return [...o.matchAll(/font-weight:700; font-size:14px;">([^<]+)<\/div>/g)].map((m) => m[1]);
+  return [...o.matchAll(/font-weight:700; font-size:(?:14px|var\(--fs-2\));">([^<]+)<\/div>/g)].map((m) => m[1]);
 };
 
 test("the bar's tab names are the tour's, in the same order", async () => {

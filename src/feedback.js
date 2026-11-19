@@ -134,8 +134,8 @@
   function sheetHtml() {
     var esc_ = typeof esc === "function" ? esc : function (s) { return String(s); }; // eslint-disable-line no-undef
     var draft = el("feedbackText") ? el("feedbackText").value : "";
-    return '<div style="color:var(--chalk); font-size:15px; font-weight:700; line-height:1.5; margin-bottom:4px;">מה לא עובד טוב, או מה היה עוזר לכם?</div>' +
-      '<div style="color:var(--steel); font-size:13px; line-height:1.6; margin-bottom:12px;">נשלח בלי שם ובלי שם משתמש, ורק מפעיל האפליקציה קורא.</div>' +
+    return '<div style="color:var(--chalk); font-size:var(--fs-3); font-weight:700; line-height:1.5; margin-bottom:4px;">מה לא עובד טוב, או מה היה עוזר לכם?</div>' +
+      '<div style="color:var(--steel); font-size:var(--fs-2); line-height:1.6; margin-bottom:12px;">נשלח בלי שם ובלי שם משתמש, ורק מפעיל האפליקציה קורא.</div>' +
       '<div class="settings-block-title" id="feedbackScreenLabel">איפה זה קרה? (לא חובה)</div>' +
       '<div class="chip-row" role="radiogroup" aria-labelledby="feedbackScreenLabel" style="flex-wrap:wrap; margin-bottom:12px;">' +
       SCREENS.map(function (x) {
@@ -144,7 +144,7 @@
       }).join("") +
       "</div>" +
       '<label for="feedbackText" class="sr-only">מה לא עובד טוב?</label>' +
-      '<textarea id="feedbackText" class="text-input" dir="auto" rows="6" maxlength="' + MAX_LEN + '" aria-describedby="feedbackCount" style="width:100%; min-height:140px; resize:vertical; font-family:inherit; font-size:15px; line-height:1.5;">' + esc_(draft) + "</textarea>" +
+      '<textarea id="feedbackText" class="text-input" dir="auto" rows="6" maxlength="' + MAX_LEN + '" aria-describedby="feedbackCount" style="width:100%; min-height:140px; resize:vertical; font-family:inherit; font-size:var(--fs-3); line-height:1.5;">' + esc_(draft) + "</textarea>" +
       '<div id="feedbackCount" class="footer-note" style="text-align:left; margin:4px 0 12px;" dir="ltr">' + draft.length + "/" + MAX_LEN + "</div>" +
       '<div id="feedbackNote" role="status" aria-live="polite" class="footer-note" style="margin-bottom:10px;' + (S.noteKind === "warn" ? " color:var(--danger-text);" : "") + '">' + esc_(S.note) + "</div>" +
       '<button type="button" class="save-btn" data-feedback="send" style="max-width:none;"' + (S.busy ? " disabled" : "") + ">" + (S.busy ? "שולחים…" : "שליחה") + "</button>";

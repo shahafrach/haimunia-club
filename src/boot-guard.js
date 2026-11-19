@@ -41,10 +41,10 @@ function showBootError(kind) {
     box.style.cssText = "min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;";
     const h = document.createElement("h1");
     h.id = "bootErrorTitle";
-    h.style.cssText = "margin:0;font-size:18px;font-weight:800;color:var(--chalk);";
+    h.style.cssText = "margin:0;font-size:var(--fs-4);font-weight:800;color:var(--chalk);";
     const p = document.createElement("p");
     p.id = "bootErrorBody";
-    p.style.cssText = "margin:0;max-width:320px;font-size:14px;line-height:1.6;color:var(--steel);";
+    p.style.cssText = "margin:0;max-width:320px;font-size:var(--fs-2);line-height:1.6;color:var(--steel);";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.id = "bootErrorReload";

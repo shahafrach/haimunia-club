@@ -251,16 +251,16 @@
 
   // ---- Screens -----------------------------------------------------------------------
   function head(t, sub) {
-    return '<div style="text-align:center; margin-bottom:16px;"><div style="font-weight:800; font-size:17px; margin-bottom:4px;">' + esc(t) + "</div>" +
-      (sub ? '<div style="color:var(--steel); font-size:13px; line-height:1.55;">' + esc(sub) + "</div>" : "") + "</div>";
+    return '<div style="text-align:center; margin-bottom:16px;"><div style="font-weight:800; font-size:var(--fs-4); margin-bottom:4px;">' + esc(t) + "</div>" +
+      (sub ? '<div style="color:var(--steel); font-size:var(--fs-2); line-height:1.55;">' + esc(sub) + "</div>" : "") + "</div>";
   }
   function createHtml() {
     if (T.busy) return head("מצפין ושולח…", "ההצפנה קורית בטלפון הזה.");
     if (T.code) {
       return head("הקוד שלכם", "") +
-        '<div id="transferNewCode" class="mono" dir="ltr" style="font-size:20px; font-weight:700; letter-spacing:1px; text-align:center; color:var(--chalk); margin:0 0 12px; user-select:all; -webkit-user-select:all;">' + esc(T.code) + "</div>" +
+        '<div id="transferNewCode" class="mono" dir="ltr" style="font-size:var(--fs-5); font-weight:700; letter-spacing:1px; text-align:center; color:var(--chalk); margin:0 0 12px; user-select:all; -webkit-user-select:all;">' + esc(T.code) + "</div>" +
         '<button type="button" class="save-btn" data-transfer="copy" style="max-width:none; margin-bottom:12px;">העתקת הקוד</button>' +
-        '<div style="color:var(--steel); font-size:13px; line-height:1.55; margin-bottom:14px;">הקוד מוצג פעם אחת. הוא תקף פעם אחת ול-24 שעות. באפליקציה המותקנת במסך הבית: הגדרות ← הזנת קוד העברה, ומדביקים. היומן כאן לא נמחק.</div>' +
+        '<div style="color:var(--steel); font-size:var(--fs-2); line-height:1.55; margin-bottom:14px;">הקוד מוצג פעם אחת. הוא תקף פעם אחת ול-24 שעות. באפליקציה המותקנת במסך הבית: הגדרות ← הזנת קוד העברה, ומדביקים. היומן כאן לא נמחק.</div>' +
         '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="close">סגירה</button></div>';
     }
     return head("העברה לאפליקציה המותקנת", "האפליקציה במסך הבית נפתחת ריקה. קוד העברה מעביר אליה את כל היומן: אימונים, תרגילים ואימונים שהוספתם, משקל גוף, מדידות, הערות והגדרות. הכול מוצפן כאן בטלפון לפני שליחה, והשרת לא יכול לקרוא אותו. הקוד תקף פעם אחת ול-24 שעות.") +
@@ -293,7 +293,7 @@
     return head("הזנת קוד העברה", "יוצרים קוד העברה באפליקציה הישנה או בהאימוניה בדפדפן, ומדביקים אותו כאן. הוא תקף פעם אחת ו-24 שעות. הרישומים, כולל משקל הגוף, עוברים מוצפנים ומתווספים לנתונים שכבר יש כאן.") +
       (T.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(T.error) + "</span></div>" : "") +
       '<form data-transfer-form novalidate>' +
-      '<label for="transferCode" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">קוד העברה (21 תווים, מהאפליקציה הישנה)</label>' +
+      '<label for="transferCode" style="display:block; color:var(--steel); font-size:var(--fs-1); margin-bottom:6px;">קוד העברה (21 תווים, מהאפליקציה הישנה)</label>' +
       '<input id="transferCode" name="code" class="text-input" type="text" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="26" inputmode="text" placeholder="XXXX-XXXX-XXXX-XXXX-XXXXX" value="' + esc(T.draft) + '" style="margin-bottom:14px; text-align:center; letter-spacing:1px;" />' +
       '<button type="submit" class="save-btn" style="max-width:none; margin-bottom:10px;">העברה</button></form>' +
       '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="close">ביטול</button></div>';
