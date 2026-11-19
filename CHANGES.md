@@ -1,3 +1,33 @@
+# 3.19.0 — הצטרפות בקוד קצר, שחזור בלי אדם, מבנה חדש: ארבע לשוניות והגדרות — 2026-11-19
+
+- Q-35 (#38): home-screen icons are full-bleed with no white rim; a 180x180 apple-touch-icon is linked and
+  precached. Members re-add the icon once (iOS caches it).
+- Q-37 (#39): join the club with a short link (`#j=<code>`), a QR, or an 8-character code typed in any case.
+  Opened in Safari, the link shows the code in large type and the install steps. Staff get a link card with
+  the QR, the code and a print sheet. Sign-up went from 7 screens to 5.
+- Q-38c/d/e (#40): sign in with Face ID / Touch ID (Supabase passkeys, relying party haimunia.pages.dev);
+  forgot password = Face ID or the recovery code; "פתיחת חשבון חדש" as the last resort, with the training log
+  kept on the phone. No coach or owner path.
+- Q-38g (#41): sign-up rules shown as text, password 10+ characters only, a show-password button on every
+  password field, the recovery code shared as an image and viewable again ("קוד השחזור שלי").
+- Q-42 (#42): a guided first run: the transfer code from the old app, then the join code, then the account.
+  Each code is named with its length and routed if pasted in the wrong field. The first screen has one primary
+  action, the rest under "אפשרויות נוספות". Install steps per browser (WhatsApp/Instagram, iOS 26, Samsung, one
+  התקנה button where the browser offers it). A restore offer on the first sign-in on an empty install.
+- Q-43a (#43): the header is the logo and a gear (a dot and one toast for what's new); the ☰ menu and the
+  medals icon are gone. Settings: פרופיל, מועדון, תצוגה, עזרה, and a "מתקדם" fold for backup, transfer
+  codes, usage counting, what's new, privacy, version and deleting data.
+- Q-46 (#49): the tabs are the tour's: רישום, התקדמות, לוח שנה, אימונים, and מועדון when connected. Q-43b (#44)
+  had merged lifts and WODs into one tab with a toggle; the owner reversed it before this release. Labels fit
+  at 200% text.
+- Q-43c (#45): sharing to the club is a "לשתף במועדון" checkbox on the save bar, its default in Settings; no
+  question after saving. The lift tools (plates, ladder, % table, 1RM) are under "כלים".
+- Q-43d (#46): the club tab is pinned announcements, the feed, members, and for staff one "ניהול המועדון"
+  fold. Progress has one streak card; body measurements are folded.
+- Q-44a (#47): one type, space, button and tap scale in the token block; iOS text size follows the system
+  setting; every link is a 44px target; the dark accent text passes AA everywhere.
+- No IndexedDB change. An old link to the ☰ menu opens Settings.
+
 # 3.18.1 — כפתור העדכון בביקור ראשון, ושם נגיש לכפתור תצוגת היומן — 2026-11-18
 
 - F-025: on a first visit (no service worker in control when the page opened), tapping the update banner now
