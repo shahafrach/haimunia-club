@@ -40,6 +40,16 @@ test("while a sheet is open the page behind it is inert; closing it gives the pa
   assert.ok(!$(w, "#appShell").hasAttribute("inert"));
 });
 
+test("a confirm dialog rendered inside #appShell stays tappable: its container is not made inert", async () => {
+  const w = await fresh();
+  w.askAppConfirm({ title: "מחיקת פוסט", message: "הפוסט יימחק לכל המועדון.", confirmLabel: "מחיקה", destructive: true, action: "club-action", payload: null, opener: null });
+  await wait();
+  const ov = $(w, "#appConfirmOverlay");
+  assert.ok(ov && $(w, "#appShell").contains(ov), "the confirm sheet renders inside #appShell");
+  assert.ok(!$(w, "#appShell").hasAttribute("inert"), "#appShell holds the open dialog, so it must not be inert");
+  assert.ok($(w, "#bottomNavWrap").hasAttribute("inert"), "the bottom bar behind it still is");
+});
+
 test("the update banner is a button inside a status region, not a button with role=status", () => {
   assert.match(html, /<div id="updateBannerRegion" role="status" aria-live="polite">\s*<button id="updateBanner" data-action="reload-app" style=/);
   assert.doesNotMatch(html, /<button id="updateBanner"[^>]*role="status"/);
