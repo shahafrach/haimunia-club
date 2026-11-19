@@ -110,7 +110,8 @@ test("first run: after the name the member chooses; staying offline stores it an
   const { window, log } = await boot();
   await firstRunName(window);
   assert.match($(window, "#connectBody").textContent, /להישאר בלי חיבור/);
-  assert.equal($(window, "#connectCloseBtn").style.display, "none", "the choice has no hidden third answer");
+  // Q-54: the close button is always there now (no sheet without a way out); closing leaves the choice for later.
+  assert.equal($(window, "#connectCloseBtn").style.display, "", "the sheet can always be closed");
   $(window, "[data-connect='offline']").click();
   assert.equal(open(window), false);
   assert.equal(await window.dbGetSetting("haimunia:connectChoice"), "offline");
