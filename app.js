@@ -901,7 +901,10 @@ function categoryPRCounts() {
   return counts;
 }
 function loggedDates() { return [...entries.map((e) => e.date), ...wodEntries.map((e) => e.date)]; }
-function weekBucket(iso) { return Math.floor(new Date(iso + "T00:00:00").getTime() / 86400000 / 7); }
+// Q-51 CQ-07: one definition of a week in the app, Sunday to Saturday (weekStartDay, the weekly streak's own).
+// This used to count weeks from the 1970 epoch, which start on a Thursday, through a local Date that drifts
+// with DST. Consecutive weeks give consecutive buckets.
+function weekBucket(iso) { const d = isoDayNumber(iso); return d === null ? NaN : Math.floor(weekStartDay(d) / 7); }
 function longestWeekStreak() {
   const buckets = [...new Set(loggedDates().map(weekBucket))].sort((a, b) => a - b);
   let longest = 0, current = 0, prev = null;
@@ -1256,7 +1259,15 @@ async function loadSeenAchievements() {
 // that medal back.
 function baselineSeenAchievements() {
   for (const a of ACHIEVEMENTS) if (a.earned()) seenAchievementIds.add(a.id);
-  dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]).catch(() => {});
+  persistSeenAchievements().catch(() => {});
+}
+// Q-51 CQ-03: a union with what is on disk, never this tab's copy alone. Another tab may have shown (and so kept)
+// a medal this tab has not; writing this tab's set over it would take that medal back.
+async function persistSeenAchievements() {
+  let onDisk = [];
+  try { const v = await dbGetSetting(SEEN_ACHIEVEMENTS_KEY); if (Array.isArray(v)) onDisk = v; } catch (e) { /* write what we have */ }
+  for (const id of onDisk) seenAchievementIds.add(id);
+  await dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]);
 }
 function newlyEarnedAchievements() {
   return ACHIEVEMENTS.filter((a) => a.earned() && !seenAchievementIds.has(a.id));
@@ -1270,7 +1281,7 @@ function claimNewlyEarned() {
   const newlyEarned = newlyEarnedAchievements();
   if (!newlyEarned.length) return [];
   for (const a of newlyEarned) seenAchievementIds.add(a.id);
-  dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]).catch(noteStorageError);
+  persistSeenAchievements().catch(noteStorageError);
   return newlyEarned.filter((a) => !a.silent);
 }
 function checkForNewAchievements() {
@@ -2688,9 +2699,16 @@ function askDeleteEntry(id) {
 async function deleteEntry(id) {
   if (updateHoldsWrites()) return; // F-020
   const removed = entries.find((e) => e.id === id);
+  // Q-51 CQ-04: the disk first. A delete that did not reach IndexedDB keeps the set on screen and its club
+  // post, and says so, instead of a set that is gone here and back on the next open.
+  try { await dbDelete(id); } catch (e) {
+    noteStorageError(e);
+    showToast("המחיקה לא נשמרה במכשיר. נסו שוב.");
+    render();
+    return;
+  }
   entries = entries.filter((e) => e.id !== id);
   if (editingEntryId === id) { editingEntryId = null; logDate = todayISO(); logDateExplicitlyChosen = false; }
-  try { await dbDelete(id); } catch (e) { noteStorageError(e); }
   if (removed) {
     const mov = movementById(removed.exerciseId);
     offerUndo(`${mov ? mov.name : "הסט"} — ${entrySummary(removed)} נמחק`, () => restoreEntry(removed));
@@ -3296,19 +3314,27 @@ async function buildBackupPayload() {
       sessionNotes[row.key.slice("sessionNote:".length)] = row.value;
     }
   }
+  // Q-51 CQ-01: every backup (export, the rollback file, the transfer code, the safety backup before "delete
+  // everything") is built from a fresh read of IndexedDB, not from this tab's in-memory arrays, which can be
+  // behind another tab's writes. A store that cannot be read falls back to the in-memory copy, so a backup is
+  // never emptier than what the member sees.
+  const fresh = async (load, sanitize, mem) => {
+    try { return sanitizeList(await load(), sanitize); } catch (e) { return mem; }
+  };
+  const byTs = (a, b) => (b.ts || 0) - (a.ts || 0);
   return {
     app: BACKUP_APP_ID,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    entries,
-    customMovements,
-    wodEntries,
-    customWods,
-    bodyweightEntries,
-    measureTypes,
-    measureEntries,
+    entries: (await fresh(dbLoadAll, sanitizeEntry, entries)).sort(byTs),
+    customMovements: await fresh(dbLoadMovements, sanitizeMovement, customMovements),
+    wodEntries: (await fresh(dbLoadWodEntries, sanitizeWodEntry, wodEntries)).sort(byTs),
+    customWods: await fresh(dbLoadCustomWods, sanitizeCustomWod, customWods),
+    bodyweightEntries: (await fresh(dbLoadBodyweight, sanitizeBodyweight, bodyweightEntries)).sort(byTs),
+    measureTypes: await fresh(dbLoadMeasureTypes, sanitizeMeasureType, measureTypes),
+    measureEntries: await fresh(dbLoadMeasurements, sanitizeMeasurement, measureEntries),
     sessionNotes,
-    customWodMovementTags,
+    customWodMovementTags: await fresh(dbLoadWodMovementTags, sanitizeWodMovementTag, customWodMovementTags),
   };
 }
 
@@ -3624,6 +3650,13 @@ async function clearAllData() {
     // "delete everything" must also drop the stored name and export marker.
     await dbClearSettings();
     try { localStorage.removeItem(USER_NAME_KEY); localStorage.removeItem(LAST_EXPORT_KEY); } catch (e) {}
+    // Q-51 CQ-08: privacy.html promises "delete everything" leaves nothing of the log on the phone. These keys
+    // hold which workouts were shared to the club and the names of shared PRs, the share default, and feedback
+    // or error reports still waiting to be sent (their text). The account itself is not touched here.
+    try {
+      for (const k of ["haimunia:clubShareChoice", "haimunia:clubDayRev", "haimunia:clubPrShared", "haimunia:clubShareDefault",
+        "haimunia:feedbackQueue", "haimunia:errorReportsPending", "haimunia:errorReportDays"]) localStorage.removeItem(k);
+    } catch (e) { /* nothing more to clear */ }
     userName = null;
     if (window.haimuniaConnect) window.haimuniaConnect.forget();
     boxStartDate = null;
@@ -4369,9 +4402,15 @@ function askDeleteWodEntry(id) {
 async function deleteWodEntry(id) {
   if (updateHoldsWrites()) return; // F-020
   const removed = wodEntries.find((e) => e.id === id);
+  // Q-51 CQ-04: the disk first, as deleteEntry().
+  try { await dbDeleteWodEntry(id); } catch (e) {
+    noteStorageError(e);
+    showToast("המחיקה לא נשמרה במכשיר. נסו שוב.");
+    render();
+    return;
+  }
   wodEntries = wodEntries.filter((e) => e.id !== id);
   if (editingWodEntryId === id) { editingWodEntryId = null; wodLogDate = todayISO(); wodLogDateExplicitlyChosen = false; }
-  try { await dbDeleteWodEntry(id); } catch (e) { noteStorageError(e); }
   if (removed) {
     const w = wodById(removed.wodId);
     offerUndo(`${w ? w.name : "האימון"} — ${formatWodEntry(removed)} נמחק`, () => restoreWodEntry(removed));
@@ -6186,9 +6225,9 @@ function renderHistoryTab() {
   const monthPrefix = localISODate(now).slice(0, 7);
   const celebratablePrIds = celebratablePrEntryIds();
   const prCountThisMonth = entries.filter((e) => celebratablePrIds.has(e.id) && e.date.startsWith(monthPrefix)).length;
-  const start = new Date(now); start.setDate(now.getDate() - now.getDay());
-  const startISO = localISODate(start);
-  const sessionsThisWeek = new Set(entries.filter((e) => e.date >= startISO).map((e) => e.date)).size;
+  // Q-51 CQ-07: "this week" is the same Sunday-start week as the streak and the medals (weekBucket).
+  const thisWeek = weekBucket(localISODate(now));
+  const sessionsThisWeek = new Set(entries.filter((e) => weekBucket(e.date) === thisWeek).map((e) => e.date)).size;
   const totalSetsLogged = entries.reduce((sum, e) => sum + e.sets, 0);
 
   return `
@@ -6623,6 +6662,7 @@ function countUsage(event, screen) {
 // places that set `tab`, so no route to a screen can be missed.
 let lastCountedScreen = null;
 function render() {
+  followTodayIfUnchosen();
   let content;
   try {
     if (tab === "add") {
@@ -8929,13 +8969,42 @@ function setUpServiceWorker() {
 // The header date was written once at boot, so an app left open overnight
 // (the normal life of an installed PWA) showed yesterday's date all morning.
 // Rewritten on every return to the foreground (audit 2026-11, finding 20).
+// Q-51 CQ-06: #dateLabel left with the old header (Q-43a), so this updated nothing. The date a member sees is the
+// log date (the "היום ▾" chip) and the WOD log date; past midnight they stayed on yesterday while saveSet()
+// used today. A date the member did not choose follows the clock; a chosen one is left alone.
 function refreshDateLabel() {
-  const el = document.getElementById("dateLabel");
-  if (el) el.textContent = new Date().toLocaleDateString("he-IL", { weekday: "short", day: "numeric", month: "short" });
+  const today = todayISO();
+  let moved = false;
+  if (!logDateExplicitlyChosen && logDate !== today) { logDate = today; moved = true; }
+  if (!wodLogDateExplicitlyChosen && wodLogDate !== today) { wodLogDate = today; moved = true; }
+  if (moved && typeof render === "function") { try { render(); } catch (e) { /* the next render catches up */ } }
+  return moved;
+}
+// Also on every render (an app left in front over midnight catches up on the next tap), without a timer.
+function followTodayIfUnchosen() {
+  const today = todayISO();
+  if (!logDateExplicitlyChosen && logDate !== today) logDate = today;
+  if (!wodLogDateExplicitlyChosen && wodLogDate !== today) wodLogDate = today;
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshDateLabel();
 });
+// Q-51 CQ-02: another tab wrote to IndexedDB. Reload this tab's copy before it can write a stale one back; an
+// edit of a set or WOD the other tab deleted ends here instead of saving it again. Debounced: a save is several
+// writes. Reads only, so two tabs cannot ping-pong.
+let dbSyncTimer = null;
+try {
+  if (typeof dbChannel !== "undefined" && dbChannel) dbChannel.addEventListener("message", (ev) => {
+    if (!ev || !ev.data || ev.data.type !== "db-write") return;
+    clearTimeout(dbSyncTimer);
+    dbSyncTimer = setTimeout(async () => {
+      if (!(await reloadFromDb())) return;
+      if (editingEntryId && !entries.some((e) => e.id === editingEntryId)) { editingEntryId = null; logDateExplicitlyChosen = false; logDate = todayISO(); }
+      if (editingWodEntryId && !wodEntries.some((e) => e.id === editingWodEntryId)) { editingWodEntryId = null; }
+      try { render(); } catch (e) { /* the next render catches up */ }
+    }, 250);
+  });
+} catch (e) { /* no cross-tab sync */ }
 // init() had no catch: a boot exception left the loading screen up for good.
 // src/boot-guard.js turns it into a message with a reload button.
 init().catch((e) => {
