@@ -255,3 +255,12 @@ test("F-025 keeps F-020: on that first visit, the tap waits for a running save b
   window.dbIdle = realIdle;
   await until(() => reload.calls === 1, "the reload once the save finished");
 });
+
+test("Settings shows the update check once, not twice (owner screenshot 2026-11-19)", async () => {
+  const w = await bootApp(); w.saveWelcomeForm("רונית");
+  await new Promise((r) => setTimeout(r, 30));
+  if (w.haimuniaConnect) w.haimuniaConnect.close();
+  w.openSettings();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(w.document.querySelectorAll('[data-action="check-update"]').length, 1);
+});
