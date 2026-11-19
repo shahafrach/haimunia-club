@@ -1615,7 +1615,7 @@ function renderNotificationsList(showAll) {
     // text, and only recognizes esc()/Number()-wrapped values, bare digits,
     // or an allow-listed identifier - not an inline ternary of literals.
     const notifEmptyMessage = RELEASE_NOTES.length ? "אין עדכונים חדשים" : "אין עדכונים עדיין";
-    el.innerHTML = `<div class="empty">${notifEmptyMessage}</div>`;
+    el.innerHTML = emptyStateHtml(notifEmptyMessage, { cls: "empty" });
     return;
   }
   // Every entry rendered here is by definition unseen (that is now the only
@@ -4666,7 +4666,7 @@ function renderCompactChart(data, chartLabel) {
     <div style="color:var(--steel); font-size:var(--fs-caption); text-align:center; margin-top:6px;">עוד ${missing} ${missing === 1 ? "נתון" : "נתונים"} ותראו כאן מגמה</div>`;
 }
 function renderChart(data) {
-  if (!data.length) return `<div class="flex col items-center" style="padding:32px 0; gap:8px;">${ICONS.dumbbell}<span style="color:var(--steel); font-size:var(--fs-2);">אין עדיין נתונים לתרגיל הזה</span></div>`;
+  if (!data.length) return emptyStateHtml("אין עדיין נתונים לתרגיל הזה", { icon: ICONS.dumbbell });
   const n = data.length;
   // Every point gets its own date label now (rotated, to fit more before they
   // overlap). Few points still render at the original full-width 300 viewBox;
@@ -4912,9 +4912,15 @@ function renderJoinCard() {
   if (window.haimuniaClub && window.haimuniaClub.available()) return "";
   return window.haimuniaJoin.cardHtml("add");
 }
+// Q-53b: the one empty state. `text` is trusted markup (callers escape what they interpolate); `cls` keeps an old
+// class name on it for the tests and checks that look it up.
+function emptyStateHtml(text, opts) {
+  const o = opts || {};
+  return `<div class="empty-state${o.cls ? " " + o.cls : ""}"${o.attrs ? " " + o.attrs : ""}>${o.icon || ""}<span>${text}</span></div>`;
+}
 function renderDayLog(dayEntries, isToday, dayLabel) {
   if (dayEntries.length === 0) {
-    return `<div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כל סט שתוסיפו יופיע כאן." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>`;
+    return emptyStateHtml(isToday ? "עדיין לא נרשמו סטים היום. כל סט שתוסיפו יופיע כאן." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`, { cls: "day-empty", icon: ICONS.emptyDay });
   }
   const setCount = dayEntries.reduce((n, e) => n + (e.sets || 1), 0);
   const volume = Math.round(dayEntries.reduce((v, e) => v + (e.type === "duration" ? 0 : (e.weight || 0) * (e.reps || 0) * (e.sets || 1)), 0));
@@ -5580,7 +5586,7 @@ function announceStepper(btn, value) {
 // Q-54: the PR flame says what it means to VoiceOver and TalkBack (the icon itself is decorative).
 const PR_FLAME = '<span class="pr-flame"><span aria-hidden="true">' + ICONS.flame.replace("<svg ", '<svg aria-hidden="true" ') + '</span><span class="sr-only">שיא אישי</span></span>';
 function renderDayEntriesListHtml(dayEntries, dayWods) {
-  if (dayEntries.length === 0 && dayWods.length === 0) return `<div class="empty">לא נרשם דבר ביום הזה.</div>`;
+  if (dayEntries.length === 0 && dayWods.length === 0) return emptyStateHtml("לא נרשם דבר ביום הזה.", { cls: "empty" });
   // Live bug hunt (2026-09-11): see isFlameworthyEntry()'s comment.
   const celebratableIds = celebratablePrEntryIds();
   return `
@@ -6096,7 +6102,7 @@ function renderBenchmarkCard(item) {
     <div class="chart-card" style="margin-top:-4px; border-top-left-radius:0; border-top-right-radius:0; border-top:none;">
       ${item.subtitle ? `<div class="wod-desc" style="margin-bottom:10px;">${bidiText(item.subtitle)}</div>` : ""}
       ${item.retestDue ? `<div class="footer-note" style="margin:0 0 10px; text-align:center;">עברו ${item.daysSince} יום מאז הניסיון האחרון — זה הזמן לבדוק שוב.</div>` : ""}
-      ${item.tracked.length ? renderChart(chartData) : `<div style="color:var(--steel); font-size:var(--fs-2); text-align:center; padding:18px 0;">אין עדיין תוצאה לבנצ'מרק הזה</div>`}
+      ${item.tracked.length ? renderChart(chartData) : emptyStateHtml("אין עדיין תוצאה לבנצ'מרק הזה")}
       ${item.kind === "wod" && item.effort !== null && item.tracked.length < item.all.length
         ? `<div class="footer-note" style="margin-top:10px; text-align:center;">הגרף והשיא מציגים את הניסיונות ב${esc(wodEffortLabel(item.effort))} בלבד — תוצאות בדרגות מאמץ שונות אינן ברות השוואה. כל הניסיונות מופיעים ברשימה למטה.</div>` : ""}
       ${attempts.length ? `<h3 class="section-label" style="margin-top:14px;">כל הניסיונות</h3>${attempts.map((a) => renderBenchmarkAttemptRow(item, a)).join("")}` : ""}
@@ -7151,7 +7157,7 @@ function renderWodLogSection() {
     ${inputsHtml}
 
     ${dayWods.length === 0 ? `
-    <div class="empty">${isToday ? "עדיין לא נרשמו אימונים היום." : `עדיין לא נרשמו אימונים ב-${esc(dayLabel)}.`}</div>` : `
+    ${emptyStateHtml(isToday ? "עדיין לא נרשמו אימונים היום." : `עדיין לא נרשמו אימונים ב-${esc(dayLabel)}.`, { cls: "empty" })}` : `
     <button class="exercise-row" data-action="view-log-wod-date-calendar" style="margin-bottom:0;">
       <div class="flex items-center gap-8">
         ${dayWods[0].isPR ? PR_FLAME : ""}

@@ -136,7 +136,8 @@ console.log("\n---- finding 3: Add photo height vs the movement picker ----");
 const photoToken = await page.evaluate(() =>
   getComputedStyle(document.querySelector(".scene-page--add")).getPropertyValue("--scene-photo-height").trim(),
 );
-check("the Add scene declares its own, reduced --scene-photo-height", photoToken.includes("46svh"), photoToken);
+// Q-53b: with nothing chosen (this state) the photo is shorter still (30svh); 46svh once a movement is picked.
+check("the Add scene declares its own, reduced --scene-photo-height", photoToken.includes("30svh") || photoToken.includes("46svh"), photoToken);
 
 const otherScenePhoto = await page.evaluate(async () => {
   // The look of the other scenes is the thing finding 3 must not change, so
@@ -240,8 +241,9 @@ check(
 for (const l of addLinks) {
   check(`Add: .link-btn[${l.action}] reaches the app's 44px floor`, l.height >= 44, `${l.width}x${l.height}`);
   check(
-    `Add: .link-btn[${l.action}] still LOOKS like a 13px underlined link`,
-    l.fontSize === "13px" || l.fontSize === "12.5px",
+    `Add: .link-btn[${l.action}] still LOOKS like a small underlined link`,
+    // Q-53: type is on the rem scale now (no 13px step): a small link is 12-14px, still underlined.
+    ["12px", "12.5px", "13px", "14px"].includes(l.fontSize) && l.decoration === "underline",
     `font-size ${l.fontSize}, text-decoration-line ${l.decoration}`,
   );
   check(`Add: .link-btn[${l.action}] keeps its underline`, l.decoration === "underline", l.decoration);
@@ -491,7 +493,7 @@ const noteSave = calLinks.find((l) => l.action === "save-session-note");
 check("the session-note save is on screen", !!noteSave, JSON.stringify(calLinks.map((l) => l.action)));
 if (noteSave) {
   check("Calendar: .link-btn[save-session-note] reaches 44px", noteSave.height >= 44, `${noteSave.width}x${noteSave.height}`);
-  check("Calendar: it still looks like a 13px underlined link", noteSave.fontSize === "13px" && noteSave.decoration === "underline",
+  check("Calendar: it still looks like a small underlined link", ["12px", "13px", "14px"].includes(noteSave.fontSize) && noteSave.decoration === "underline",
     `${noteSave.fontSize} / ${noteSave.decoration}`);
 }
 
