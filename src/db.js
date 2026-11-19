@@ -504,6 +504,15 @@ function forgetDBConnection() {
 // write short. Counting only; it changes nothing about the call itself.
 let dbCallsInFlight = 0;
 function dbIdle() { return dbCallsInFlight === 0; }
+// Q-51 CQ-02: other tabs of the app hear about every write, so they reload before they can write a stale copy
+// back (an edit in tab B resurrecting a set tab A deleted). No BroadcastChannel (old browsers, tests): nothing.
+const DB_WRITE_NAME = /^db(Set|Clear|Add|Put|Delete|Import)/;
+let dbChannel = null;
+try { if (typeof BroadcastChannel === "function") dbChannel = new BroadcastChannel("box-log-db"); } catch (e) { dbChannel = null; }
+function dbAnnounceWrite(name) {
+  if (!dbChannel) return;
+  try { dbChannel.postMessage({ type: "db-write", fn: name, at: Date.now() }); } catch (e) { /* a lost notice only means a later reload */ }
+}
 function withReopen(fn) {
   const reopening = async function () {
     try {
@@ -519,9 +528,14 @@ function withReopen(fn) {
       }
     }
   };
+  const isWrite = DB_WRITE_NAME.test(fn.name || "");
   return async function () {
     dbCallsInFlight++;
-    try { return await reopening.apply(this, arguments); }
+    try {
+      const out = await reopening.apply(this, arguments);
+      if (isWrite) dbAnnounceWrite(fn.name);
+      return out;
+    }
     finally { dbCallsInFlight--; }
   };
 }
