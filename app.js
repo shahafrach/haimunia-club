@@ -6506,9 +6506,10 @@ function renderSettingsBody() {
       <div class="settings-club-edge" aria-hidden="true"></div>
       <div class="settings-block" id="settingsProfileBlock">
         <div class="settings-block-title">פרופיל</div>
-        <div class="who" style="margin:0 0 8px;">
+        <div class="who" style="margin:0 0 8px; flex-wrap:wrap;">
         <div class="who-avatar">${esc(initial)}</div>
-        <div style="flex:1; min-width:0;">
+        <!-- Q-61: an 8em floor, so at large text the edit button wraps instead of the name going one letter a line. -->
+        <div style="flex:1 1 8em; min-width:0;">
           <div class="who-name">${userName ? bidiText(userName) : "אורח/ת"}</div>
           <div class="who-sub">פרופיל אישי</div>
         </div>
@@ -6551,9 +6552,10 @@ function renderSettingsBody() {
         </button>
       </div>
 
-      <details class="settings-advanced" id="settingsAdvanced">
-        <summary>מתקדם${unseenReleaseNotes().length ? ' <span class="tab-badge" aria-hidden="true" style="margin-inline-start:8px;">חדש</span>' : ""}</summary>
-      <div class="settings-block">
+      <!-- Q-61: מתקדם is a card like the others: a row (title + chevron) that opens its sections inside the card. -->
+      <details class="settings-block settings-advanced" id="settingsAdvanced">
+        <summary class="settings-row-summary"><span>מתקדם${unseenReleaseNotes().length ? ' <span class="tab-badge" aria-hidden="true" style="margin-inline-start:8px;">חדש</span>' : ""}</span><span class="settings-chevron" aria-hidden="true">${ICONS.chevronsLeft}</span></summary>
+      <div class="settings-block settings-block--inner">
         <div class="settings-block-title">קובץ גיבוי להורדה</div>
         <div class="footer-note"${storageOK ? "" : ' style="color:var(--red-text);" role="alert"'}>${storageOK ? esc("נשמר במכשיר הזה בלבד, ללא שרת") : esc(storageErrMsg || "שמירה נכשלה — בדקו את מקום האחסון") + storageFeedbackLink("settings")}</div>
         ${staleBackupNote}
@@ -6568,25 +6570,31 @@ function renderSettingsBody() {
           <button class="backup-btn backup-btn-secondary" data-action="open-transfer">הזנת קוד העברה</button>
         </div>
         ${importMessage ? `<div class="footer-note" role="status" aria-live="polite" style="color:var(--brass); margin-bottom:8px;">${esc(importMessage)}</div>` : ""}
-        <div class="footer-note" style="margin-bottom:0;">קובץ הגיבוי הוא טקסט פשוט (JSON) וכולל את יומן האימונים המלא, התרגילים והאימונים שהוספתם, משקל גוף ומדידות — בלי השם שלכם ובלי הגדרות. הוא יורד לתיקיית ההורדות של המכשיר ונשאר שם: במכשיר משותף כל מי שמשתמש בו יכול לפתוח אותו. שמרו אותו במקום בטוח, ומחקו אותו מההורדות אם אינכם צריכים אותו שם</div>
+        <div class="footer-note" style="margin-bottom:0;">קובץ אחד עם כל היומן, בלי השם שלכם.</div>
+        <details class="settings-more"><summary>פרטים</summary><div class="footer-note" style="margin-bottom:0;">קובץ הגיבוי הוא טקסט פשוט (JSON) וכולל את יומן האימונים המלא, התרגילים והאימונים שהוספתם, משקל גוף ומדידות — בלי השם שלכם ובלי הגדרות. הוא יורד לתיקיית ההורדות של המכשיר ונשאר שם: במכשיר משותף כל מי שמשתמש בו יכול לפתוח אותו. שמרו אותו במקום בטוח, ומחקו אותו מההורדות אם אינכם צריכים אותו שם</div></details>
       </div>
 
-      <div class="settings-block" id="usageSettingsBlock">
+      <div class="settings-block settings-block--inner" id="usageSettingsBlock">
         <div class="settings-block-title">ספירת שימוש</div>
-        <div class="footer-note" style="margin-bottom:8px;">כדי שהמועדון ידע כמה משתמשים באפליקציה, נספרים רק פתיחת האפליקציה, רישום אימון ופתיחת מסך — בלי שם ובלי שום פרט מהאימונים. לכל ספירה מצורף מזהה אקראי קבוע של הטלפון: הוא לא מגלה מי אתם, אבל מקשר את הספירות של הטלפון הזה לאורך הימים. יומני השרת שומרים את כתובת ה־IP לזמן קצר, והספירות עצמן נמחקות אחרי 180 יום.</div>
+        <div class="footer-note" style="margin-bottom:4px;">נספרות רק פתיחות ומסכים, בלי שם ובלי פרטי אימון.</div>
+        <details class="settings-more" style="margin-bottom:8px;"><summary>פרטים</summary><div class="footer-note" style="margin-bottom:0;">כדי שהמועדון ידע כמה משתמשים באפליקציה, נספרים רק פתיחת האפליקציה, רישום אימון ופתיחת מסך — בלי שם ובלי שום פרט מהאימונים. לכל ספירה מצורף מזהה אקראי קבוע של הטלפון: הוא לא מגלה מי אתם, אבל מקשר את הספירות של הטלפון הזה לאורך הימים. יומני השרת שומרים את כתובת ה־IP לזמן קצר, והספירות עצמן נמחקות אחרי 180 יום.</div></details>
         ${renderUsageCountingRow()}
       </div>
 
-      <div class="settings-block">
+      <div class="settings-block settings-block--inner">
         <div class="settings-block-title">מה חדש ופרטיות</div>
         <button class="exercise-row" data-action="open-release-notes" style="margin-bottom:8px;">
           <span style="font-weight:700; font-size:var(--fs-2);">מה חדש באפליקציה</span>
           <span class="flex items-center gap-6" style="flex-shrink:0;">${unseenReleaseNotes().length ? `<span class="tab-badge" aria-hidden="true">${unseenReleaseNotes().length}</span>` : ""}<span style="color:var(--steel);">${ICONS.chevronsLeft}</span></span>
         </button>
-        <div class="flex items-center justify-center gap-8"><a class="link-btn" href="./privacy.html" target="_blank" rel="noopener">פרטיות</a></div>
+        <!-- Q-61: פרטיות is a row like מה חדש, not an underlined link. -->
+        <a class="exercise-row" href="./privacy.html" target="_blank" rel="noopener" style="margin-bottom:0;">
+          <span style="font-weight:700; font-size:var(--fs-2);">פרטיות</span>
+          <span style="color:var(--steel); flex-shrink:0;" aria-hidden="true">${ICONS.chevronsLeft}</span>
+        </a>
       </div>
 
-      <div class="settings-block">
+      <div class="settings-block settings-block--inner">
         <!-- Design spec §4.4. The title here was "אזור מסוכן", a calque of
              the developer idiom "danger zone", printed in var(--red-text).
              The beginner persona read it as the app reporting a fault with
@@ -6605,7 +6613,8 @@ function renderSettingsBody() {
              bare "למחוק הכל?" - the rule the askAppConfirm comment above
              already sets for every other destructive action in this file. -->
         <div class="settings-block-title">מחיקת נתונים</div>
-        <div class="footer-note">מוחק מהמכשיר הזה את יומן האימונים, התרגילים והאימונים שהוספתם, משקל הגוף והמדידות. לפני המחיקה יורד אוטומטית קובץ גיבוי, כדי שתמיד תהיה דרך חזרה</div>
+        <div class="footer-note" style="margin-bottom:4px;">מוחק את כל מה שבמכשיר הזה. קודם יורד קובץ גיבוי.</div>
+        <details class="settings-more" style="margin-bottom:10px;"><summary>פרטים</summary><div class="footer-note" style="margin-bottom:0;">מוחק מהמכשיר הזה את יומן האימונים, התרגילים והאימונים שהוספתם, משקל הגוף והמדידות. לפני המחיקה יורד אוטומטית קובץ גיבוי, כדי שתמיד תהיה דרך חזרה</div></details>
         ${!confirmClear
           ? `<div style="text-align:center;"><button class="chip-btn danger" data-action="ask-clear">מחיקת כל הנתונים</button></div>`
           : `
@@ -6615,9 +6624,12 @@ function renderSettingsBody() {
             <button class="chip-btn" data-action="cancel-clear">ביטול</button>
           </div>`}
       </div>
-      <div class="footer-note" style="text-align:center; margin-top:2px;">© ${new Date().getFullYear()} Shahaf Rachmany · v${APP_VERSION}</div>
-      ${renderUpdateCheck()}
       </details>
+      <!-- Q-61: the version and the update check together, one small card at the very bottom. -->
+      <div class="settings-block settings-footer" id="settingsFooter">
+        <div class="footer-note" style="text-align:center; margin:0;">© ${new Date().getFullYear()} Shahaf Rachmany · v${APP_VERSION}</div>
+        ${renderUpdateCheck()}
+      </div>
     </div>`;
 }
 

@@ -138,3 +138,12 @@ test("Q-53b: --btn-primary-fg on --btn-primary-bg clears 4.5:1 in both schemes",
     assert.ok(r >= 4.5, `${dark ? "dark" : "light"} primary button text is ${r.toFixed(2)}:1`);
   }
 });
+
+// Q-61: the selected option of every segmented control: filled, white text, 4.5:1 in both schemes.
+test("Q-61: --seg-selected-fg on --seg-selected-bg clears 4.5:1 in both schemes", () => {
+  for (const dark of [false, true]) {
+    const t = scheme(dark);
+    const r = ratio(t["seg-selected-fg"], t["seg-selected-bg"]);
+    assert.ok(r >= 4.5, `${dark ? "dark" : "light"} segmented selected text is ${r.toFixed(2)}:1`);
+  }
+});
