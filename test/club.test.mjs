@@ -487,3 +487,59 @@ test("staff never reset a member's password (Q-38c): recovery is self-service on
   const src = readFileSync(path.join(root, "src/club.js"), "utf8");
   assert.doesNotMatch(src, /club_issue_reset_code|איפוס סיסמה/);
 });
+
+// Q-47 (owner, 2026-11-19): a workout already in the log can be shared afterwards, from לוח שנה and from the PR
+// card in התקדמות, through the save bar's own path; and taken back.
+async function openCalendarToday(window) {
+  window.document.getElementById("tabCalendarBtn").click();
+  await until(() => window.document.querySelector("#calDetail .log-list"), "day detail");
+}
+test("Q-47: a lift saved unshared gets 'שיתוף במועדון' in לוח שנה; one tap posts the day, then 'שותף' and הסרה", async () => {
+  const { window, calls } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  await logLift(window, 80, 3, false);
+  await wait(60);
+  const id = (await window.buildBackupPayload()).entries[0].id;
+  assert.equal(calls.filter(([n]) => n === "upsert:workout_posts").length, 0, "nothing sent at save");
+  await openCalendarToday(window);
+  const btn = () => $(window, "#calDetail [data-action='club-share-later']");
+  assert.ok(btn(), "the share button is in the day detail");
+  btn().click();
+  await until(() => calls.some(([n]) => n === "upsert:workout_posts"), "day posted");
+  assert.equal(window.haimuniaClub.isShared(id), true);
+  const row = calls.find(([n]) => n === "upsert:workout_posts")[1];
+  assert.doesNotMatch(JSON.stringify(row), /ק״ג|80|weight|משקל/, "no kilograms, no body weight");
+  await until(() => $(window, "#calDetail .club-shared-tag"), "shared tag");
+  $(window, "#calDetail [data-action='club-unshare']").click();
+  await wait(60);
+  assert.equal(window.haimuniaClub.isShared(id), false, "taken back");
+  assert.ok($(window, "#calDetail [data-action='club-share-later']"), "and the share button is back");
+});
+
+test("Q-47: offline or not in the club, no share button anywhere in the log", async () => {
+  const { window } = await boot({ connected: false });
+  await wait(50);
+  window.choosePickedMovement("back-squat");
+  window.applyFieldValue("step", "weight", 60);
+  await window.saveSet();
+  window.document.getElementById("tabCalendarBtn").click();
+  await until(() => window.document.querySelector("#calDetail .log-list"), "day detail");
+  assert.equal($(window, "[data-action='club-share-later']"), null);
+});
+
+test("Q-47: the PR card in התקדמות shares the latest personal record through the same path", async () => {
+  const { window, calls } = await boot();
+  await until(() => window.haimuniaClub.available(), "in club");
+  for (let i = 0; i < 3; i++) {
+    await logLift(window, 60, 5, false);
+    if (window.document.getElementById("celebrationOverlay").classList.contains("open")) window.closeCelebration();
+  }
+  await logLift(window, 80, 5, false);
+  if (window.document.getElementById("celebrationOverlay").classList.contains("open")) window.closeCelebration();
+  window.document.getElementById("tabHistoryBtn").click();
+  $(window, "[data-action='select-history'][data-id='back-squat']").click();
+  await until(() => $(window, ".club-pr-share [data-action='club-share-later']"), "PR card share");
+  assert.match($(window, ".club-pr-share").textContent, /80/);
+  $(window, ".club-pr-share [data-action='club-share-later']").click();
+  await until(() => calls.some(([n]) => n === "pr_share") && calls.some(([n]) => n === "upsert:workout_posts"), "PR card and day posted");
+});
