@@ -24,6 +24,8 @@ async function openWodLogForm(window) {
   d.getElementById("tabWodBtn").click();
   d.querySelector('[data-action="switch-wod-subtab"][data-subtab="benchmarks"]').click();
   d.querySelector('[data-action="select-benchmark"]').click();
+  // Q-57: a new score starts blank and a blank one is refused, so enter one the way a member would.
+  for (const [f, v] of [["wodMinutes", 7], ["wodRounds", 5], ["wodWeight", 40]]) window.applyFieldValue("wod-step", f, v);
   return d;
 }
 const toggle = (d) => d.querySelector(".rx-toggle");

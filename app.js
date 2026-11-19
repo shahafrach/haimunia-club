@@ -504,7 +504,9 @@ let wodSubTab = "log";
 // check (render()) already treat as "show the pick-a-WOD empty state, no
 // save action".
 let selectedWodId = null;
-let wodMinutes = 3, wodSeconds = 0, wodRounds = 5, wodReps = 0, wodWeight = 20;
+// Q-57: a new score starts blank (0), not a made-up 3:00 / 5 rounds / 20 kg; a WOD with history pre-fills
+// from its last attempt (choosePickedWod).
+let wodMinutes = 0, wodSeconds = 0, wodRounds = 0, wodReps = 0, wodWeight = 0;
 // EMOM-only: one rep count per movement in the selected WOD's rotation,
 // index-aligned with its emomMovements — kept in sync with that WOD's own
 // movement count by renderWodLogSection whenever it renders.
@@ -4170,6 +4172,11 @@ async function saveWod(sanityConfirmed) {
   }
   if (!isFinite(wodMinutes) || !isFinite(wodSeconds) || !isFinite(wodRounds) || !isFinite(wodReps) || !isFinite(wodWeight) || !isFinite(wodScaledWeight)) return;
   if (w.scoreType === "emom" && !wodEmomReps.every((r) => isFinite(r))) return;
+  // Q-57: the score starts blank, so a blank one is refused with a reason instead of saved as 0:00 / 0 rounds.
+  const emptyScore = (w.scoreType === "time" && wodMinutes * 60 + wodSeconds <= 0)
+    || (w.scoreType === "amrap" && wodRounds + wodReps <= 0)
+    || (w.scoreType === "load" && !(wodWeight > 0));
+  if (emptyScore) { showToast("מלאו את התוצאה לפני השמירה"); render(); return; }
   const editId = editingWodEntryId;
   const existing = editId ? wodEntries.find((e) => e.id === editId) : null;
   // Live bug hunt (2026-09-11): rx-scoped now - see bestWodScore()'s comment.
@@ -7337,6 +7344,16 @@ function choosePickedMovement(id) {
 function emomPrefill(w) {
   return w.emomMovements.map((_, i) => (w.emomMovementTypes?.[i] === "duration" ? w.emomTargetDurations?.[i] : w.emomTargetReps?.[i]) || 0);
 }
+// Q-57: the score fields take the last attempt of this WOD, the way a lift's steppers take its last session;
+// with no attempt yet they are blank.
+function prefillWodScore(w) {
+  const last = [...wodEntriesFor(w.id)].sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+  wodMinutes = 0; wodSeconds = 0; wodRounds = 0; wodReps = 0; wodWeight = 0;
+  if (!last) return;
+  if (w.scoreType === "time") { wodMinutes = Math.floor((last.timeSeconds || 0) / 60); wodSeconds = (last.timeSeconds || 0) % 60; }
+  else if (w.scoreType === "amrap") { wodRounds = last.rounds || 0; wodReps = last.reps || 0; }
+  else if (w.scoreType === "load") { wodWeight = last.weight || 0; }
+}
 function choosePickedWod(id) {
   const next = wodById(id);
   if (!next) return;
@@ -7346,6 +7363,7 @@ function choosePickedWod(id) {
     wodNotes = "";
     wodEmomReps = next.scoreType === "emom" ? emomPrefill(next) : [];
     emomStateWodId = next.scoreType === "emom" ? next.id : null;
+    prefillWodScore(next);
   }
   selectedWodId = id;
 }
@@ -7731,11 +7749,12 @@ function renderPickerList(query) {
       <div class="cat-head"><h3 class="cat-name">אחרונים</h3></div>
       ${recent.map(row).join("")}
     </div>` : "";
-  list.innerHTML = addRow + recentHtml + Object.entries(byCategory).map(([cat, items]) => `
+  // Q-57: "add a new exercise" sits after the list, not above it, so a tap meant for the first row cannot hit it.
+  list.innerHTML = recentHtml + Object.entries(byCategory).map(([cat, items]) => `
     <div class="cat-group">
       <div class="cat-head"><div class="dot" style="background:${esc(catColor(cat))}"></div><h3 class="cat-name">${esc(catLabel(cat))}</h3></div>
       ${items.map(row).join("")}
-    </div>`).join("");
+    </div>`).join("") + `<div class="picker-add">${addRow}</div>`;
 }
 function movementHe(m) {
   return (typeof MOVEMENT_HE === "object" && MOVEMENT_HE && m && MOVEMENT_HE[m.id]) || "";
@@ -7819,10 +7838,7 @@ function renderWodPickerList(query) {
   // programming, so it outranks a private WOD but not Fran.
   const order = ["Girls", "Heroes", "Club", "Custom"];
   const cats = Object.keys(byCategory).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  list.innerHTML = addRow + `<div style="height:12px;"></div>` + cats.map((cat) => `
-    <div class="cat-group">
-      <div class="cat-head"><div class="dot" style="background:${esc(catColor(cat))}"></div><h3 class="cat-name">${esc(wodCatLabel(cat))}</h3></div>
-      ${byCategory[cat].map((w) => `
+  const wodRow = (w) => `
         <div class="movement-btn ${selectedWodId === w.id ? "active" : ""}" style="padding:0; overflow:hidden;">
         <button style="flex:1; padding:12px 14px; text-align:right;" data-action="pick-wod" data-id="${esc(w.id)}">
           <div>
@@ -7832,8 +7848,27 @@ function renderWodPickerList(query) {
           ${selectedWodId === w.id ? `<div class="dot" style="background:var(--brass);"></div>` : ""}
         </button>
         ${w.category === "Custom" && wodEntriesFor(w.id).length === 0 ? `<button data-action="delete-custom-wod" data-id="${esc(w.id)}" aria-label="מחיקת ${esc(w.name)}" style="padding:12px; color:var(--red-text);">✕</button>` : ""}
-        </div>`).join("")}
-    </div>`).join("");
+        </div>`;
+  // Q-57: the WODs this member logged most recently come first (no search), and "build a new WOD" sits after
+  // the list.
+  const seenW = new Set(), recentW = [];
+  if (!q) for (const e of [...wodEntries].sort((a, b) => (b.ts || 0) - (a.ts || 0))) {
+    if (seenW.has(e.wodId)) continue;
+    seenW.add(e.wodId);
+    const w = wodById(e.wodId);
+    if (w) recentW.push(w);
+    if (recentW.length >= 5) break;
+  }
+  const recentHtml = recentW.length ? `
+    <div class="cat-group" id="wodPickerRecent">
+      <div class="cat-head"><h3 class="cat-name">אחרונים</h3></div>
+      ${recentW.map(wodRow).join("")}
+    </div>` : "";
+  list.innerHTML = recentHtml + cats.map((cat) => `
+    <div class="cat-group">
+      <div class="cat-head"><div class="dot" style="background:${esc(catColor(cat))}"></div><h3 class="cat-name">${esc(wodCatLabel(cat))}</h3></div>
+      ${byCategory[cat].map(wodRow).join("")}
+    </div>`).join("") + `<div class="picker-add">${addRow}</div>`;
 }
 
 // ---------- Service worker update handshake ----------

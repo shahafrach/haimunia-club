@@ -97,3 +97,54 @@ test("כלים is a real secondary button; the 1RM estimate is a quiet line", as
   assert.match(html, /\.tools-btn\{[^}]*min-height:var\(--tap-min\)/);
   assert.match($(window, ".est-line").textContent, /^1RM משוער לסט הזה/);
 });
+
+// Q-57 (folded into Q-48): WOD score pre-fills from the last attempt; a new one starts blank and a blank score is
+// refused; recents first in both pickers; "add new" after the list.
+async function openWod(window, id) {
+  window.document.getElementById("tabWodBtn").click();
+  window.choosePickedWod(id);
+  window.renderWodContent();
+}
+const val = (w, f) => w.document.querySelector(`input.stepper-val[data-field="${f}"]`).value;
+
+test("Q-57: a WOD with no attempt starts blank, a blank score is refused, the next attempt pre-fills from the last", async () => {
+  const window = await freshAdd();
+  await openWod(window, "fran");
+  assert.equal(val(window, "wodMinutes"), "0");
+  assert.equal(val(window, "wodSeconds"), "0");
+  window.setWodRx ? window.setWodRx(true) : window.document.querySelector('[data-action="set-rx"][data-rx="1"]').click();
+  await window.saveWod();
+  assert.equal((await window.dbLoadWodEntries()).length, 0, "a blank time is not saved");
+  window.applyFieldValue("wod-step", "wodMinutes", 4);
+  window.applyFieldValue("wod-step", "wodSeconds", 30);
+  await window.saveWod();
+  if (window.document.getElementById("celebrationOverlay").classList.contains("open")) window.closeCelebration();
+  assert.equal((await window.dbLoadWodEntries()).length, 1);
+  window.choosePickedWod("grace");
+  window.choosePickedWod("fran");
+  window.renderWodContent();
+  assert.equal(val(window, "wodMinutes"), "4", "pre-filled from the last attempt");
+  assert.equal(val(window, "wodSeconds"), "30");
+});
+
+test("Q-57: both pickers put the recent ones first and 'add new' after the list", async () => {
+  const window = await freshAdd();
+  window.choosePickedMovement("deadlift");
+  window.applyFieldValue("step", "weight", 60);
+  await window.saveSet();
+  if (window.document.getElementById("celebrationOverlay").classList.contains("open")) window.closeCelebration();
+  window.renderPickerList("");
+  const list = window.document.getElementById("pickerList");
+  assert.equal(list.firstElementChild.id, "pickerRecent", "recents first");
+  assert.ok(list.lastElementChild.classList.contains("picker-add"), "add-new last");
+  await openWod(window, "fran");
+  window.applyFieldValue("wod-step", "wodMinutes", 5);
+  window.document.querySelector('[data-action="set-rx"][data-rx="1"]').click();
+  await window.saveWod();
+  if (window.document.getElementById("celebrationOverlay").classList.contains("open")) window.closeCelebration();
+  window.renderWodPickerList("");
+  const wl = window.document.getElementById("wodPickerList");
+  assert.equal(wl.firstElementChild.id, "wodPickerRecent");
+  assert.ok(wl.querySelector("#wodPickerRecent [data-id='fran']"));
+  assert.ok(wl.lastElementChild.classList.contains("picker-add"));
+});

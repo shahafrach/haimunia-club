@@ -198,6 +198,8 @@ test("real-user report: rapid double-tap on save-wod creates exactly one entry, 
   window.choosePickedWod(wod.id);
   window.render();
   window.setWodRx(true);
+  // Q-57: a new score starts blank and a blank one is refused; enter one first.
+  for (const [f, v] of [["wodMinutes", 7], ["wodRounds", 5], ["wodWeight", 40]]) window.applyFieldValue("wod-step", f, v);
   assert.equal(window.totalLoggedEntries(), 0);
   const p1 = window.saveWod();
   const p2 = window.saveWod();
