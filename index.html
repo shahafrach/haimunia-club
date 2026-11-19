@@ -476,6 +476,11 @@
      the viewport. */
   /* Q-44: iOS Dynamic Type. The shorthand sets html's size from the system text size; the family is set again. */
   html{ font:-apple-system-body; }
+  /* Q-54: a control scrolled into view (Tab, find-in-page, a focused field) is not left under the fixed bottom bar,
+     the install dock or the header. */
+  /* Q-54: only while a keyboard focus ring shows, so a tap's own scrollIntoView (the pick) lands where it did. */
+  html:has(:focus-visible){ scroll-padding-block-start:calc(env(safe-area-inset-top,0px) + 72px); scroll-padding-block-end:calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve)); }
+  html:has(:focus-visible):has(#iosInstallBanner[style*="block"]){ scroll-padding-block-end:calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve) + var(--install-dock-reserve)); }
   html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; overscroll-behavior-y:contain; touch-action:pan-y; width:100%; }
   /* svh, not dvh: reported live as "the screen vibrates when you switch
      tabs" - the switch-tab handler (app.js) resets scroll to top on every
@@ -3324,10 +3329,15 @@
      particular), so the copy tells the user the reliable fix — close and
      reopen the app — rather than implying a tap alone is enough. Tapping
      still fires the same SKIP_WAITING handshake as a bonus shortcut. -->
-<button id="updateBanner" data-action="reload-app" role="status" aria-live="polite" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
+<!-- Q-54: a button inside a status region, not a button that claims role=status (it then stops being a button). -->
+<!-- Q-54: stepper changes are announced here (app.js announceStepper). -->
+<div id="stepperLive" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div id="updateBannerRegion" role="status" aria-live="polite">
+<button id="updateBanner" data-action="reload-app" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
   <div style="font-weight:800; font-size:16px; margin-bottom:3px;">עדכון חדש זמין</div>
   <div style="font-weight:600; font-size:13px; opacity:.85;">סגרו את האפליקציה ופתחו אותה מחדש כדי לעדכן</div>
 </button>
+</div>
 
 <!-- The two "add to home screen" banners used to live here, as their own
      position:fixed;bottom:0 elements. They are children of #bottomNavWrap

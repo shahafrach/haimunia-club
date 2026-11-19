@@ -863,7 +863,9 @@
     var t = el("connectTitle");
     if (t) t.textContent = TITLES[S.view || "choice"] || "חיבור";
     var x = el("connectCloseBtn");
-    if (x) x.style.display = S.firstRun && (S.view || "choice") === "choice" ? "none" : "";
+    // Q-54: the close button is always there (a sheet a keyboard or screen-reader user cannot leave is a trap); the
+    // first run can be reopened from רישום and from the מועדון tab.
+    if (x) x.style.display = "";
     var f = hadFocus && el(hadFocus);
     if (!f) f = body.querySelector("input:not([type=checkbox]), button.save-btn:not([disabled])");
     // The delete confirm opens on its safe choice.
