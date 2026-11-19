@@ -9102,7 +9102,10 @@ function syncBackgroundInert() {
   for (const id of ["appShell", "bottomNavWrap"]) {
     const el = document.getElementById(id);
     if (!el) continue;
-    if (anyOpen) el.setAttribute("inert", ""); else el.removeAttribute("inert");
+    // A dialog rendered inside #appShell (the app-confirm sheet, rendered by render() into #content) must not
+    // be made inert with its container: that swallowed every tap on its buttons (owner, 2026-11-19).
+    const hostsOpenDialog = !!el.querySelector(".modal-overlay.open");
+    if (anyOpen && !hostsOpenDialog) el.setAttribute("inert", ""); else el.removeAttribute("inert");
   }
 }
 try {
