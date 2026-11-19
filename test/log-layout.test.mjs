@@ -115,7 +115,9 @@ test("everything else is under 'כלים' (Q-43: the plates too), which stays op
     assert.ok(more.querySelector(sel), sel + " is under כלים");
   }
   // Q-48: the date is one chip at the top of the sheet ("היום ▾"), not in the controls or the fold.
-  assert.ok($(window, ".scene-summary-meta .date-chip #logDateInput"), "the date chip holds the date input");
+  // Q-60: the chip is a button that opens the app's date sheet; the hidden date input beside it is the form's field.
+  assert.ok($(window, ".scene-summary-meta button.date-chip[data-action='open-date-sheet']"), "the date chip opens the date sheet");
+  assert.ok($(window, ".scene-summary-meta #logDateInput[hidden]"), "the form's date field, hidden");
   assert.equal($(window, ".date-chip-text").textContent.trim(), "היום");
   assert.ok(more.querySelector("#barbellVisual"), "the plate visualizer is under כלים");
   assert.ok(!$(window, ".log-controls #barbellVisual"), "not in the controls");

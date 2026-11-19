@@ -100,8 +100,8 @@ const linkButtons = (page) =>
 // the shipped path rather than a record pushed into IndexedDB behind it.
 async function logSetOn(page, date) {
   await openLogOptions(page);
-  await page.fill("#logDateInput", date);
-  await page.dispatchEvent("#logDateInput", "change");
+  // Q-60: the date input is hidden (the app's date sheet writes it); set it as a script would.
+  await page.$eval("#logDateInput", (el, v) => { el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }, date);
   await page.click("[data-action='save-set']");
   await page.waitForTimeout(300);
   await dismissCelebrationIfOpen(page);

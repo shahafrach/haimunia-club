@@ -1070,8 +1070,30 @@
 
   .club-admin{ margin-top:14px; }
   /* Q-48: the רישום screen. */
-  .date-chip{ position:relative; display:inline-flex; align-items:center; gap:6px; min-height:var(--tap-min); padding:0 14px; border-radius:var(--radius-pill); background:var(--surface2); border:1px solid var(--border); color:var(--chalk); font-size:var(--fs-2); font-weight:800; cursor:pointer; }
-  .date-chip input[type="date"]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; cursor:pointer; }
+  .date-chip{ position:relative; font:inherit; display:inline-flex; align-items:center; gap:6px; min-height:var(--tap-min); padding:0 14px; border-radius:var(--radius-pill); background:var(--surface2); border:1px solid var(--border); color:var(--chalk); font-size:var(--fs-2); font-weight:800; cursor:pointer; }
+  /* Q-60: the date sheet. Seven one-tap days, then a month grid; tokens only. */
+  .date-sheet-body{ padding:var(--space-1) var(--space-4) var(--space-4); overflow-y:auto; min-height:0; overscroll-behavior:contain; }
+  .date-quick-row{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:var(--space-2); }
+  .date-quick{ position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:var(--btn-height-lg); padding:var(--space-2); border-radius:var(--btn-radius); border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font:inherit; cursor:pointer; }
+  .date-quick-name{ font-size:var(--fs-2); font-weight:800; }
+  .date-quick-date{ font-size:var(--fs-1); color:var(--steel); font-variant-numeric:tabular-nums; }
+  .date-quick.is-chosen, .date-cell.is-chosen{ background:var(--btn-primary-bg); border-color:var(--btn-primary-border); color:var(--btn-primary-fg); }
+  .date-quick.is-chosen .date-quick-date{ color:inherit; }
+  .date-dot{ display:none; position:absolute; inset-block-end:5px; inset-inline-start:50%; width:6px; height:6px; margin-inline-start:-3px; border-radius:var(--radius-pill); background:var(--color-accent); }
+  .has-workout > .date-dot{ display:block; }
+  .is-chosen > .date-dot{ background:currentColor; }
+  .date-other{ display:flex; align-items:center; justify-content:center; gap:var(--space-2); width:100%; min-height:var(--tap-min); margin-top:var(--space-3); border-radius:var(--btn-radius); border:1px solid var(--border); background:transparent; color:var(--chalk); font:inherit; font-size:var(--fs-2); font-weight:800; cursor:pointer; }
+  .date-month{ margin-top:var(--space-3); }
+  .date-month-head{ display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); }
+  .date-month-title{ font-size:var(--fs-3); font-weight:800; }
+  .date-month-nav{ min-width:var(--tap-min); min-height:var(--tap-min); font-size:var(--fs-5); color:var(--chalk); }
+  .date-month-nav:disabled{ color:var(--steel); opacity:.45; }
+  .date-weekdays, .date-grid{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:2px; }
+  .date-weekdays{ margin-block:var(--space-2) var(--space-1); }
+  .date-weekdays span{ text-align:center; font-size:var(--fs-1); font-weight:700; color:var(--steel); }
+  .date-cell{ position:relative; min-height:var(--tap-min); border-radius:var(--radius-md); border:0; background:transparent; color:var(--chalk); font:inherit; font-size:var(--fs-2); font-weight:700; font-variant-numeric:tabular-nums; cursor:pointer; }
+  .date-cell:disabled{ color:var(--steel); opacity:.45; cursor:default; }
+  .is-today{ box-shadow:inset 0 0 0 2px var(--color-accent); }
   .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:var(--space-2); }
   .scene-page--add .log-controls .steppers.steppers--row .stepper:last-child:nth-child(3){ grid-column:auto; }
   .steppers--row .stepper{ flex-basis:auto; }
@@ -3522,6 +3544,18 @@
   <div class="tabbar" id="bottomTabBar" role="tablist" aria-label="מסכים ראשיים"></div>
 </div>
 
+<!-- Q-60: the app's own date sheet (app.js openDateSheet), for רישום and אימונים. -->
+<div class="modal-overlay" id="dateSheetOverlay" data-action="close-date-sheet" role="dialog" aria-modal="true" aria-labelledby="dateSheetTitle">
+  <div class="modal-sheet date-sheet">
+    <div class="modal-head">
+      <h2 class="modal-title" id="dateSheetTitle">באיזה יום?</h2>
+      <button data-action="close-date-sheet" class="icon-btn" aria-label="סגירה" style="color:var(--steel);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="dateSheetBody" class="date-sheet-body"></div>
+  </div>
+</div>
 <div class="modal-overlay" id="pickerOverlay" data-action="close-picker" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
   <div class="modal-sheet">
     <div class="modal-head">

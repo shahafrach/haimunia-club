@@ -15,7 +15,7 @@ let barWeight = 20;
 // Single source of truth for the app version. After bumping this, run
 // `npm run sync-version` to copy it into SW_VERSION in sw.js — `npm test`
 // fails if the two drift apart.
-const APP_VERSION = "3.20.0";
+const APP_VERSION = "3.20.1";
 
 // A movement typed into the WOD builder that isn't in the built-in list
 // above - persisted (see WODTAGSTORE), same "custom X" pattern as
@@ -485,6 +485,144 @@ function clampLogDate(v) {
   const clean = cleanISODate(v);
   if (!clean) return todayISO();
   return clean > todayISO() ? todayISO() : clean;
+}
+
+// ---- Q-60: the date sheet (רישום and אימונים, one component) ----
+// The chip opens #dateSheetOverlay: the last seven days as one-tap chips, then "תאריך אחר" for a month grid (RTL,
+// Sunday first, today ringed, no future days, days with a workout dotted). A pick closes the sheet FIRST and only
+// then re-renders the screen, so nothing is redrawn under an open control (the native popover flickered).
+// The hidden #logDateInput / #wodLogDateInput stay as the form's date field: the sheet writes the same state
+// their change handlers do, and scripts that set the date through them keep working.
+const HE_WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+const HE_WEEKDAYS_SHORT = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
+const DATE_TARGETS = {
+  log: { input: "logDateInput", spoken: "תאריך הרישום" },
+  wod: { input: "wodLogDateInput", spoken: "תאריך רישום האימון" },
+};
+let dateSheetTarget = null;   // "log" | "wod" while the sheet is open
+let dateSheetMonth = null;    // "YYYY-MM" while the month grid shows
+let dateSheetOpenerTarget = null;
+function isoShift(iso, days) { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + days); return localISODate(d); }
+function daysAgo(iso) { return Math.round((new Date(todayISO() + "T12:00:00") - new Date(iso + "T12:00:00")) / 86400000); }
+function shortDate(iso) { const [, m, d] = iso.split("-"); return `${Number(d)}.${Number(m)}`; }
+function dateChipLabel(iso) {
+  const n = daysAgo(iso);
+  if (n === 0) return "היום";
+  if (n === 1) return "אתמול";
+  const d = new Date(iso + "T12:00:00");
+  const year = d.getFullYear() !== new Date().getFullYear() ? "." + d.getFullYear() : "";
+  return `יום ${HE_WEEKDAYS_SHORT[d.getDay()]} ${shortDate(iso)}${year}`;
+}
+function dateSpoken(iso) {
+  const n = daysAgo(iso);
+  const full = new Date(iso + "T12:00:00").toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return n === 0 ? `היום, ${full}` : n === 1 ? `אתמול, ${full}` : full;
+}
+function dateChipHtml(target, iso) {
+  const t = DATE_TARGETS[target];
+  return `<button type="button" class="date-chip" data-action="open-date-sheet" data-target="${target}" aria-haspopup="dialog" aria-label="${esc(t.spoken)}: ${esc(dateSpoken(iso))}. לשינוי התאריך"><span class="date-chip-text"><bdi>${esc(dateChipLabel(iso))}</bdi></span><span aria-hidden="true">▾</span></button>`
+    + `<input type="date" id="${t.input}" value="${esc(iso)}" max="${todayISO()}" hidden tabindex="-1" aria-hidden="true" />`;
+}
+function dateSheetCurrent() { return dateSheetTarget === "wod" ? wodLogDate : logDate; }
+function workoutDays() {
+  const set = new Set();
+  for (const e of entries) set.add(e.date);
+  for (const e of wodEntries) set.add(e.date);
+  return set;
+}
+function dateDayButton(iso, cls, label, extra, days, chosen) {
+  const today = iso === todayISO();
+  const has = days.has(iso);
+  const spoken = dateSpoken(iso) + (has ? ", יש אימון" : "") + (iso === chosen ? ", נבחר" : "");
+  return `<button type="button" class="${cls}${iso === chosen ? " is-chosen" : ""}${today ? " is-today" : ""}${has ? " has-workout" : ""}" data-action="pick-date" data-date="${iso}" aria-label="${esc(spoken)}"${today ? ' aria-current="date"' : ""}${iso === chosen ? ' aria-pressed="true"' : ' aria-pressed="false"'}>${label}${extra || ""}</button>`;
+}
+function renderDateSheet() {
+  const body = document.getElementById("dateSheetBody");
+  if (!body || !dateSheetTarget) return;
+  const today = todayISO(), chosen = dateSheetCurrent(), days = workoutDays();
+  let quick = "";
+  for (let n = 0; n < 7; n++) {
+    const iso = isoShift(today, -n);
+    const wd = new Date(iso + "T12:00:00").getDay();
+    const name = n === 0 ? "היום" : n === 1 ? "אתמול" : n === 2 ? "שלשום" : `יום ${HE_WEEKDAYS[wd]}`;
+    quick += dateDayButton(iso, "date-quick", `<span class="date-quick-name">${name}</span><span class="date-quick-date">${shortDate(iso)}</span>`, '<span class="date-dot" aria-hidden="true"></span>', days, chosen);
+  }
+  let grid = "";
+  if (dateSheetMonth) {
+    const [y, m] = dateSheetMonth.split("-").map(Number);
+    const first = new Date(y, m - 1, 1, 12), lastDay = new Date(y, m, 0, 12).getDate();
+    const title = first.toLocaleDateString("he-IL", { month: "long", year: "numeric" });
+    const atCurrent = dateSheetMonth >= today.slice(0, 7);
+    let cells = "";
+    for (let i = 0; i < first.getDay(); i++) cells += '<span class="date-cell date-cell--blank" aria-hidden="true"></span>';
+    for (let d = 1; d <= lastDay; d++) {
+      const iso = `${dateSheetMonth}-${String(d).padStart(2, "0")}`;
+      if (iso > today) cells += `<button type="button" class="date-cell" disabled aria-label="${esc(dateSpoken(iso))}, עוד לא הגיע">${d}</button>`;
+      else cells += dateDayButton(iso, "date-cell", String(d), '<span class="date-dot" aria-hidden="true"></span>', days, chosen);
+    }
+    grid = `<div class="date-month" role="group" aria-label="${esc(title)}">
+      <div class="date-month-head">
+        <button type="button" class="icon-btn date-month-nav" data-action="date-sheet-prev" aria-label="החודש הקודם"><span aria-hidden="true">›</span></button>
+        <div class="date-month-title" aria-live="polite">${esc(title)}</div>
+        <button type="button" class="icon-btn date-month-nav" data-action="date-sheet-next" aria-label="החודש הבא"${atCurrent ? " disabled" : ""}><span aria-hidden="true">‹</span></button>
+      </div>
+      <div class="date-weekdays" aria-hidden="true">${HE_WEEKDAYS_SHORT.map((w) => `<span>${w}</span>`).join("")}</div>
+      <div class="date-grid">${cells}</div>
+    </div>`;
+  }
+  body.innerHTML = `<div class="date-quick-row">${quick}</div>
+    <button type="button" class="date-other" data-action="date-sheet-month" aria-expanded="${dateSheetMonth ? "true" : "false"}">תאריך אחר<span aria-hidden="true">${dateSheetMonth ? "▴" : "▾"}</span></button>
+    ${grid}`;
+}
+function openDateSheet(target) {
+  if (!DATE_TARGETS[target]) return;
+  dateSheetTarget = target;
+  dateSheetOpenerTarget = target;
+  const cur = dateSheetCurrent();
+  dateSheetMonth = daysAgo(cur) > 6 ? cur.slice(0, 7) : null; // an older date opens on its month
+  document.body.style.overflow = "hidden";
+  document.getElementById("dateSheetOverlay").classList.add("open");
+  renderDateSheet();
+  const first = document.querySelector("#dateSheetBody .is-chosen") || document.querySelector("#dateSheetBody button");
+  if (first) setTimeout(() => first.focus(), 0);
+}
+function closeDateSheet() {
+  if (!dateSheetTarget) return;
+  dateSheetTarget = null;
+  dateSheetMonth = null;
+  document.getElementById("dateSheetOverlay").classList.remove("open");
+  releaseScrollLockIfLastDialog();
+  const t = dateSheetOpenerTarget;
+  dateSheetOpenerTarget = null;
+  const chip = document.querySelector(`[data-action="open-date-sheet"][data-target="${t}"]`);
+  if (chip) chip.focus();
+}
+// One pick: close, set the date (today again = not a chosen date, as "חזרה להיום"), then render the screen.
+function pickSheetDate(iso) {
+  const target = dateSheetTarget;
+  const d = clampLogDate(iso);
+  closeDateSheet();
+  if (target === "wod") {
+    wodLogDate = d; wodLogDateExplicitlyChosen = d !== todayISO();
+    renderWodContent();
+  } else {
+    logDate = d; logDateExplicitlyChosen = d !== todayISO();
+    endLadder(); // a ladder is scoped to one day
+    render();
+  }
+  const chip = document.querySelector(`[data-action="open-date-sheet"][data-target="${target}"]`);
+  if (chip) chip.focus();
+}
+function shiftDateSheetMonth(delta) {
+  if (!dateSheetMonth) return;
+  const [y, m] = dateSheetMonth.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1, 12);
+  const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  if (next > todayISO().slice(0, 7)) return;
+  dateSheetMonth = next;
+  renderDateSheet();
+  const nav = document.querySelector(`#dateSheetBody [data-action="date-sheet-${delta < 0 ? "prev" : "next"}"]`);
+  if (nav && !nav.disabled) nav.focus(); else { const p = document.querySelector('#dateSheetBody [data-action="date-sheet-prev"]'); if (p) p.focus(); }
 }
 let historyId = null;
 let historySearch = "";
@@ -4971,12 +5109,10 @@ function renderLogTab() {
       <button data-action="cancel-edit-entry" style="color:var(--steel); font-size:var(--fs-1); text-decoration:underline;">ביטול</button>
     </div>` : ""}
 
-    <!-- Q-48: the date is one tappable label ("היום ▾" or the date) over a real date input, so the native
-         picker opens on tap; it replaces the date fields that sat in the controls and under the fold. -->
+    <!-- Q-60: the date is one chip ("היום ▾", "אתמול ▾", or the weekday and date) that opens the app's own date
+         sheet; the native iOS popover flickered under a re-render and did not look like the app. -->
     <div class="scene-summary-meta">
-      <label class="date-chip"><span class="date-chip-text">${isToday ? "היום" : `<bdi>${esc(fmtDate(logDate))}</bdi>`}</span><span aria-hidden="true">▾</span>
-        <input type="date" id="logDateInput" value="${esc(logDate)}" max="${todayISO()}" aria-label="תאריך הרישום: ${esc(isToday ? "היום" : fmtDate(logDate))}" />
-      </label>
+      ${dateChipHtml("log", logDate)}
       ${isToday ? "" : `<button data-action="reset-log-date" class="link-btn link-btn--tap">חזרה להיום</button>`}
     </div>
     ${renderInstallCard()}
@@ -7084,9 +7220,7 @@ function renderWodLogSection() {
 
     <!-- Q-48: the same date chip as the רישום screen. -->
     <div class="scene-summary-meta">
-      <label class="date-chip"><span class="date-chip-text">${wodLogDate === todayISO() ? "היום" : `<bdi>${esc(fmtDate(wodLogDate))}</bdi>`}</span><span aria-hidden="true">▾</span>
-        <input type="date" id="wodLogDateInput" value="${esc(wodLogDate)}" max="${todayISO()}" aria-label="תאריך רישום האימון: ${esc(wodLogDate === todayISO() ? "היום" : fmtDate(wodLogDate))}" />
-      </label>
+      ${dateChipHtml("wod", wodLogDate)}
       ${wodLogDate !== todayISO() ? `<button data-action="reset-wod-log-date" class="link-btn link-btn--tap">חזרה להיום</button>` : ""}
     </div>
 
@@ -7700,6 +7834,7 @@ registerAppDialog("settings", { overlayId: "settingsOverlay", isOpen: () => sett
 // dismissed by an accidental Escape - they still get the Tab trap and
 // focus restore, just not the close-on-Escape behavior.
 registerAppDialog("picker", { overlayId: "pickerOverlay", isOpen: () => pickerOpen, close: closePicker });
+registerAppDialog("dateSheet", { overlayId: "dateSheetOverlay", isOpen: () => dateSheetTarget !== null, close: closeDateSheet });
 registerAppDialog("wodPicker", { overlayId: "wodPickerOverlay", isOpen: () => wodPickerOpen, close: closeWodPicker });
 registerAppDialog("wodBuilder", { overlayId: "wodBuilderOverlay", isOpen: () => wodBuilderOpen, close: closeWodBuilder });
 registerAppDialog("achievements", { overlayId: "achievementsOverlay", isOpen: () => document.getElementById("achievementsOverlay").classList.contains("open"), close: closeAchievements });
@@ -8420,6 +8555,23 @@ document.addEventListener("click", (e) => {
     if (el.id === "pickerOverlay" && e.target !== el) return;
     closePicker();
   }
+  else if (action === "open-date-sheet") { openDateSheet(el.dataset.target); }
+  else if (action === "close-date-sheet") {
+    if (el.id === "dateSheetOverlay" && e.target !== el) return;
+    closeDateSheet();
+  }
+  else if (action === "pick-date") { pickSheetDate(el.dataset.date); }
+  else if (action === "date-sheet-month") {
+    dateSheetMonth = dateSheetMonth ? null : dateSheetCurrent().slice(0, 7);
+    renderDateSheet();
+    const b = document.querySelector('#dateSheetBody [data-action="date-sheet-month"]');
+    if (b) b.focus();
+    // The grid opens below the quick days: bring it into the sheet's view.
+    const g = document.querySelector("#dateSheetBody .date-month");
+    if (g && typeof g.scrollIntoView === "function") { try { g.scrollIntoView({ block: "nearest" }); } catch (err) { /* old engines */ } }
+  }
+  else if (action === "date-sheet-prev") { shiftDateSheetMonth(-1); }
+  else if (action === "date-sheet-next") { shiftDateSheetMonth(1); }
   else if (action === "pick-movement") { choosePickedMovement(el.dataset.id); closePicker(); render(); }
   else if (action === "add-movement") { addMovement(el.dataset.name, el.dataset.category); }
   else if (action === "focus-picker-search") { document.getElementById("pickerSearch").focus(); }

@@ -152,8 +152,8 @@ const isoDaysAgo = (n) => {
 };
 
 async function logSet(page, { date, weight, reps }) {
-  await page.fill("#logDateInput", date);
-  await page.dispatchEvent("#logDateInput", "change");
+  // Q-60: the date input is hidden (the app's date sheet writes it); set it as a script would.
+  await page.$eval("#logDateInput", (el, v) => { el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }, date);
   await page.evaluate(({ weight, reps }) => {
     applyFieldValue("step", "weight", weight);
     applyFieldValue("step", "reps", reps);
