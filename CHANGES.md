@@ -5,6 +5,7 @@
   the weekday names), and "תאריך אחר" for a month grid: Sunday first, today ringed, no future days, days with a
   workout dotted. One tap picks and closes. The chip says היום, אתמול, or the weekday and date. Every target is
   44px, with full Hebrew dates for VoiceOver. One component for both screens.
+- Hotfix (#62): Settings showed the update check twice; once now.
 - No IndexedDB change.
 
 # 3.20.0 — רישום חדש, שיתוף בדיעבד, נגישות, עברית אחידה ופתיחה מהירה — 2026-11-19
