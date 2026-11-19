@@ -45,6 +45,7 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 
 ## Morning status (Claude, 2026-11-19 06:45)
 - Owner merges demo #188, #190, runs set-auth-config, merges club #40 now.
+- 07:50: #188 merged 04:44 UTC, migration-status green. set-auth-config run by Claude 05:50 UTC. demo #190 (updated on main) fails user-tests step 'The old password and the old code no longer work' (dana): likely a Q-41/#188 recovery change that the e2e suite still expects. Fix it in #190 or a tiny PR first (main may carry the same failure: run the e2e locally on main to tell).
 - fixes: demo #189 is DIRTY (conflicts with #188 in recovery.mjs). Rebase #189 on main after #188 merges, keep CI green, then rebase club #41..#47 if needed. Report in one line here when #189 is green.
 
 ## Morning merge order (fixes, 2026-11-18 night)
