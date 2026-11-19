@@ -162,7 +162,7 @@ test("sending posts only the text, screen, version, device type and the feedback
   assert.match(body.p_device, /^[A-Za-z0-9-]{16,64}$/);
   assert.notEqual(body.p_device, window.localStorage.getItem("haimunia:usageDeviceId"), "not the usage-count id");
   assert.doesNotMatch(JSON.stringify(body), /דנה/, "the member's name is not sent");
-  await waitFor(() => /תודה\. קראנו כל פנייה\./.test($(window, "#feedbackNote").textContent));
+  await waitFor(() => /תודה\. אנחנו קוראים כל פנייה\./.test($(window, "#feedbackNote").textContent));
   assert.equal($(window, "#feedbackText").value, "", "the box is emptied");
 });
 

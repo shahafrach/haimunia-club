@@ -16,7 +16,9 @@ import { COMMUNITY_MODULES, cloudSource } from "./helpers/community-src.mjs";
 // covering whatever moved out of it — which for an RTL Hebrew app means the
 // slash-gender and final-form rules silently stop being enforced on most of
 // the community layer.
-const files = ["app.js", "index.html", "privacy.html", ...COMMUNITY_MODULES].map((f) => ({
+// Q-55: and every src/*.js, where the join, club, transfer and feedback copy lives.
+const srcFiles = fs.readdirSync(new URL("../src/", import.meta.url)).filter((f) => f.endsWith(".js")).map((f) => `src/${f}`);
+const files = ["app.js", "index.html", "privacy.html", ...srcFiles, ...COMMUNITY_MODULES].map((f) => ({
   name: f, src: fs.readFileSync(new URL(`../${f}`, import.meta.url), "utf8"),
 }));
 
@@ -90,10 +92,31 @@ test("2nd-person past verbs carry no slash - they are already genderless", () =>
 //     emits ק״ג.
 test("Hebrew abbreviations use gershayim, not an ASCII double quote", () => {
   for (const { name, src } of files) {
-    for (const w of ['ק"ג', 'ס"מ', 'ד"ר', 'חו"ל']) {
+    // Q-55: the escaped form inside a JS string (ק\"ג) too; that is where the last ones hid.
+    for (const w of ['ק"ג', 'ס"מ', 'ד"ר', 'חו"ל', 'ק\\"ג', 'ס\\"מ']) {
       assert.ok(!src.includes(w),
         `${name} contains ${w} with an ASCII quote - use the gershayim ״ (U+05F4)`);
     }
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// Q-55: one name per concept, and geresh (׳) not an apostrophe in loanwords
+// ---------------------------------------------------------------------------
+// The club is מועדון (never בוקס or מכון), a PR is שיא אישי, medals are מדליות. A second word for the same
+// thing makes a member wonder whether it is a second thing. Comments and the old release notes may quote the
+// old word; the rule is about copy, so it looks only at quoted strings and markup text.
+const copyOf = (src) => (src.match(/"[^"\n]*"|'[^'\n]*'|`[^`]*`|>[^<]+</g) || []).join("\n");
+test("one name per concept in copy: מועדון, שיא אישי, מדליות", () => {
+  const banned = [/בבוקס|לבוקס|הבוקס/, /במכון|למכון|המכון/, /מעגלים/, /מדליות והישגים|המדליות וההישגים/, /שיא חדש!/];
+  for (const { name, src } of files) {
+    const copy = copyOf(src).split("\n").filter((l) => !/הוחלף ל|RELEASE_NOTES/.test(l)).join("\n");
+    for (const re of banned) assert.ok(!re.test(copy), `${name}: ${re} in copy`);
+  }
+});
+test("loanwords take a geresh (׳), not an ASCII apostrophe", () => {
+  for (const { name, src } of files) {
+    for (const w of ["בנצ'מרק", "אימוג'י", "צ'יפ", "ג'ים"]) assert.ok(!src.includes(w), `${name} contains ${w}; use ׳ (U+05F3)`);
+  }
+});

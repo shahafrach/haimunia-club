@@ -244,7 +244,7 @@ function renderNavWho(opts) {
   // pattern), so "this card goes somewhere, and here's where" reads the
   // same way here as it does for Settings.
   return `
-    <button class="who" data-action="open-achievements" aria-label="פתיחת מדליות והישגים" style="width:100%; text-align:inherit;">
+    <button class="who" data-action="open-achievements" aria-label="פתיחת המדליות" style="width:100%; text-align:inherit;">
       <div class="who-avatar">${esc(initial)}</div>
       <div style="flex:1; min-width:0;">
         <div class="who-name">${userName ? bidiText(userName) : "אורח/ת"}</div>
@@ -263,7 +263,7 @@ function renderNavWho(opts) {
              who land here - someone who has never trained and someone whose
              streak lapsed - which "בואו נתחיל להתאמן" was not, and it leaves
              "בואו נתחיל" to the two buttons that actually ask for a tap. -->
-        <div class="who-sub">${noStreak ? "המדליות וההישגים שלי" : streak > 0 ? `${streak} ${streak === 1 ? "יום" : "ימים"} ברצף` : "הרצף מתחיל באימון הבא"}</div>
+        <div class="who-sub">${noStreak ? "המדליות שלי" : streak > 0 ? `${streak} ${streak === 1 ? "יום" : "ימים"} ברצף` : "הרצף מתחיל באימון הבא"}</div>
       </div>
       <div class="flex items-center gap-6" style="flex-shrink:0; color:var(--steel); font-size:var(--fs-1); font-weight:700;" aria-hidden="true">
         <span>מדליות</span>
@@ -660,7 +660,7 @@ function recentEntriesFor(id, days = 14, cap = 5) {
 // work is used in practice anyway.
 //
 // Rounded to 2.5 kg because that is what a barbell can actually hold - the
-// smallest common plate pair is 1.25 kg a side. An unrounded "77.3 ק\"ג" is a
+// smallest common plate pair is 1.25 kg a side. An unrounded "77.3 ק״ג" is a
 // number nobody can load, and rounding at the point of display keeps the
 // arithmetic honest above it.
 //
@@ -807,9 +807,9 @@ const PR_TIERS = [{ tier: "bronze", need: 3 }, { tier: "silver", need: 5 }, { ti
 const STREAK_TIERS = [{ tier: "bronze", need: 4 }, { tier: "silver", need: 12 }, { tier: "gold", need: 26 }];
 const SESSION_MILESTONES = [10, 50, 100, 365];
 const TENURE_MILESTONES = [
-  { id: "month1", days: 30, label: "חודש בבוקס" },
-  { id: "month6", days: 182, label: "חצי שנה בבוקס" },
-  { id: "year1", days: 365, label: "שנה בבוקס" },
+  { id: "month1", days: 30, label: "חודש במועדון" },
+  { id: "month6", days: 182, label: "חצי שנה במועדון" },
+  { id: "year1", days: 365, label: "שנה במועדון" },
 ];
 const TIER_LABELS = { bronze: "ברונזה", silver: "כסף", gold: "זהב" };
 
@@ -1157,7 +1157,7 @@ function renderAchievementsContent() {
 
   const boxStartPrompt = boxStartDate ? "" : `
     <button data-action="open-profile-from-achievements" class="card flex items-center justify-between gap-10" style="width:100%; text-align:right; margin-bottom:12px;">
-      <span style="font-size:var(--fs-1); color:var(--chalk); font-weight:600;">הוסיפו תאריך התחלה בבוקס כדי לפתוח את מדליות הוותק</span>
+      <span style="font-size:var(--fs-1); color:var(--chalk); font-weight:600;">הוסיפו תאריך התחלה במועדון כדי לפתוח את מדליות הוותק</span>
       <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
     </button>`;
 
@@ -1538,7 +1538,7 @@ const RELEASE_NOTES = [
     "תיקון: אפשר עכשיו להגיע ל\"כל האימונים שלי\" גם כשלא נבחר אימון עדיין",
   ] },
   { version: "2.27.0", date: "2026-08-26", items: [
-    "טאב האימונים כבר לא נפתח עם אימון קבוע (Fran) — עכשיו בוחרים בעצמכם: יצירת אימון או בנצ'מרק",
+    "טאב האימונים כבר לא נפתח עם אימון קבוע (Fran) — עכשיו בוחרים בעצמכם: יצירת אימון או בנצ׳מרק",
   ] },
   { version: "2.26.0", date: "2026-08-26", items: [
     "אפשר עכשיו לשנות את גודל הטקסט בכל האפליקציה — בתחתית המסך, ליד הגדרות המראה",
@@ -1548,7 +1548,7 @@ const RELEASE_NOTES = [
     "תיקון: הקשה ישירה על מספר בכל שדה באפליקציה איפסה אותו במקום לאפשר הקלדה — עכשיו אפשר פשוט להקליד",
   ] },
   { version: "2.25.0", date: "2026-08-25", items: [
-    "טאב חדש \"בנצ'מרקים\" באימונים — כל אימוני ה-Girls וה-Heroes הקבועים, במקום אחד",
+    "טאב חדש \"בנצ׳מרקים\" באימונים — כל אימוני ה-Girls וה-Heroes הקבועים, במקום אחד",
     "ההתראות בפעמון נעלמות אחרי שרואים אותן, במקום להצטבר",
   ] },
   { version: "2.24.0", date: "2026-08-25", items: [
@@ -2950,7 +2950,7 @@ function renderUserGreeting() {
   // sink keeps a bare identifier.
   const greetingHtml = userName ? `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">שלום ${bidiText(userName)}</span>${ICONS.chevronsLeft}` : "";
   el.innerHTML = greetingHtml;
-  el.setAttribute("aria-label", userName ? `שלום ${userName} — פתיחת מדליות והישגים` : "פתיחת מדליות והישגים");
+  el.setAttribute("aria-label", userName ? `שלום ${userName} — פתיחת המדליות` : "פתיחת המדליות");
 }
 let welcomeEditing = false;
 let welcomeOpenerEl = null;
@@ -4073,7 +4073,7 @@ function renderWodBuilderMovements(query) {
         </div>
         <div class="flex" style="gap:8px; margin:0 0 10px; padding:0 2px;">
           ${isDuration ? renderStepper(m.name, "שניות", data.durationSeconds, 5, 1, "builder-movement-duration") : renderStepper(m.name, isEmom ? "חזרות בכל סבב" : "חזרות", data.reps, 1, 0, "builder-movement-reps")}
-          ${hasWeight ? renderStepper(m.name, "ק\"ג", data.weight, 2.5, 0, "builder-movement-weight") : ""}
+          ${hasWeight ? renderStepper(m.name, "ק״ג", data.weight, 2.5, 0, "builder-movement-weight") : ""}
         </div>` : ""}`;
       }).join("")}
     </div>`).join("");
@@ -4449,7 +4449,7 @@ let wodPrFlashTimeout = null;
 // bestWodScore(id, excludeId, rx) has always kept an Rx best and a scaled best
 // as separate ladders, so a scaled athlete's PR is already a real PR in our
 // data - which is better than Wodify, where only Rx metcons can be PRs at all.
-// The UI just never said so: the same "שיא חדש!" appeared either way, which
+// The UI just never said so: the same new-PR banner appeared either way, which
 // leaves a scaled athlete to wonder whether the app is humouring them.
 //
 // The research on this is consistent: scaled athletes read an unmarked board
@@ -4463,7 +4463,7 @@ function flashWodPR(rx) {
   const label = el.querySelector("[data-wod-flash-label]");
   // Named rather than qualified: "שיא אישי מסוקיילד" states the level as a
   // fact about the record. A hedge like "שיא (מסוקיילד)" reads as an asterisk.
-  if (label) label.textContent = rx === false ? "שיא אישי מסוקיילד!" : "שיא חדש!";
+  if (label) label.textContent = rx === false ? "שיא אישי מסוקיילד!" : "שיא אישי חדש!";
   el.style.display = "flex";
   clearTimeout(wodPrFlashTimeout);
   wodPrFlashTimeout = setTimeout(() => { if (el) el.style.display = "none"; }, 1400);
@@ -5011,14 +5011,14 @@ function renderLogTab() {
     ${renderRepeatSet()}
 
     <div class="bar-wrap" id="barWrap">
-      <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא חדש!</span></div>
+      <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא אישי חדש!</span></div>
     </div>
 
     <!-- Q-48: one row in the order a member says it, סטים × חזרות @ משקל. -->
     <div class="steppers steppers--row">
       ${renderStepper("sets", "סטים", sets, 1, 1)}
       ${isDuration ? renderStepper("durationSeconds", "משך (שניות)", durationSeconds, 5, 1) : renderStepper("reps", "חזרות", reps, 1, 1)}
-      ${renderStepper("weight", "משקל (ק\"ג)", weight, 2.5, isDuration || !isBarbell ? 0 : barWeight)}
+      ${renderStepper("weight", "משקל (ק״ג)", weight, 2.5, isDuration || !isBarbell ? 0 : barWeight)}
     </div>
 
     ${isDuration
@@ -5850,7 +5850,7 @@ function renderBodyweightArea() {
       ${last ? `<div style="color:var(--steel); font-size:var(--fs-1); margin-bottom:${chartData.length ? "12px" : "0"};">עודכן לאחרונה: ${fmtDate(last.date)}</div>` : ""}
       ${chartData.length ? renderChart(chartData) : ""}
       <div class="steppers" style="margin-top:14px; margin-bottom:0;">
-        ${renderStepper("bwWeight", "משקל (ק\"ג)", bwWeight, 0.5, 0, "bw-step")}
+        ${renderStepper("bwWeight", "משקל (ק״ג)", bwWeight, 0.5, 0, "bw-step")}
       </div>
       <button data-action="save-bw" class="save-btn" style="max-width:none; margin-top:14px;"${bwWeight > 0 ? "" : " disabled"}>רישום משקל גוף — היום</button>
     </div>
@@ -6083,7 +6083,7 @@ function renderBenchmarkCard(item) {
     <div class="chart-card" style="margin-top:-4px; border-top-left-radius:0; border-top-right-radius:0; border-top:none;">
       ${item.subtitle ? `<div class="wod-desc" style="margin-bottom:10px;">${bidiText(item.subtitle)}</div>` : ""}
       ${item.retestDue ? `<div class="footer-note" style="margin:0 0 10px; text-align:center;">עברו ${item.daysSince} יום מאז הניסיון האחרון — זה הזמן לבדוק שוב.</div>` : ""}
-      ${item.tracked.length ? renderChart(chartData) : `<div style="color:var(--steel); font-size:var(--fs-2); text-align:center; padding:18px 0;">אין עדיין תוצאה לבנצ'מרק הזה</div>`}
+      ${item.tracked.length ? renderChart(chartData) : `<div style="color:var(--steel); font-size:var(--fs-2); text-align:center; padding:18px 0;">אין עדיין תוצאה לבנצ׳מרק הזה</div>`}
       ${item.kind === "wod" && item.effort !== null && item.tracked.length < item.all.length
         ? `<div class="footer-note" style="margin-top:10px; text-align:center;">הגרף והשיא מציגים את הניסיונות ב${esc(wodEffortLabel(item.effort))} בלבד — תוצאות בדרגות מאמץ שונות אינן ברות השוואה. כל הניסיונות מופיעים ברשימה למטה.</div>` : ""}
       ${attempts.length ? `<h3 class="section-label" style="margin-top:14px;">כל הניסיונות</h3>${attempts.map((a) => renderBenchmarkAttemptRow(item, a)).join("")}` : ""}
@@ -6128,15 +6128,15 @@ function renderBenchmarkArea() {
   // who has never signed into the community layer at all - and this section
   // does not exist rather than rendering an empty heading.
   el.innerHTML = benchmarksOn() ? benchmarkSectionHtml() : "";
-  if (el.firstElementChild) { el.setAttribute("role", "region"); el.setAttribute("aria-label", "בנצ'מרקים"); }
+  if (el.firstElementChild) { el.setAttribute("role", "region"); el.setAttribute("aria-label", "בנצ׳מרקים"); }
   else { el.removeAttribute("role"); el.removeAttribute("aria-label"); }
 }
 function benchmarkSectionHtml() {
   const items = benchmarkItems();
   const due = items.filter((i) => i.retestDue);
   return `
-    <h2 class="section-label">בנצ'מרקים</h2>
-    ${due.length ? `<div class="footer-note" style="margin:0 0 10px;">${due.length === 1 ? `בנצ'מרק אחד לא נבדק` : `${due.length} בנצ'מרקים לא נבדקו`} מעל ${BENCHMARK_RETEST_DAYS} יום: ${esc(due.map((i) => i.name).join(", "))}</div>` : ""}
+    <h2 class="section-label">בנצ׳מרקים</h2>
+    ${due.length ? `<div class="footer-note" style="margin:0 0 10px;">${due.length === 1 ? `בנצ׳מרק אחד לא נבדק` : `${due.length} בנצ׳מרקים לא נבדקו`} מעל ${BENCHMARK_RETEST_DAYS} יום: ${esc(due.map((i) => i.name).join(", "))}</div>` : ""}
     ${items.map((item) => renderBenchmarkRow(item) + (benchmarkExpandedId === item.id ? renderBenchmarkCard(item) : "")).join("")}`;
 }
 
@@ -6361,7 +6361,7 @@ function renderSettingsBody() {
       </div>
         <button class="exercise-row" data-action="edit-box-start-date" style="margin:0;">
           <div style="text-align:right;">
-            <div style="font-weight:700; font-size:var(--fs-2);">מתי התחלתי להתאמן בבוקס</div>
+            <div style="font-weight:700; font-size:var(--fs-2);">מתי התחלתי להתאמן במועדון</div>
             <div style="color:var(--steel); font-size:var(--fs-1); margin-top:2px;">${boxStartDate ? esc(fmtDate(boxStartDate)) : "לא הוגדר — פותח את מדליות הוותק"}</div>
           </div>
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
@@ -7038,7 +7038,7 @@ function renderWodLogSection() {
     </div>`;
   } else {
     inputsHtml = `<div class="steppers">
-      ${renderStepper("wodWeight", "משקל (ק\"ג)", wodWeight, 2.5, 0, "wod-step")}
+      ${renderStepper("wodWeight", "משקל (ק״ג)", wodWeight, 2.5, 0, "wod-step")}
     </div>`;
   }
 
@@ -7102,7 +7102,7 @@ function renderWodLogSection() {
       </div>`;
     })()}
 
-    <div id="wodFlashBox" class="flex items-center justify-center" style="display:none; gap:6px; color:var(--p-fff); font-weight:800; font-size:var(--fs-2); background-image:var(--stripe); border-radius:14px; padding:10px 0; margin-bottom:16px; text-shadow:0 1px 3px var(--p-000000-a50);">${ICONS.flame}<span data-wod-flash-label>שיא חדש!</span></div>
+    <div id="wodFlashBox" class="flex items-center justify-center" style="display:none; gap:6px; color:var(--p-fff); font-weight:800; font-size:var(--fs-2); background-image:var(--stripe); border-radius:14px; padding:10px 0; margin-bottom:16px; text-shadow:0 1px 3px var(--p-000000-a50);">${ICONS.flame}<span data-wod-flash-label>שיא אישי חדש!</span></div>
 
     <!-- Design spec §3.6. Hebrew-first with the English kept in parentheses,
          so Rx and Scaled stay LEARNABLE rather than disappearing - the member
@@ -7128,7 +7128,7 @@ function renderWodLogSection() {
 
     ${wodRx === false ? `
     <div class="steppers" style="margin-bottom:16px;">
-      ${renderStepper("wodScaledWeight", "משקל מותאם (ק\"ג)", wodScaledWeight, 2.5, 0, "wod-step")}
+      ${renderStepper("wodScaledWeight", "משקל מותאם (ק״ג)", wodScaledWeight, 2.5, 0, "wod-step")}
     </div>
     <input id="wodNotesInput" class="text-input" dir="auto" style="margin-bottom:8px;" placeholder="שינוי בתרגיל? (אופציונלי, לדוגמה מתח עם רצועה)" aria-label="שינוי בתרגיל (אופציונלי)" value="${esc(wodNotes)}" />
     <div class="flex items-center justify-between" style="margin-bottom:16px;">

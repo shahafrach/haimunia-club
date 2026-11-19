@@ -398,7 +398,7 @@
         '<div class="scene-page__media" aria-hidden="true"></div><div class="scene-page__scrim" aria-hidden="true"></div>' +
         '<div class="scene-page__intro"><h1 id="pageTitle-club" class="scene-page__title">מועדון</h1></div>' +
         '<div class="scene-sheet"><div class="stripe-ribbon" aria-hidden="true"></div>' +
-        '<div class="join-lead" style="margin-bottom:12px;">בפיד של המועדון רואים את האימונים של כולם, מגיבים, וקוראים הודעות מהמאמן. הקוד נמצא בקבוצת המועדון, או ב-QR במכון.</div>' +
+        '<div class="join-lead" style="margin-bottom:12px;">בפיד של המועדון רואים את האימונים של כולם, מגיבים, וקוראים הודעות מהמאמן. הקוד נמצא בקבוצת המועדון, או ב-QR שבמועדון.</div>' +
         (window.haimuniaJoin ? window.haimuniaJoin.cardHtml("club") : "") + "</div></section>";
     }
     ensureLoaded();
