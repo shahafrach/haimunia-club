@@ -56,6 +56,11 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
 
+## Status (Claude, 2026-11-19 19:20)
+- Merged: club #50 #51 #52 #53, demo #192. set-auth-config green (captcha turnstile, anon limit 30).
+- Owner merges club #55 (Q-49) now.
+- fixes NEXT: club #54 (Q-53 part 1) is DIRTY after #53: rebase on main, keep the part-2 notes in the Q-53 row, then Q-53 part 2, Q-54, Q-55, Q-56.
+
 ## Status (Claude, 2026-11-19 09:15)
 - Merged: club #48 (3.19.0, with Q-46) and demo #191 (Q-45). NEXT for fixes, in order: Q-47, Q-48 (+Q-57), Q-51, Q-52, Q-53, Q-49, Q-54, Q-55, Q-56. Q-50 is backend-only and may run in a second session in parallel.
 - fixes 11:40: Q-47 = club #50 (share a logged workout from לוח שנה and the PR card). Ready to merge; no version bump in it (next release).
