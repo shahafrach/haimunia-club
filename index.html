@@ -476,7 +476,10 @@
      the viewport. */
   /* Q-44: iOS Dynamic Type. The shorthand sets html's size from the system text size; the family is set again. */
   html{ font:-apple-system-body; }
-  html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; overscroll-behavior-y:contain; touch-action:pan-y; width:100%; }
+  /* Q-52: pinch-zoom is allowed (touch-action:pan-y on the page blocked it, WCAG 1.4.4). The double-tap zoom
+     is turned off only on the controls (manipulation keeps pinch and taps fast), not on the page. */
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; overscroll-behavior-y:contain; width:100%; }
+  button, a, input, select, textarea, label, summary, [role="button"]{ touch-action:manipulation; }
   /* svh, not dvh: reported live as "the screen vibrates when you switch
      tabs" - the switch-tab handler (app.js) resets scroll to top on every
      switch, and on a real mobile browser, scrolling to the top is exactly
@@ -1323,7 +1326,7 @@
      16px padding on each side (line ~375) - same formula the ≥900px
      block's own 592px already documents, just for the measure that
      applies below that breakpoint instead of above it. */
-  .modal-sheet{ background:var(--bg); border-top-left-radius:22px; border-top-right-radius:22px; width:100%; max-width:512px; margin-inline:auto; max-height:85%; padding-bottom:env(safe-area-inset-bottom,0px); display:flex; flex-direction:column; border:1px solid var(--border); border-bottom:none; overflow-x:hidden; }
+  .modal-sheet{ background:var(--bg); border-top-left-radius:22px; border-top-right-radius:22px; width:100%; max-width:512px; margin-inline:auto; max-height:min(85%, calc(100% - env(safe-area-inset-top,0px) - 12px)); padding-bottom:env(safe-area-inset-bottom,0px); display:flex; flex-direction:column; border:1px solid var(--border); border-bottom:none; overflow-x:hidden; }
   .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px; }
   /* #navMenuSheet, #settingsSheet and #achievementsOverlay's sheet are the
      .modal-sheet instances that go full-height (align-items:stretch on
@@ -1354,6 +1357,9 @@
      the whole pill, not just the invisible input inside it. */
   .search-box:focus-within{ outline:2px solid var(--brass); outline-offset:2px; }
   .search-box input{ background:transparent; border:none; color:var(--chalk); flex:1; outline:none; }
+  /* Q-52: the shared install steps inside the iOS banner wrap at large text instead of running out. */
+  #iosInstallHow .join-step{ min-width:0; }
+  #iosInstallHow .join-step > span:last-child{ min-width:0; overflow-wrap:anywhere; }
   .modal-list{ overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding:0 16px 24px; flex:1; min-height:0; }
   /* Fresh-eyes audit: a regular member's nav menu is profile row + one
      settings link, since every main destination already lives in the
@@ -3465,7 +3471,8 @@
           <button data-action="ios-install-backup" class="chip-btn" style="flex:1; min-height:44px;">שמירת קובץ גיבוי</button>
         </div>
         <div style="font-weight:700;">2. מוסיפים למסך הבית</div>
-        <div style="color:var(--steel);">שיתוף ← הוספה למסך הבית. פותחים מהאייקון, ומדביקים את הקוד או מייבאים את הקובץ.</div>
+        <!-- Q-52: the steps for THIS browser, from the one install-help component (src/connect.js, haimuniaInstall). -->
+        <div id="iosInstallHow" style="color:var(--steel);">שיתוף ← הוספה למסך הבית. פותחים מהאייקון, ומדביקים את הקוד או מייבאים את הקובץ.</div>
       </div>
       <!-- ONE LINE, and only here. This banner is the app's only install hint
            on iOS, and maybeShowIOSInstallBanner() (app.js) already shows it
@@ -3489,7 +3496,7 @@
       <div style="font-weight:600; font-size:13px; color:var(--steel); margin-bottom:12px;">גם התראות עובדות רק מהאפליקציה המותקנת — בדפדפן iOS לא ניתן לקבל אותן.</div>
       <div class="brand-stripe" style="height:4px; margin-bottom:12px;"></div>
       <div class="flex items-center gap-10">
-        <button data-action="dismiss-ios-install-hint" class="save-btn" style="flex:1; max-width:none; font-family:inherit; font-weight:800; font-size:15px; padding:12px 0; box-shadow:none;">הבנתי</button>
+        <button data-action="dismiss-ios-install-hint" class="save-btn" style="flex:1; max-width:none; min-height:44px; font-family:inherit; font-weight:800; font-size:15px; padding:12px 0; box-shadow:none;">הבנתי</button>
       </div>
       </div>
     </div>
@@ -3716,6 +3723,12 @@
       <details class="more-options"><summary>אפשרויות נוספות</summary>
         <button type="button" class="chip-btn" data-action="first-import-file" style="width:100%; min-height:44px; margin-top:8px;">יש לי קובץ גיבוי</button>
       </details>
+      <!-- Q-52: an iPhone keeps the home-screen app's storage apart from Safari's, so a club sign-in made in Safari
+           is not here. Said once, with the way to sign in right there (shown on iOS only, app.js). -->
+      <div id="firstImportSignIn" hidden style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border);">
+        <div class="join-lead" style="margin-bottom:8px;">כבר נכנסתם למועדון ב-Safari? באפליקציה שבמסך הבית צריך להיכנס שוב, פעם אחת.</div>
+        <button type="button" class="chip-btn" data-action="first-import-signin" style="width:100%; min-height:44px;">כניסה למועדון</button>
+      </div>
     </div>
   </div>
 </div>

@@ -5,12 +5,12 @@
   "description": "הבית שלך לאימונים",
   "lang": "he",
   "dir": "rtl",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#152342",
   "theme_color": "#152342",
-  "orientation": "portrait",
+  "orientation": "any",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
@@ -21,13 +21,13 @@
     {
       "name": "רישום סט",
       "short_name": "רישום סט",
-      "url": "./index.html?tab=add",
+      "url": "./?tab=add",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "רישום אימון",
       "short_name": "רישום אימון",
-      "url": "./index.html?tab=wod",
+      "url": "./?tab=wod",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]

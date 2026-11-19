@@ -2962,6 +2962,8 @@ function maybeOfferFirstImport() {
   if (!shouldOfferFirstImport()) return false;
   const overlay = document.getElementById("firstImportOverlay");
   if (!overlay) return false;
+  const signIn = document.getElementById("firstImportSignIn");
+  if (signIn) signIn.hidden = !isIOSDevice();
   document.body.style.overflow = "hidden";
   overlay.classList.add("open");
   setTimeout(() => focusFirstAppDialogEl("firstImportOverlay"), 50);
@@ -8104,6 +8106,13 @@ function maybeShowIOSInstallBanner() {
   // (a transfer code or a backup file), then add to the home screen.
   const el = document.getElementById("iosInstallBanner");
   if (el) el.style.display = "block";
+  // Q-52: step 2 is the steps for this browser (iOS Safari, iOS 26 behind ⋯, Chrome/Firefox on iOS, an in-app
+  // browser), from the one install-help component in src/connect.js.
+  try {
+    const how = document.getElementById("iosInstallHow");
+    // The ids belong to the join screen's copy; this one drops them so no id is on the page twice.
+    if (how && window.haimuniaInstall) how.innerHTML = window.haimuniaInstall.stepsHtml().replace(/ id="connect[A-Za-z]+"/g, "") + '<div style="margin-top:6px;">פותחים מהאייקון, ומדביקים את הקוד או מייבאים את הקובץ.</div>';
+  } catch (e) { /* the fallback line in index.html stays */ }
   syncIOSInstallDock();
 }
 // F-024 (3.17.1): on the log screen the dock is one line (F-001's point, back up first, then the
@@ -8294,6 +8303,7 @@ document.addEventListener("click", (e) => {
   else if (action === "first-import-code") { closeFirstImport(); if (window.haimuniaTransfer) window.haimuniaTransfer.open(); }
   else if (action === "first-import-file") { closeFirstImport(); triggerImport(); }
   else if (action === "first-import-fresh") { closeFirstImport(true); if (userName === null) openWelcomeModal(); }
+  else if (action === "first-import-signin") { closeFirstImport(true); if (window.haimuniaConnect) window.haimuniaConnect.open("login"); }
   else if (action === "close-transfer") {
     if (el.id === "transferOverlay" && e.target !== el) return;
     if (window.haimuniaTransfer) window.haimuniaTransfer.close();
@@ -8847,6 +8857,21 @@ function refreshDateLabel() {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshDateLabel();
 });
+// Q-52: the on-screen keyboard never covers the field being typed in (login, sign-up, transfer codes,
+// Settings, every sheet). iOS does not resize the page for the keyboard, so the field is scrolled into the
+// visible part when it gets focus, and again whenever the visual viewport shrinks (the keyboard opening).
+function keepFieldInView(el) {
+  if (!el || !el.matches || !el.matches("input:not([type=checkbox]):not([type=radio]):not([type=date]), textarea")) return;
+  if (!el.closest(".modal-overlay, .modal-sheet, #connectOverlay, #settingsBody, .scene-sheet")) return;
+  try { el.scrollIntoView({ block: "center", inline: "nearest" }); } catch (e) { /* old engine: nothing */ }
+}
+document.addEventListener("focusin", (e) => { setTimeout(() => keepFieldInView(e.target), 300); });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    const a = document.activeElement;
+    if (a && window.visualViewport.height < window.innerHeight * 0.85) keepFieldInView(a);
+  });
+}
 // init() had no catch: a boot exception left the loading screen up for good.
 // src/boot-guard.js turns it into a message with a reload button.
 init().catch((e) => {
