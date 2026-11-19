@@ -99,7 +99,7 @@ await selectBenchmarkWod(page, "fran");
 // a direct empty-state button.
 await page.click("[data-action='open-wod-picker']");
 await page.waitForSelector("#wodPickerOverlay.open");
-await page.click("[data-action='open-wod-builder']");
+await page.click("#wodPickerList [data-action='open-wod-builder']"); // Q-57 moved it to the end of the list
 await page.waitForSelector("#wodBuilderOverlay.open");
 await page.waitForTimeout(150);
 // Note: getBoundingClientRect() on an explicitly-pixel-sized element inside
@@ -110,8 +110,12 @@ await page.waitForTimeout(150);
 // is whether the modal is genuinely usable on screen, so check that instead.
 const overlaySetHeight = await page.evaluate(() => document.getElementById("wodBuilderOverlay").style.height);
 const innerH = await page.evaluate(() => window.innerHeight);
-check("the modal's own JS height hack still resolves to the real viewport height under zoom",
-  overlaySetHeight === `${innerH}px`, `style.height=${overlaySetHeight} window.innerHeight=${innerH}`);
+// Q-53: the px height is divided by the zoom (app.js pageZoom), because CSS zoom scales px too: the raw
+// innerHeight made the sheet 1.2x the screen and its last rows unreachable. What matters is that the lowest
+// control can be tapped: a trial click fails if Playwright cannot bring it into the viewport.
+const lowestTappable = await page.locator("[data-action='create-wod']").click({ trial: true, timeout: 3000 }).then(() => true, () => false);
+check("the modal fits the screen under zoom: its lowest button can be tapped",
+  lowestTappable, `style.height=${overlaySetHeight} window.innerHeight=${innerH}`);
 const closeVisible = await page.locator("[data-action='close-wod-builder'] svg").first().isVisible();
 const createVisible = await page.locator("[data-action='create-wod']").isVisible();
 check("the modal's close button and its far-lower create button are both genuinely visible on screen",

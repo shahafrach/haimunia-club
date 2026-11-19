@@ -3925,7 +3925,7 @@ function openWodBuilder(prefillName) {
   builderTimeCapMinutes = 0;
   document.body.style.overflow = "hidden";
   const overlay = document.getElementById("wodBuilderOverlay");
-  overlay.style.height = (window.visualViewport ? window.visualViewport.height : window.innerHeight) + "px";
+  overlay.style.height = ((window.visualViewport ? window.visualViewport.height : window.innerHeight) / pageZoom()) + "px";
   overlay.classList.add("open");
   document.getElementById("wodBuilderName").value = prefillName || "";
   document.getElementById("wodBuilderName").removeAttribute("aria-invalid");
@@ -6201,6 +6201,7 @@ function renderHistoryTab() {
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
+    <div id="progressWho" style="margin-bottom:12px;">${renderNavWho({ noStreak: true })}</div>
     ${!storageOK ? `<div class="footer-note" style="color:var(--red-text); background:var(--p-d8453c-a10); border:1px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:12px;" role="alert">${esc(storageErrMsg)}${storageFeedbackLink()}</div>` : ""}
     <div class="stat-row">
       <div class="stat-card stat-hero" style="text-align:center;"><div class="stat-value mono" style="color:var(--brass); font-size:var(--fs-5);">${prCountThisMonth}</div><div class="stat-label">שיאים החודש</div></div>
@@ -6649,7 +6650,8 @@ function render() {
     } else if (tab === "history") {
       // Q-43a: the member's card (name, streak, the way to medals) heads התקדמות now that the header's medals
       // icon, its greeting and the ☰ menu are gone. The same component the desktop sidebar shows.
-      content = `<div id="progressWho" style="margin-bottom:12px;">${renderNavWho({ noStreak: true })}</div>` + renderHistoryTab();
+      // Q-53: the member card sits inside the sheet, under the ribbon; above the photo the fixed header covered it.
+      content = renderHistoryTab();
     } else if (tab === "calendar") {
       content = renderCalendarTab();
     } else if (tab === "club") {
@@ -7307,7 +7309,7 @@ function syncPickerViewport() {
   const overlay = document.getElementById("pickerOverlay");
   if (!overlay) return;
   const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  overlay.style.height = vh + "px";
+  overlay.style.height = (vh / pageZoom()) + "px";
 }
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", () => { if (pickerOpen) syncPickerViewport(); });
@@ -7772,19 +7774,25 @@ function recentMovements(n) {
   return out;
 }
 
+// The large text setting zooms <html> (CSS zoom), which also scales a height set in px: a sheet sized to the
+// visual viewport ran past the bottom of the screen and its last rows could not be reached. Divide it back out.
+function pageZoom() {
+  const z = parseFloat(getComputedStyle(document.documentElement).zoom);
+  return z > 0 ? z : 1;
+}
 let wodPickerOpen = false;
 function syncWodPickerViewport() {
   const overlay = document.getElementById("wodPickerOverlay");
   if (!overlay) return;
   const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  overlay.style.height = vh + "px";
+  overlay.style.height = (vh / pageZoom()) + "px";
 }
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", () => { if (wodPickerOpen) syncWodPickerViewport(); });
   window.visualViewport.addEventListener("resize", () => {
     if (wodBuilderOpen) {
       const overlay = document.getElementById("wodBuilderOverlay");
-      if (overlay) overlay.style.height = window.visualViewport.height + "px";
+      if (overlay) overlay.style.height = (window.visualViewport.height / pageZoom()) + "px";
     }
   });
 }
