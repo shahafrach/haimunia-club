@@ -6617,7 +6617,6 @@ function renderSettingsBody() {
       </div>
       <div class="footer-note" style="text-align:center; margin-top:2px;">© ${new Date().getFullYear()} Shahaf Rachmany · v${APP_VERSION}</div>
       ${renderUpdateCheck()}
-      ${renderUpdateCheck()}
       </details>
     </div>`;
 }
