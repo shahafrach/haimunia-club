@@ -62,6 +62,7 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 
 ## Status (Claude, 2026-11-19 20:16)
 - Merged: club #56 (Q-54) and #57 (Q-53 part 2). club #58 (Q-55 Hebrew) is DIRTY: rebase on main, re-run the Hebrew-rules test. Then Q-56 (performance). Then a 3.20.0 consolidation PR (version bump, CHANGES.md, PROJECT_STATUS) like Q-40.
+- fixes 23:10: #58 (Q-55) updated from main (one conflict: the benchmark empty state, geresh kept); Hebrew rules green, full npm test 602/0/1. #60 (Q-56) updated from main (clean), 609/0/1, Lighthouse still 99. 3.20.0 = club #61: bump + CHANGES.md, with #58 and #60 merged in (merging #61 alone ships all three), 611/0/1; club has no PROJECT_STATUS. Rollback tag rollback-3.19.0 -> d635d79 (command in #61). Waiting for the owner.
 
 ## Status (Claude, 2026-11-19 19:35)
 - Merged: club #54 (Q-53 part 1) and #55. club #56 (Q-54) is DIRTY: rebase on main. Then Q-53 part 2 (pale הוספת סט, בחירת תרגיל as full-width primary, lower hero on רישום), Q-55, Q-56.
