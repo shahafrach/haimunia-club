@@ -131,6 +131,19 @@ const MOVEMENTS = [
   { id: "calf-raise", name: "Calf Raise", category: "Other", barbell: false },
 ];
 
+// Q-48: a Hebrew name under the English one in the picker, and found by a Hebrew search. Only where a Hebrew
+// term is in common use at the box; the English name stays the movement's name (decided by fixes, owner to
+// confirm the wording). Display only: nothing here is stored.
+const MOVEMENT_HE = {
+  "back-squat": "סקוואט אחורי", "front-squat": "סקוואט קדמי", "overhead-squat": "סקוואט מעל הראש",
+  "bulgarian-split-squat": "סקוואט בולגרי", "deadlift": "דדליפט", "sumo-deadlift": "דדליפט סומו",
+  "romanian-deadlift": "דדליפט רומני", "strict-press": "לחיצת כתפיים", "bench-press": "לחיצת חזה",
+  "incline-bench-press": "לחיצת חזה בשיפוע", "weighted-pullup": "מתח עם משקל", "weighted-chinup": "מתח אחיזה הפוכה עם משקל",
+  "bent-over-row": "חתירה בהטיה", "lat-pulldown": "פולי עליון", "weighted-dip": "מקבילים עם משקל",
+  "barbell-lunge": "מכרעים עם מוט", "front-rack-lunge": "מכרעים עם מוט מקדימה", "hip-thrust": "דחיקת אגן",
+  "good-mornings": "גוד מורנינג", "leg-press": "לחיצת רגליים", "leg-curl": "כפיפת ברכיים", "leg-extension": "פשיטת ברכיים",
+  "weighted-plank": "פלאנק עם משקל",
+};
 const STANDARD_REPS = [1, 2, 3, 5, 10];
 const BAR_OPTIONS = [20, 15, 8];
 const WOD_MOVEMENT_TAGS = [

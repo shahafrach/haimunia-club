@@ -67,6 +67,7 @@
 import { chromium } from "playwright";
 import { resolveLocalOnlyTarget } from "./lib/target.mjs";
 import {
+  openSettings,
   switchTab, dismissWelcomeModal, selectMovement, consoleErrorCollector,
   clickOverlayBackdrop, readAppConfirm, resolveAppConfirm, openManagementPanel,
 } from "./lib/actions.mjs";
@@ -132,11 +133,10 @@ async function runAppDialogs(browser) {
   await dismissWelcomeModal(page, "בדיקה");
 
   // ---- onboarding (escapable:false) -------------------------------------
-  // Fresh profile, 0 logged entries: the tour-offer card is on the Add tab
-  // (shouldShowTourCard() in app.js). Same escapable:false regression as
+  // Q-48: the tour is opened from Settings > עזרה (it left the רישום screen). Same escapable:false regression as
   // welcome above.
-  await page.waitForSelector("[data-action='open-onboarding']", { timeout: 5000 });
-  await page.click("[data-action='open-onboarding']");
+  await openSettings(page);
+  await page.click("#settingsHelpBlock [data-action='open-onboarding']");
   await page.waitForFunction(() => document.getElementById("onboardingOverlay")?.classList.contains("open"), { timeout: 5000 });
   await page.goBack();
   await page.waitForTimeout(300);

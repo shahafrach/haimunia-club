@@ -35,7 +35,8 @@ async function pick(window, id = "back-squat") {
   $(window, `[data-action='pick-movement'][data-id='${id}']`).click();
   await wait();
 }
-const stepperValues = (w) => [...w.document.querySelectorAll(".log-controls input.stepper-val")].map((i) => i.value);
+// Read by field, in the order the assertions name them (weight, reps, sets); Q-48 shows them as סטים × חזרות @ משקל.
+const stepperValues = (w) => ["weight", "reps", "sets"].map((f) => w.document.querySelector(`.log-controls input.stepper-val[data-field="${f}"]`)).filter(Boolean).map((i) => i.value);
 const savedRows = async (w) => (await w.dbLoadAll()).filter((e) => e.date === dayBefore(0));
 
 test("picking an exercise fills weight, reps and sets from its last session, and shows that session", async () => {
@@ -110,10 +111,12 @@ test("everything else is under 'כלים' (Q-43: the plates too), which stays op
   await pick(window);
   const more = $(window, "details.log-more");
   assert.ok(more, "the options fold");
-  for (const sel of ["[data-action='set-log-entry-type']", "#logDateInput", "[data-action='prefill-last']", "[data-action='toggle-ladder-mode']"]) {
+  for (const sel of ["[data-action='set-log-entry-type']", "[data-action='prefill-last']", "[data-action='toggle-ladder-mode']"]) {
     assert.ok(more.querySelector(sel), sel + " is under כלים");
   }
-  assert.ok(!$(window, ".log-controls #logDateInput"), "today: the date is not in the controls");
+  // Q-48: the date is one chip at the top of the sheet ("היום ▾"), not in the controls or the fold.
+  assert.ok($(window, ".scene-summary-meta .date-chip #logDateInput"), "the date chip holds the date input");
+  assert.equal($(window, ".date-chip-text").textContent.trim(), "היום");
   assert.ok(more.querySelector("#barbellVisual"), "the plate visualizer is under כלים");
   assert.ok(!$(window, ".log-controls #barbellVisual"), "not in the controls");
   more.open = true;
@@ -122,13 +125,14 @@ test("everything else is under 'כלים' (Q-43: the plates too), which stays op
   assert.equal($(window, "details.log-more").open, true);
 });
 
-test("a past date is shown in the controls, not folded away", async () => {
+test("a past date shows on the date chip, with a way back to today", async () => {
   const window = await bootWithHistory([row("s1", dayBefore(1), 100, 5)]);
   await pick(window);
   const input = window.document.getElementById("logDateInput");
   input.value = dayBefore(2);
   input.dispatchEvent(new window.Event("change", { bubbles: true }));
   await wait();
-  assert.ok($(window, ".log-controls #logDateInput"), "the chosen date sits with the controls");
+  assert.notEqual($(window, ".date-chip-text").textContent.trim(), "היום", "the chip names the chosen date");
+  assert.ok($(window, ".scene-summary-meta [data-action='reset-log-date']"), "and offers the way back");
   assert.equal($(window, "[data-action='repeat-last-set']"), null, "no repeat for another day");
 });
