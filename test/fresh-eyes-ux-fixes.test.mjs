@@ -121,12 +121,12 @@ test("closing a dialog normally (its own close button) consumes the reserved bac
     "no dialog re-opens from a stray leftover history entry");
 });
 
-test("Settings shows the app version (Q-43a: under מתקדם, the ☰ menu that carried it is gone)", async () => {
+test("Settings shows the app version (Q-61: in the small card at the very bottom, with the update check)", async () => {
   const window = await bootApp();
   window.document.getElementById("settingsGearBtn").click();
-  const adv = window.document.getElementById("settingsAdvanced");
-  assert.ok(adv, "the מתקדם fold");
-  assert.match(adv.textContent, /v\d+\.\d+\.\d+/, "it names the running app version");
+  const foot = window.document.getElementById("settingsFooter");
+  assert.ok(foot, "the footer card");
+  assert.match(foot.textContent, /v\d+\.\d+\.\d+/, "it names the running app version");
 });
 
 test("a one-day streak reads '1 יום ברצף', not the grammatically wrong '1 ימים ברצף'", async () => {
