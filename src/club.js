@@ -324,7 +324,7 @@
     var head = '<h2 class="section-label" style="margin-top:16px;">הפיד</h2>';
     if (f.error) return head + '<div class="card" style="text-align:center;"><div style="margin-bottom:10px;">לא הצלחנו לטעון את הפיד.</div><button class="chip-btn" data-club="retry">ניסיון חוזר</button></div>';
     if (!f.loaded) return head + '<div style="color:var(--steel); text-align:center; padding:16px;" role="status">טוענים…</div>';
-    if (!f.rows.length) return head + '<div class="card" style="text-align:center; color:var(--steel);">עוד אין פוסטים במועדון.</div>';
+    if (!f.rows.length) return head + (typeof emptyStateHtml === "function" ? emptyStateHtml("עוד אין פוסטים במועדון.") : '<div class="empty-state"><span>עוד אין פוסטים במועדון.</span></div>'); // eslint-disable-line no-undef
     return head + f.rows.map(function (r) { return postHtml(r, staff); }).join("") +
       (f.done ? "" : '<div style="text-align:center;"><button class="chip-btn" data-club="more"' + (f.loading ? " disabled" : "") + ">עוד פוסטים</button></div>");
   }
