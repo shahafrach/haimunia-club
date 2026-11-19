@@ -17,14 +17,16 @@
 - Q-43a (#43): the header is the logo and a gear (a dot and one toast for what's new); the ☰ menu and the
   medals icon are gone. Settings: פרופיל, מועדון, תצוגה, עזרה, and a "מתקדם" fold for backup, transfer
   codes, usage counting, what's new, privacy, version and deleting data.
-- Q-43b (#44): four tabs: אימון (lift and WOD behind one toggle), התקדמות, יומן (was לוח שנה), מועדון.
+- Q-46 (#49): the tabs are the tour's: רישום, התקדמות, לוח שנה, אימונים, and מועדון when connected. Q-43b (#44)
+  had merged lifts and WODs into one tab with a toggle; the owner reversed it before this release. Labels fit
+  at 200% text.
 - Q-43c (#45): sharing to the club is a "לשתף במועדון" checkbox on the save bar, its default in Settings; no
   question after saving. The lift tools (plates, ladder, % table, 1RM) are under "כלים".
 - Q-43d (#46): the club tab is pinned announcements, the feed, members, and for staff one "ניהול המועדון"
   fold. Progress has one streak card; body measurements are folded.
 - Q-44a (#47): one type, space, button and tap scale in the token block; iOS text size follows the system
   setting; every link is a 44px target; the dark accent text passes AA everywhere.
-- No IndexedDB change. Old links (`#tabWodBtn`, `data-tab="wod"`, the ☰ menu) still open their screens.
+- No IndexedDB change. An old link to the ☰ menu opens Settings.
 
 # 3.18.1 — כפתור העדכון בביקור ראשון, ושם נגיש לכפתור תצוגת היומן — 2026-11-18
 
