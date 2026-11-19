@@ -490,6 +490,9 @@
   /* Q-54: a control scrolled into view (Tab, find-in-page, a focused field) is not left under the fixed bottom bar,
      the install dock or the header. */
   /* Q-54: only while a keyboard focus ring shows, so a tap's own scrollIntoView (the pick) lands where it did. */
+  /* Q-63 P0: the bottom padding always applies (only the top one moved the pick's scroll): a control scrolled into
+     view by a tap, find or the keyboard lands above the fixed bars. */
+  html{ scroll-padding-block-end:calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve)); }
   html:has(:focus-visible){ scroll-padding-block-start:calc(env(safe-area-inset-top,0px) + 72px); scroll-padding-block-end:calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve)); }
   html:has(:focus-visible):has(#iosInstallBanner[style*="block"]){ scroll-padding-block-end:calc(env(safe-area-inset-bottom,0px) + var(--bottom-nav-reserve) + var(--install-dock-reserve)); }
   /* Q-52: pinch-zoom is allowed (touch-action:pan-y on the page blocked it, WCAG 1.4.4). The double-tap zoom
@@ -846,6 +849,11 @@
   @supports (background-image: image-set(url('./x.webp') type('image/webp'))) {
     .boot-photo{ background:linear-gradient(180deg, var(--p-0a0d16-a22) 0%, var(--p-0a0d16-a4) 45%, var(--p-081523-a72) 80%, var(--club-navy) 100%), image-set(url('./assets/club-photos/add-stripe-wall.webp') type('image/webp'), url('./assets/club-photos/add-stripe-wall.jpg') type('image/jpeg')) center top / cover no-repeat; }
   }
+  /* Q-63: at large text a two-line scene title ran under the sheet (32-116px at 200%): the intro was pinned from
+     the top and grew down. It is anchored at its foot, just above the sheet, and grows up; the title is capped at
+     12vw so it stays one line on a phone. The compact רישום header and the welcome sheet keep their own rules. */
+  body[data-scene] .scene-page:not(.scene-page--compact) > .scene-page__intro{ top:auto; inset-block-start:auto; bottom:calc(100% - var(--scene-photo-height) + var(--scene-sheet-overlap, 0px) + 12px); }
+  body[data-scene] .scene-page > .scene-page__intro .scene-page__title{ font-size:min(var(--fs-display), 12vw); }
   .boot-title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:var(--fs-display); line-height:1.05; color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a48); }
   .boot-status{ font-size:var(--fs-2); font-weight:700; color:var(--p-fff); }
   /* Q-53: a scrim behind the photo titles, so white text keeps 4.5:1 over any part of the photo (white text on
@@ -1097,7 +1105,9 @@
   .date-cell{ position:relative; min-height:var(--tap-min); border-radius:var(--radius-md); border:0; background:transparent; color:var(--chalk); font:inherit; font-size:var(--fs-2); font-weight:700; font-variant-numeric:tabular-nums; cursor:pointer; }
   .date-cell:disabled{ color:var(--steel); opacity:.45; cursor:default; }
   .is-today{ box-shadow:inset 0 0 0 2px var(--color-accent); }
-  .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:var(--space-2); }
+  /* Q-63 P0: 80px, not 96px: on a 320px phone three columns fit (3x96 did not), so the weight stepper is not on a
+     second row that starts under the save bar. */
+  .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:var(--space-2); }
   .scene-page--add .log-controls .steppers.steppers--row .stepper:last-child:nth-child(3){ grid-column:auto; }
   .steppers--row .stepper{ flex-basis:auto; }
   .steppers--row .stepper-box{ display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"val val" "minus plus"; }
@@ -1116,6 +1126,13 @@
   .picker-add{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
   .movement-btn-names{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:start; min-width:0; }
   .movement-he{ color:var(--steel); font-size:var(--fs-1); font-weight:500; }
+  /* Q-63: the "⋯" menu that holds a club delete. */
+  .more-menu{ position:relative; display:inline-block; }
+  .more-menu > summary{ list-style:none; display:inline-flex; align-items:center; justify-content:center; min-width:var(--tap-min); min-height:var(--tap-min); border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface2); color:var(--chalk); font-size:var(--fs-4); font-weight:800; cursor:pointer; }
+  .more-menu > summary::-webkit-details-marker{ display:none; }
+  .more-menu[open] > summary{ border-color:var(--steel); }
+  .more-menu-panel{ position:absolute; inset-inline-end:0; top:calc(100% + 4px); z-index:5; padding:var(--space-2); border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-card); white-space:nowrap; }
+  .more-menu-row{ display:flex; justify-content:flex-end; margin-top:var(--space-1); }
   .club-share-line{ display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin:2px 0 8px; }
   .club-share-line .chip-btn{ min-height:44px; }
   .club-shared-tag{ color:var(--green-text); font-weight:700; font-size:var(--fs-2); }
@@ -1133,7 +1150,10 @@
   .club-share-default{ margin-top:8px; }
   .bottom-bar{ gap:4px 10px; align-items:center; flex-wrap:wrap; }
   .bottom-bar > .save-btn{ flex:1 1 180px; min-width:0; }
-  .bottom-bar{ display:flex; justify-content:center; background:linear-gradient(to top, var(--bg) 70%, transparent); padding:10px 16px 8px; }
+  /* Q-63 P0: the bar is opaque. Its top 30% used to be see-through, so a stepper showed under it and a tap aimed at
+     the stepper landed on the save button or the share box. The fade now sits ABOVE the bar and takes no taps. */
+  .bottom-bar{ position:relative; display:flex; justify-content:center; background:var(--bg); padding:10px 16px 8px; }
+  .bottom-bar::before{ content:""; position:absolute; inset-inline:0; bottom:100%; height:24px; background:linear-gradient(to top, var(--bg), transparent); pointer-events:none; }
   /* ---- The toast dock (#appToastDock) ----
      UX review, finding 1 - THE SAVE CONFIRMATION SAT ON THE SAVE BUTTON.
      renderToastBar() (app.js) used to emit its own
@@ -1205,6 +1225,13 @@
      through the gutter around the card. */
   .install-dock{ background:var(--bg); padding:10px 12px 2px; }
   .install-dock-card{ max-width:448px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px; box-shadow:0 -10px 30px var(--p-000000-a28); }
+  /* Q-63 P0: the full dock was taller than the screen (688px at 375x667, worse at large text), its top - with the
+     backup step - out of reach. It is capped below the header and scrolls inside; הבנתי stays pinned at its foot.
+     The backup buttons wrap instead of running past the card. */
+  .install-dock-card{ max-height:calc(100svh - env(safe-area-inset-top,0px) - 140px); overflow-y:auto; overscroll-behavior:contain; }
+  .install-dock-full > .flex:has([data-action="dismiss-ios-install-hint"]){ position:sticky; bottom:-16px; margin-inline:-16px; margin-bottom:-16px; padding:12px 16px 16px; background:var(--surface); }
+  #iosInstallSteps .flex{ flex-wrap:wrap; }
+  #iosInstallSteps .chip-btn{ white-space:normal; flex:1 1 auto; }
   /* ...and the page's own content gets that much more bottom room while a
      dock is up, so the last card of a log/feed can still be scrolled into
      view instead of parking permanently behind it. There is no class to
@@ -1462,7 +1489,10 @@
      :focus-within on the container is the right place for it: highlights
      the whole pill, not just the invisible input inside it. */
   .search-box:focus-within{ outline:2px solid var(--brass); outline-offset:2px; }
-  .search-box input{ background:transparent; border:none; color:var(--chalk); flex:1; outline:none; }
+  /* Q-63: min-width:0 - an input's intrinsic width (about 20 characters) pushed the box past the sheet at large
+     text, and the sheet scrolled sideways to show it (exercise and WOD pickers, 360px at 200%). */
+  .search-box{ min-width:0; }
+  .search-box input{ background:transparent; border:none; color:var(--chalk); flex:1 1 auto; min-width:0; width:100%; outline:none; }
   /* Q-52: the shared install steps inside the iOS banner wrap at large text instead of running out. */
   #iosInstallHow .join-step, .install-card .join-step{ min-width:0; }
   #iosInstallHow .join-step > span:last-child, .install-card .join-step > span:last-child{ min-width:0; overflow-wrap:anywhere; }
@@ -3337,8 +3367,9 @@
 <!-- Q-54: a button inside a status region, not a button that claims role=status (it then stops being a button). -->
 <!-- Q-54: stepper changes are announced here (app.js announceStepper). -->
 <div id="stepperLive" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<!-- Q-63: the banner sits below the header, not over it - it covered the הגדרות gear. -->
 <div id="updateBannerRegion" role="status" aria-live="polite">
-<button id="updateBanner" data-action="reload-app" style="display:none; position:fixed; top:0; left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:calc(max(env(safe-area-inset-top,0px), 28px) + 16px) 20px 16px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
+<button id="updateBanner" data-action="reload-app" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,0px) + var(--header-height)); left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:14px 20px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
   <div style="font-weight:800; font-size:var(--fs-3); margin-bottom:3px;">עדכון חדש זמין</div>
   <div style="font-weight:600; font-size:var(--fs-2); opacity:.85;">סגרו את האפליקציה ופתחו אותה מחדש כדי לעדכן</div>
 </button>

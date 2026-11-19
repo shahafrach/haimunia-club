@@ -123,6 +123,9 @@ await page.evaluate(() => {
   style.id = "__preFixStackingControl";
   style.textContent = "body[data-scene] main{ position:relative; z-index:1; }";
   document.head.appendChild(style);
+  // Since Q-54 the page behind an open sheet is inert, which on its own keeps taps off the bars. Lift it for the
+  // control, so this still proves the z-index guard by itself.
+  for (const id of ["appShell", "bottomNavWrap"]) { const el = document.getElementById(id); if (el) el.removeAttribute("inert"); }
 });
 await page.waitForTimeout(50);
 

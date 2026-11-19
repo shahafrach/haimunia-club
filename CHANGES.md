@@ -11,6 +11,12 @@
   instead of breaking a word. "מתקדם" is a card row with its sections inside. Usage counting, deleting data and
   the backup note are one short line each with "פרטים". פרטיות is a row like מה חדש. The version and the update
   check are one small card at the very bottom. The profile name no longer breaks letter by letter at 200%.
+- Q-63 (P0): on a 320px phone the −/+ steppers no longer sit under the save bar (a tap on + could tick
+  "לשתף במועדון", a tap on the weight could save a set): the three fit in one row, the bar is opaque with its fade
+  above it, and anything scrolled into view lands above the bars. The iOS install card fits under the header and
+  scrolls inside, with הבנתי pinned (its top, with the backup step, was out of reach). Also: the update banner no
+  longer covers the הגדרות gear; the picker searches no longer push the sheet sideways at large text; scene titles
+  stay above the sheet at large text; club deletes are behind a "⋯" menu.
 - No IndexedDB change.
 
 # 3.20.0 — רישום חדש, שיתוף בדיעבד, נגישות, עברית אחידה ופתיחה מהירה — 2026-11-19
