@@ -169,8 +169,8 @@ test("the sink count is pinned, so a new sink is a deliberate decision", () => {
   // fixed labels and a boolean - no member input reaches it.
   // 40 -> 39 on 2026-11-16 (Q-27): the support sheet and its #supportBody write are gone; the menu row
   // opens the feedback box (src/feedback.js) instead.
-  assert.equal(count, 39,
-    `app.js has ${count} innerHTML/outerHTML sinks, expected 39. If you added one, verify its interpolations are escaped and update this number; if you removed one, just update it.`);
+  assert.equal(count, 40,
+    `app.js has ${count} innerHTML/outerHTML sinks, expected 40. If you added one, verify its interpolations are escaped and update this number; if you removed one, just update it.`);
 });
 
 test("esc() is a single shared definition, so there is one escaping rule and not several", () => {

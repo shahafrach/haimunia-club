@@ -25,6 +25,7 @@
   var TEXT = {
     sent: "תודה. קראנו כל פנייה.",
     queued: "נשלח כשיהיה חיבור",
+    notSaved: "לא הצלחנו לשמור את ההודעה לשליחה מאוחרת. היא עדיין כאן, נסו שוב כשיש חיבור.",
     full: "כבר מחכות 5 הודעות לשליחה. נסו שוב כשיש חיבור.",
     empty: "כתבו כמה מילים לפני השליחה.",
     refused: "המשוב לא נשלח. נסו לקצר או לנסח אחרת.",
@@ -37,7 +38,8 @@
     var raw = ls(function (s) { return s.getItem(QUEUE_KEY); });
     try { var v = raw ? JSON.parse(raw) : []; return Array.isArray(v) ? v : []; } catch (e) { return []; }
   }
-  function writeQueue(list) { ls(function (s) { s.setItem(QUEUE_KEY, JSON.stringify(list.slice(0, MAX_QUEUE))); }); }
+  // True when the queue reached localStorage (Q-51 CQ-10: a full or blocked storage must not lose the text).
+  function writeQueue(list) { return ls(function (s) { s.setItem(QUEUE_KEY, JSON.stringify(list.slice(0, MAX_QUEUE))); return true; }) === true; }
   function endpoint() {
     var c = (global.HAIMUNIA_CONFIG && global.HAIMUNIA_CONFIG.usage) || null;
     if (!c || typeof c.url !== "string" || typeof c.key !== "string" || !c.url || !c.key) return null;
@@ -195,7 +197,7 @@
     var list = readQueue();
     if (list.length >= MAX_QUEUE) { paint(); setNote(TEXT.full, "warn"); return; } // the draft stays in the box
     list.push(p);
-    writeQueue(list);
+    if (!writeQueue(list)) { paint(); setNote(TEXT.notSaved, "warn"); return; } // the draft stays in the box
     var box = el("feedbackText");
     if (box) box.value = "";
     paint();

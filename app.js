@@ -181,7 +181,8 @@ function getNavItems() {
     { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "אימונים", tint: "purple", icon: ICONS.stopwatchIcon, main: true, group: "mine" },
   ];
   // The club tab exists only for a connected member of the club.
-  if (window.haimuniaClub && window.haimuniaClub.available()) {
+  // Q-49: a guest (not in a club yet, or offline) gets the מועדון tab too; it opens the join code field.
+  if ((window.haimuniaClub && window.haimuniaClub.available()) || (window.haimuniaConnect && window.haimuniaConnect.enabled())) {
     items.push({ id: "club", tab: "club", rowId: "tabClubBtn", label: "מועדון", tint: "energy", icon: ICONS.clubIcon, main: true, group: "club" });
   }
   return items;
@@ -901,7 +902,10 @@ function categoryPRCounts() {
   return counts;
 }
 function loggedDates() { return [...entries.map((e) => e.date), ...wodEntries.map((e) => e.date)]; }
-function weekBucket(iso) { return Math.floor(new Date(iso + "T00:00:00").getTime() / 86400000 / 7); }
+// Q-51 CQ-07: one definition of a week in the app, Sunday to Saturday (weekStartDay, the weekly streak's own).
+// This used to count weeks from the 1970 epoch, which start on a Thursday, through a local Date that drifts
+// with DST. Consecutive weeks give consecutive buckets.
+function weekBucket(iso) { const d = isoDayNumber(iso); return d === null ? NaN : Math.floor(weekStartDay(d) / 7); }
 function longestWeekStreak() {
   const buckets = [...new Set(loggedDates().map(weekBucket))].sort((a, b) => a - b);
   let longest = 0, current = 0, prev = null;
@@ -1256,7 +1260,15 @@ async function loadSeenAchievements() {
 // that medal back.
 function baselineSeenAchievements() {
   for (const a of ACHIEVEMENTS) if (a.earned()) seenAchievementIds.add(a.id);
-  dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]).catch(() => {});
+  persistSeenAchievements().catch(() => {});
+}
+// Q-51 CQ-03: a union with what is on disk, never this tab's copy alone. Another tab may have shown (and so kept)
+// a medal this tab has not; writing this tab's set over it would take that medal back.
+async function persistSeenAchievements() {
+  let onDisk = [];
+  try { const v = await dbGetSetting(SEEN_ACHIEVEMENTS_KEY); if (Array.isArray(v)) onDisk = v; } catch (e) { /* write what we have */ }
+  for (const id of onDisk) seenAchievementIds.add(id);
+  await dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]);
 }
 function newlyEarnedAchievements() {
   return ACHIEVEMENTS.filter((a) => a.earned() && !seenAchievementIds.has(a.id));
@@ -1270,7 +1282,7 @@ function claimNewlyEarned() {
   const newlyEarned = newlyEarnedAchievements();
   if (!newlyEarned.length) return [];
   for (const a of newlyEarned) seenAchievementIds.add(a.id);
-  dbSetSetting(SEEN_ACHIEVEMENTS_KEY, [...seenAchievementIds]).catch(noteStorageError);
+  persistSeenAchievements().catch(noteStorageError);
   return newlyEarned.filter((a) => !a.silent);
 }
 function checkForNewAchievements() {
@@ -2688,9 +2700,16 @@ function askDeleteEntry(id) {
 async function deleteEntry(id) {
   if (updateHoldsWrites()) return; // F-020
   const removed = entries.find((e) => e.id === id);
+  // Q-51 CQ-04: the disk first. A delete that did not reach IndexedDB keeps the set on screen and its club
+  // post, and says so, instead of a set that is gone here and back on the next open.
+  try { await dbDelete(id); } catch (e) {
+    noteStorageError(e);
+    showToast("המחיקה לא נשמרה במכשיר. נסו שוב.");
+    render();
+    return;
+  }
   entries = entries.filter((e) => e.id !== id);
   if (editingEntryId === id) { editingEntryId = null; logDate = todayISO(); logDateExplicitlyChosen = false; }
-  try { await dbDelete(id); } catch (e) { noteStorageError(e); }
   if (removed) {
     const mov = movementById(removed.exerciseId);
     offerUndo(`${mov ? mov.name : "הסט"} — ${entrySummary(removed)} נמחק`, () => restoreEntry(removed));
@@ -3005,6 +3024,8 @@ function maybeOfferFirstImport() {
   if (!shouldOfferFirstImport()) return false;
   const overlay = document.getElementById("firstImportOverlay");
   if (!overlay) return false;
+  const signIn = document.getElementById("firstImportSignIn");
+  if (signIn) signIn.hidden = !isIOSDevice();
   document.body.style.overflow = "hidden";
   overlay.classList.add("open");
   setTimeout(() => focusFirstAppDialogEl("firstImportOverlay"), 50);
@@ -3296,19 +3317,27 @@ async function buildBackupPayload() {
       sessionNotes[row.key.slice("sessionNote:".length)] = row.value;
     }
   }
+  // Q-51 CQ-01: every backup (export, the rollback file, the transfer code, the safety backup before "delete
+  // everything") is built from a fresh read of IndexedDB, not from this tab's in-memory arrays, which can be
+  // behind another tab's writes. A store that cannot be read falls back to the in-memory copy, so a backup is
+  // never emptier than what the member sees.
+  const fresh = async (load, sanitize, mem) => {
+    try { return sanitizeList(await load(), sanitize); } catch (e) { return mem; }
+  };
+  const byTs = (a, b) => (b.ts || 0) - (a.ts || 0);
   return {
     app: BACKUP_APP_ID,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    entries,
-    customMovements,
-    wodEntries,
-    customWods,
-    bodyweightEntries,
-    measureTypes,
-    measureEntries,
+    entries: (await fresh(dbLoadAll, sanitizeEntry, entries)).sort(byTs),
+    customMovements: await fresh(dbLoadMovements, sanitizeMovement, customMovements),
+    wodEntries: (await fresh(dbLoadWodEntries, sanitizeWodEntry, wodEntries)).sort(byTs),
+    customWods: await fresh(dbLoadCustomWods, sanitizeCustomWod, customWods),
+    bodyweightEntries: (await fresh(dbLoadBodyweight, sanitizeBodyweight, bodyweightEntries)).sort(byTs),
+    measureTypes: await fresh(dbLoadMeasureTypes, sanitizeMeasureType, measureTypes),
+    measureEntries: await fresh(dbLoadMeasurements, sanitizeMeasurement, measureEntries),
     sessionNotes,
-    customWodMovementTags,
+    customWodMovementTags: await fresh(dbLoadWodMovementTags, sanitizeWodMovementTag, customWodMovementTags),
   };
 }
 
@@ -3624,6 +3653,13 @@ async function clearAllData() {
     // "delete everything" must also drop the stored name and export marker.
     await dbClearSettings();
     try { localStorage.removeItem(USER_NAME_KEY); localStorage.removeItem(LAST_EXPORT_KEY); } catch (e) {}
+    // Q-51 CQ-08: privacy.html promises "delete everything" leaves nothing of the log on the phone. These keys
+    // hold which workouts were shared to the club and the names of shared PRs, the share default, and feedback
+    // or error reports still waiting to be sent (their text). The account itself is not touched here.
+    try {
+      for (const k of ["haimunia:clubShareChoice", "haimunia:clubDayRev", "haimunia:clubPrShared", "haimunia:clubShareDefault",
+        "haimunia:feedbackQueue", "haimunia:errorReportsPending", "haimunia:errorReportDays"]) localStorage.removeItem(k);
+    } catch (e) { /* nothing more to clear */ }
     userName = null;
     if (window.haimuniaConnect) window.haimuniaConnect.forget();
     boxStartDate = null;
@@ -4369,9 +4405,15 @@ function askDeleteWodEntry(id) {
 async function deleteWodEntry(id) {
   if (updateHoldsWrites()) return; // F-020
   const removed = wodEntries.find((e) => e.id === id);
+  // Q-51 CQ-04: the disk first, as deleteEntry().
+  try { await dbDeleteWodEntry(id); } catch (e) {
+    noteStorageError(e);
+    showToast("המחיקה לא נשמרה במכשיר. נסו שוב.");
+    render();
+    return;
+  }
   wodEntries = wodEntries.filter((e) => e.id !== id);
   if (editingWodEntryId === id) { editingWodEntryId = null; wodLogDate = todayISO(); wodLogDateExplicitlyChosen = false; }
-  try { await dbDeleteWodEntry(id); } catch (e) { noteStorageError(e); }
   if (removed) {
     const w = wodById(removed.wodId);
     offerUndo(`${w ? w.name : "האימון"} — ${formatWodEntry(removed)} נמחק`, () => restoreWodEntry(removed));
@@ -4847,6 +4889,29 @@ function noteLogSaved(label) {
 
 // Q-48: the day's sets, built up as they are added, with a running total (sets and volume). The list itself
 // is the empty state. Shown under the controls once an exercise is chosen, and on its own before.
+// Q-49: on רישום, for a browser tab (not the installed app), a compact card with this browser's install steps
+// (the one install-help component, src/connect.js) and the one-tap install where the browser offers it. Gone
+// once installed. On an iPhone the install dock already shows these steps; the card takes over once the dock was
+// closed, so the way to install is never gone. Out of the way while a set is being logged.
+function renderInstallCard() {
+  if (isStandalone() || movementExplicitlyChosen || !window.haimuniaInstall) return "";
+  let dockDismissed = false;
+  try { dockDismissed = !!localStorage.getItem(IOS_INSTALL_DISMISS_KEY); } catch (e) { dockDismissed = false; }
+  if (isIOSDevice() && !dockDismissed) return "";
+  const steps = window.haimuniaInstall.stepsHtml().replace(/ id="connect[A-Za-z]+"/g, "");
+  const oneTap = window.haimuniaInstall.canPrompt() && window.haimuniaInstall.kind() !== "inapp";
+  return `<details class="card install-card" id="installCard">
+      <summary class="install-card-head"><span>מתקינים את האימוניה במסך הבית</span><span class="install-card-how">איך?</span></summary>
+      ${oneTap ? `<button class="save-btn" data-action="install-app" style="max-width:none; margin:10px 0;">התקנה</button>` : ""}
+      ${steps}
+    </details>`;
+}
+// Q-49: not in a club yet: the join code field, the one join component (src/connect.js), below the day's list.
+function renderJoinCard() {
+  if (!window.haimuniaJoin || !window.haimuniaConnect || !window.haimuniaConnect.enabled()) return "";
+  if (window.haimuniaClub && window.haimuniaClub.available()) return "";
+  return window.haimuniaJoin.cardHtml("add");
+}
 function renderDayLog(dayEntries, isToday, dayLabel) {
   if (dayEntries.length === 0) {
     return `<div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כל סט שתוסיפו יופיע כאן." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>`;
@@ -4908,6 +4973,7 @@ function renderLogTab() {
       </label>
       ${isToday ? "" : `<button data-action="reset-log-date" class="link-btn link-btn--tap">חזרה להיום</button>`}
     </div>
+    ${renderInstallCard()}
 
     ${movementExplicitlyChosen ? "" : `
     ${renderDayLog(dayEntries, isToday, dayLabel)}
@@ -4933,6 +4999,7 @@ function renderLogTab() {
 
     ${movementExplicitlyChosen ? "" : `
     ${renderUpgradeBackupCard()}
+    ${renderJoinCard()}
 `}
     ${!movementExplicitlyChosen ? "" : `
     <!-- Layout A (owner, 2026-11-15; PR #21): what a set needs comes first, with no scroll at 390x844
@@ -6186,9 +6253,9 @@ function renderHistoryTab() {
   const monthPrefix = localISODate(now).slice(0, 7);
   const celebratablePrIds = celebratablePrEntryIds();
   const prCountThisMonth = entries.filter((e) => celebratablePrIds.has(e.id) && e.date.startsWith(monthPrefix)).length;
-  const start = new Date(now); start.setDate(now.getDate() - now.getDay());
-  const startISO = localISODate(start);
-  const sessionsThisWeek = new Set(entries.filter((e) => e.date >= startISO).map((e) => e.date)).size;
+  // Q-51 CQ-07: "this week" is the same Sunday-start week as the streak and the medals (weekBucket).
+  const thisWeek = weekBucket(localISODate(now));
+  const sessionsThisWeek = new Set(entries.filter((e) => weekBucket(e.date) === thisWeek).map((e) => e.date)).size;
   const totalSetsLogged = entries.reduce((sum, e) => sum + e.sets, 0);
 
   return `
@@ -6624,6 +6691,7 @@ function countUsage(event, screen) {
 // places that set `tab`, so no route to a screen can be missed.
 let lastCountedScreen = null;
 function render() {
+  followTodayIfUnchosen();
   let content;
   try {
     if (tab === "add") {
@@ -6725,7 +6793,8 @@ function render() {
   // #app-scoped attribute could never reach the bottom bar's own styling.
   // Removed entirely on a non-scene tab (Settings/Manage/dialogs keep the
   // ordinary light chrome).
-  const scene = tab === "club" && !(window.haimuniaClub && window.haimuniaClub.available()) ? null : PAGE_SCENES[tab];
+  // Q-49: the guest club page (the join field) is a scene page too, so it gets the same header overlay.
+  const scene = PAGE_SCENES[tab];
   if (scene) document.body.dataset.scene = scene.className; else delete document.body.dataset.scene;
   if (tab !== lastCountedScreen) { lastCountedScreen = tab; countUsage("screen_open", tab); }
   // Captured BEFORE the swap, restored after - see focusFieldIdentity.
@@ -8199,6 +8268,13 @@ function maybeShowIOSInstallBanner() {
   // (a transfer code or a backup file), then add to the home screen.
   const el = document.getElementById("iosInstallBanner");
   if (el) el.style.display = "block";
+  // Q-52: step 2 is the steps for this browser (iOS Safari, iOS 26 behind ⋯, Chrome/Firefox on iOS, an in-app
+  // browser), from the one install-help component in src/connect.js.
+  try {
+    const how = document.getElementById("iosInstallHow");
+    // The ids belong to the join screen's copy; this one drops them so no id is on the page twice.
+    if (how && window.haimuniaInstall) how.innerHTML = window.haimuniaInstall.stepsHtml().replace(/ id="connect[A-Za-z]+"/g, "") + '<div style="margin-top:6px;">פותחים מהאייקון, ומדביקים את הקוד או מייבאים את הקובץ.</div>';
+  } catch (e) { /* the fallback line in index.html stays */ }
   syncIOSInstallDock();
 }
 // F-024 (3.17.1): on the log screen the dock is one line (F-001's point, back up first, then the
@@ -8391,6 +8467,7 @@ document.addEventListener("click", (e) => {
   else if (action === "first-import-code") { closeFirstImport(); if (window.haimuniaTransfer) window.haimuniaTransfer.open(); }
   else if (action === "first-import-file") { closeFirstImport(); triggerImport(); }
   else if (action === "first-import-fresh") { closeFirstImport(true); if (userName === null) openWelcomeModal(); }
+  else if (action === "first-import-signin") { closeFirstImport(true); if (window.haimuniaConnect) window.haimuniaConnect.open("login"); }
   else if (action === "close-transfer") {
     if (el.id === "transferOverlay" && e.target !== el) return;
     if (window.haimuniaTransfer) window.haimuniaTransfer.close();
@@ -8937,13 +9014,57 @@ function setUpServiceWorker() {
 // The header date was written once at boot, so an app left open overnight
 // (the normal life of an installed PWA) showed yesterday's date all morning.
 // Rewritten on every return to the foreground (audit 2026-11, finding 20).
+// Q-51 CQ-06: #dateLabel left with the old header (Q-43a), so this updated nothing. The date a member sees is the
+// log date (the "היום ▾" chip) and the WOD log date; past midnight they stayed on yesterday while saveSet()
+// used today. A date the member did not choose follows the clock; a chosen one is left alone.
 function refreshDateLabel() {
-  const el = document.getElementById("dateLabel");
-  if (el) el.textContent = new Date().toLocaleDateString("he-IL", { weekday: "short", day: "numeric", month: "short" });
+  const today = todayISO();
+  let moved = false;
+  if (!logDateExplicitlyChosen && logDate !== today) { logDate = today; moved = true; }
+  if (!wodLogDateExplicitlyChosen && wodLogDate !== today) { wodLogDate = today; moved = true; }
+  if (moved && typeof render === "function") { try { render(); } catch (e) { /* the next render catches up */ } }
+  return moved;
+}
+// Also on every render (an app left in front over midnight catches up on the next tap), without a timer.
+function followTodayIfUnchosen() {
+  const today = todayISO();
+  if (!logDateExplicitlyChosen && logDate !== today) logDate = today;
+  if (!wodLogDateExplicitlyChosen && wodLogDate !== today) wodLogDate = today;
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshDateLabel();
 });
+// Q-52: the on-screen keyboard never covers the field being typed in (login, sign-up, transfer codes,
+// Settings, every sheet). iOS does not resize the page for the keyboard, so the field is scrolled into the
+// visible part when it gets focus, and again whenever the visual viewport shrinks (the keyboard opening).
+function keepFieldInView(el) {
+  if (!el || !el.matches || !el.matches("input:not([type=checkbox]):not([type=radio]):not([type=date]), textarea")) return;
+  if (!el.closest(".modal-overlay, .modal-sheet, #connectOverlay, #settingsBody, .scene-sheet")) return;
+  try { el.scrollIntoView({ block: "center", inline: "nearest" }); } catch (e) { /* old engine: nothing */ }
+}
+document.addEventListener("focusin", (e) => { setTimeout(() => keepFieldInView(e.target), 300); });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    const a = document.activeElement;
+    if (a && window.visualViewport.height < window.innerHeight * 0.85) keepFieldInView(a);
+  });
+}
+// Q-51 CQ-02: another tab wrote to IndexedDB. Reload this tab's copy before it can write a stale one back; an
+// edit of a set or WOD the other tab deleted ends here instead of saving it again. Debounced: a save is several
+// writes. Reads only, so two tabs cannot ping-pong.
+let dbSyncTimer = null;
+try {
+  if (typeof dbChannel !== "undefined" && dbChannel) dbChannel.addEventListener("message", (ev) => {
+    if (!ev || !ev.data || ev.data.type !== "db-write") return;
+    clearTimeout(dbSyncTimer);
+    dbSyncTimer = setTimeout(async () => {
+      if (!(await reloadFromDb())) return;
+      if (editingEntryId && !entries.some((e) => e.id === editingEntryId)) { editingEntryId = null; logDateExplicitlyChosen = false; logDate = todayISO(); }
+      if (editingWodEntryId && !wodEntries.some((e) => e.id === editingWodEntryId)) { editingWodEntryId = null; }
+      try { render(); } catch (e) { /* the next render catches up */ }
+    }, 250);
+  });
+} catch (e) { /* no cross-tab sync */ }
 // init() had no catch: a boot exception left the loading screen up for good.
 // src/boot-guard.js turns it into a message with a reload button.
 init().catch((e) => {

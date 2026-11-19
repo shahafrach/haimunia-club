@@ -352,7 +352,7 @@ test("sign-in with Face ID: 1 tap from the signed-out notice, no username, no pa
 });
 
 test("Face ID with nothing saved on this phone: a plain answer, and the password is right there", async () => {
-  const { window } = await signedOutDevice();
+  const { window } = await signedOutDevice({ ios: true });
   $(window, "[data-connect='go-login']").click();
   assert.ok($(window, "#connectBody [data-connect='passkey-signin']"), "the login screen has Face ID first");
   $(window, "#connectBody [data-connect='passkey-signin']").click();
@@ -593,4 +593,33 @@ test("the first sign-in on an empty installed app offers the transfer code and t
   $(window, "[data-connect='restore-transfer']").click();
   await until(() => $(window, "#transferOverlay").classList.contains("open"), "transfer opened");
   assert.equal(await window.dbGetSetting("haimunia:restoreOffered"), true, "asked once");
+});
+
+
+// Q-52: the passkey button is named for the platform, and with a client that splits the ceremony the challenge is
+// fetched before the button shows, so the tap starts navigator.credentials.get with nothing awaited first.
+test("Q-52: the passkey button says טביעת אצבע או נעילת מסך off Apple, Face ID on an iPhone", async () => {
+  const a = await signedOutDevice();
+  assert.match(a.window.document.querySelector("[data-connect='passkey-signin']").textContent, /טביעת אצבע או נעילת מסך/);
+  const b = await signedOutDevice({ ios: true });
+  assert.match(b.window.document.querySelector("[data-connect='passkey-signin']").textContent, /Face ID/);
+});
+
+test("Q-52: split ceremony: challenge ready before the button, credentials.get called inside the tap, then verify", async () => {
+  const { window, log } = await signedOutDevice({ ios: true });
+  const c = await window.haimuniaConnect.getClient();
+  let started = 0, verified = null;
+  c.auth._startPasskeyAuthentication = async () => { started++; return { data: { challenge_id: "ch1", options: { challenge: "AAAA", rpId: "haimunia.pages.dev", allowCredentials: [] } }, error: null }; };
+  c.auth._verifyPasskeyAuthentication = async (a) => { verified = a; return { data: { user: DANA }, error: null }; };
+  let getCalls = 0;
+  const fakeCred = { id: "cred1", rawId: new Uint8Array([1, 2]).buffer, type: "public-key", response: { clientDataJSON: new Uint8Array([3]).buffer, authenticatorData: new Uint8Array([4]).buffer, signature: new Uint8Array([5]).buffer, userHandle: null }, getClientExtensionResults: () => ({}) };
+  Object.defineProperty(window.navigator, "credentials", { value: { get: () => { getCalls++; return Promise.resolve(fakeCred); }, store: async () => {} }, configurable: true });
+  window.haimuniaConnect.open("login");
+  await until(() => started === 1 && window.document.querySelector("#connectBody [data-connect='passkey-signin']"), "button after the challenge");
+  window.document.querySelector("#connectBody [data-connect='passkey-signin']").click();
+  assert.equal(getCalls, 1, "credentials.get ran synchronously inside the tap");
+  await until(() => verified, "verified");
+  assert.equal(verified.challengeId, "ch1");
+  assert.equal(verified.credential.id, "cred1");
+  assert.ok(log, "booted");
 });

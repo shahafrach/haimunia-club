@@ -474,7 +474,10 @@
      the viewport. */
   /* Q-44: iOS Dynamic Type. The shorthand sets html's size from the system text size; the family is set again. */
   html{ font:-apple-system-body; }
-  html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; overscroll-behavior-y:contain; touch-action:pan-y; width:100%; }
+  /* Q-52: pinch-zoom is allowed (touch-action:pan-y on the page blocked it, WCAG 1.4.4). The double-tap zoom
+     is turned off only on the controls (manipulation keeps pinch and taps fast), not on the page. */
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--chalk); font-family:'Rubik',sans-serif; overscroll-behavior-y:contain; width:100%; }
+  button, a, input, select, textarea, label, summary, [role="button"]{ touch-action:manipulation; }
   /* svh, not dvh: reported live as "the screen vibrates when you switch
      tabs" - the switch-tab handler (app.js) resets scroll to top on every
      switch, and on a real mobile browser, scrolling to the top is exactly
@@ -564,6 +567,9 @@
   .tabbar{ container-type:inline-size; }
   .tabbtn > span:last-child{ font-size:clamp(10px, 3.2cqi, 12px); }
   @container (max-width: 260px){ .tabbtn{ padding-inline:0; } .tabbtn > span:last-child{ font-size:.59375rem; letter-spacing:-.2px; } }
+  /* Q-49: five tabs (מועדון for a guest too) on the same narrow bar: one step smaller (renders 17px at 200%). */
+  @container (max-width: 260px){ .tabbar:has(> .tabbtn:nth-child(5)) .tabbtn > span:last-child{ font-size:.53125rem; letter-spacing:-.3px; } }
+  .tabbar:has(> .tabbtn:nth-child(5)){ padding-inline:4px; gap:0; }
   .tabbar{ max-width:480px; margin:0 auto; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px); gap:2px; box-shadow:0 -4px 16px var(--p-000000-a18); }
   /* font-size raised from 10.5px (UX audit, defect 3): this labels the
      app's primary navigation and it was the smallest text in the whole
@@ -600,7 +606,10 @@
      reads as this app's card rather than a generically tinted button. */
   .exercise-select.pick-hero{ position:relative; overflow:hidden; gap:12px; padding:16px; padding-inline-start:28px; border-color:color-mix(in srgb, var(--energy) 55%, var(--border)); background:linear-gradient(180deg, color-mix(in srgb, var(--energy) 14%, var(--surface)), var(--surface) 78%); }
   .pick-hero::before{ content:""; position:absolute; top:0; bottom:0; inset-inline-start:0; width:10px; background-image:var(--stripe); }
-  .pick-hero-title{ font-weight:800; font-size:var(--fs-4); line-height:1.25; color:var(--chalk); }
+  .pick-hero-title{ font-weight:800; font-size:var(--fs-4); line-height:1.25; color:var(--chalk); min-width:0; overflow-wrap:anywhere; }
+  /* Q-49: at large text the title and its button stack instead of the title running out of the card. */
+  .exercise-select.pick-hero{ flex-wrap:wrap; }
+  .exercise-select.pick-hero .pick-hero-cta{ min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
   /* --energy-text, not --energy: this is small bold TEXT, which is exactly
      the case the --energy-text token exists for (see its comment above).
      The 8% tint behind it is not a taste call either - at the 15% this
@@ -1353,7 +1362,7 @@
      16px padding on each side (line ~375) - same formula the ≥900px
      block's own 592px already documents, just for the measure that
      applies below that breakpoint instead of above it. */
-  .modal-sheet{ background:var(--bg); border-top-left-radius:22px; border-top-right-radius:22px; width:100%; max-width:512px; margin-inline:auto; max-height:85%; padding-bottom:env(safe-area-inset-bottom,0px); display:flex; flex-direction:column; border:1px solid var(--border); border-bottom:none; overflow-x:hidden; }
+  .modal-sheet{ background:var(--bg); border-top-left-radius:22px; border-top-right-radius:22px; width:100%; max-width:512px; margin-inline:auto; max-height:min(85%, calc(100% - env(safe-area-inset-top,0px) - 12px)); padding-bottom:env(safe-area-inset-bottom,0px); display:flex; flex-direction:column; border:1px solid var(--border); border-bottom:none; overflow-x:hidden; }
   .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px; }
   /* #navMenuSheet, #settingsSheet and #achievementsOverlay's sheet are the
      .modal-sheet instances that go full-height (align-items:stretch on
@@ -1384,6 +1393,9 @@
      the whole pill, not just the invisible input inside it. */
   .search-box:focus-within{ outline:2px solid var(--brass); outline-offset:2px; }
   .search-box input{ background:transparent; border:none; color:var(--chalk); flex:1; outline:none; }
+  /* Q-52: the shared install steps inside the iOS banner wrap at large text instead of running out. */
+  #iosInstallHow .join-step, .install-card .join-step{ min-width:0; }
+  #iosInstallHow .join-step > span:last-child, .install-card .join-step > span:last-child{ min-width:0; overflow-wrap:anywhere; }
   .modal-list{ overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding:0 16px 24px; flex:1; min-height:0; }
   /* Fresh-eyes audit: a regular member's nav menu is profile row + one
      settings link, since every main destination already lives in the
@@ -2707,8 +2719,23 @@
   .more-options > summary{ display:inline-flex; align-items:center; min-height:44px; padding:0 8px; cursor:pointer; color:var(--steel); font-size:var(--fs-3); font-weight:700; }
   .header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
   /* Q-43a: the header is the logo and one 44px gear; on a scene screen the grid is spacer / logo / gear. */
-  #settingsGearBtn{ width:44px; height:44px; min-width:44px; border-radius:12px; }
-  body[data-scene] .header{ grid-template-columns:44px 1fr 44px; }
+  #settingsGearBtn{ width:auto; min-width:52px; min-height:52px; height:auto; padding:4px 6px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  #settingsGearBtn .gear-label{ font-size:var(--fs-caption); font-weight:700; line-height:1.1; white-space:nowrap; }
+  /* Q-49: the install card (compact, folded) and the join card. */
+  .install-card{ margin-bottom:12px; padding:0; }
+  .install-card > summary{ list-style:none; display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:var(--tap-min); padding:8px 14px; cursor:pointer; font-weight:800; }
+  .install-card > summary::-webkit-details-marker{ display:none; }
+  .install-card-how{ color:var(--energy-text); font-size:var(--fs-2); font-weight:800; white-space:nowrap; }
+  .install-card[open]{ padding-bottom:10px; }
+  .install-card .join-steps{ padding:0 14px; }
+  .join-card{ margin-top:12px; }
+  .join-card-title{ font-weight:800; font-size:var(--fs-3); margin-bottom:6px; }
+  .join-card-label{ display:block; color:var(--steel); font-size:var(--fs-1); margin-bottom:6px; }
+  .join-card-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .join-card-input{ flex:1 1 150px; min-height:var(--tap-min); font-size:var(--fs-4); letter-spacing:1px; }
+  .join-card-btn{ flex:0 0 auto; width:auto; max-width:none; min-height:var(--tap-min); padding:0 18px; }
+  .join-card-err{ color:var(--danger-text); font-size:var(--fs-2); margin-top:8px; }
+  body[data-scene] .header{ grid-template-columns:minmax(52px, auto) 1fr minmax(52px, auto); }
   body[data-scene] .header #settingsGearBtn{ grid-column:3; }
   .header-logo{ min-width:0; max-width:calc(100% - 56px); object-fit:contain; }
   /* At large text a segmented option wraps its word instead of being cut. */
@@ -3273,8 +3300,10 @@
        (open-nav-menu, open-notifications) still work for any link that uses them. -->
   <header class="header" aria-label="כותרת האפליקציה">
     <img src="./assets/logo-full.png" alt="האימוניה" class="header-logo" width="300" height="108" />
-    <button id="settingsGearBtn" data-action="open-settings" aria-label="הגדרות" class="icon-chip icon-chip-steel" style="position:relative; flex-shrink:0;">
+    <!-- Q-49: the gear carries its word, "הגדרות", visible, under the icon. -->
+    <button id="settingsGearBtn" data-action="open-settings" class="icon-chip icon-chip-steel" style="position:relative; flex-shrink:0;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="gear-label">הגדרות</span>
       <span id="notificationsBadge" class="gear-dot" aria-hidden="true" style="display:none;"></span>
     </button>
   </header>
@@ -3400,7 +3429,8 @@
           <button data-action="ios-install-backup" class="chip-btn" style="flex:1; min-height:44px;">שמירת קובץ גיבוי</button>
         </div>
         <div style="font-weight:700;">2. מוסיפים למסך הבית</div>
-        <div style="color:var(--steel);">שיתוף ← הוספה למסך הבית. פותחים מהאייקון, ומדביקים את הקוד או מייבאים את הקובץ.</div>
+        <!-- Q-52: the steps for THIS browser, from the one install-help component (src/connect.js, haimuniaInstall). -->
+        <div id="iosInstallHow" style="color:var(--steel);">שיתוף ← הוספה למסך הבית. פותחים מהאייקון, ומדביקים את הקוד או מייבאים את הקובץ.</div>
       </div>
       <!-- ONE LINE, and only here. This banner is the app's only install hint
            on iOS, and maybeShowIOSInstallBanner() (app.js) already shows it
@@ -3424,7 +3454,7 @@
       <div style="font-weight:600; font-size:var(--fs-2); color:var(--steel); margin-bottom:12px;">גם התראות עובדות רק מהאפליקציה המותקנת — בדפדפן iOS לא ניתן לקבל אותן.</div>
       <div class="brand-stripe" style="height:4px; margin-bottom:12px;"></div>
       <div class="flex items-center gap-10">
-        <button data-action="dismiss-ios-install-hint" class="save-btn" style="flex:1; max-width:none; font-family:inherit; font-weight:800; font-size:var(--fs-3); padding:12px 0; box-shadow:none;">הבנתי</button>
+        <button data-action="dismiss-ios-install-hint" class="save-btn" style="flex:1; max-width:none; min-height:44px; font-family:inherit; font-weight:800; font-size:var(--fs-3); padding:12px 0; box-shadow:none;">הבנתי</button>
       </div>
       </div>
     </div>
@@ -3651,6 +3681,12 @@
       <details class="more-options"><summary>אפשרויות נוספות</summary>
         <button type="button" class="chip-btn" data-action="first-import-file" style="width:100%; min-height:44px; margin-top:8px;">יש לי קובץ גיבוי</button>
       </details>
+      <!-- Q-52: an iPhone keeps the home-screen app's storage apart from Safari's, so a club sign-in made in Safari
+           is not here. Said once, with the way to sign in right there (shown on iOS only, app.js). -->
+      <div id="firstImportSignIn" hidden style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border);">
+        <div class="join-lead" style="margin-bottom:8px;">כבר נכנסתם למועדון ב-Safari? באפליקציה שבמסך הבית צריך להיכנס שוב, פעם אחת.</div>
+        <button type="button" class="chip-btn" data-action="first-import-signin" style="width:100%; min-height:44px;">כניסה למועדון</button>
+      </div>
     </div>
   </div>
 </div>
