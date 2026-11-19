@@ -61,12 +61,11 @@ const OPTIONAL_ASSETS = [
   "./assets/medal-bronze.png",
   "./assets/medal-silver.png",
   "./assets/medal-gold.png",
-  "./assets/photos/club-rig-wide.jpeg",
-  "./assets/club-photos/add-stripe-wall.jpg",
-  "./assets/club-photos/progress-blue-rig.jpg",
-  "./assets/club-photos/achievements-plates.jpg",
-  "./assets/club-photos/library-rings.jpg",
-  "./assets/club-photos/community-logo-wall.jpg",
+  "./assets/club-photos/add-stripe-wall.webp",
+  "./assets/club-photos/progress-blue-rig.webp",
+  "./assets/club-photos/achievements-plates.webp",
+  "./assets/club-photos/library-rings.webp",
+  "./assets/club-photos/community-logo-wall.webp",
   "./assets/fonts/rubik-400-latin.woff2",
   "./assets/fonts/rubik-400-hebrew.woff2",
   "./assets/fonts/rubik-600-latin.woff2",
@@ -81,6 +80,23 @@ const OPTIONAL_ASSETS = [
   "./assets/fonts/secularone-400-hebrew.woff2",
 ];
 const ASSETS = [...REQUIRED_ASSETS, ...OPTIONAL_ASSETS];
+
+// Q-56: TWO CACHES. Code (HTML, JS, the manifest, privacy.html) lives in the versioned CACHE above, a fresh copy
+// per release, so shell and scripts always come from one release. Images, fonts and icons live in STATIC_CACHE,
+// which outlives releases: a release used to download ~1.1 MB of unchanged pictures again. A static file is
+// never changed in place - a new picture gets a new name (test/static-assets.test.mjs holds every static file's
+// hash and fails on an in-place change) - so a copy already in STATIC_CACHE is always the right one.
+// The name must not start with CACHE_PREFIX: activate deletes every older "haimunia-v*" cache.
+const STATIC_CACHE = "haimunia-static";
+// Relative to the worker's scope ("/" on Pages): everything under assets/, and the app icons.
+const STATIC_PATH = /^(assets\/|icon-[^/]*\.png$|apple-touch-icon\.png$)/;
+function isStaticPath(pathname) {
+  const base = new URL("./", self.location).pathname;
+  return pathname.startsWith(base) && STATIC_PATH.test(pathname.slice(base.length));
+}
+const STATIC_ASSETS = OPTIONAL_ASSETS.filter((a) => isStaticPath(new URL(a, self.location).pathname));
+// The JPEG fallbacks of the WebP photos (engines without image-set() type()). Not precached; kept when fetched.
+const STATIC_FALLBACKS = STATIC_ASSETS.filter((a) => a.endsWith(".webp")).map((a) => a.replace(/\.webp$/, ".jpg"));
 
 // HOTFIX 3.7.2 (2026-11-14): Cloudflare Pages answers /index.html with a 308 to /. cache.add()
 // stored that response with redirected = true, and Safari refuses a navigation answered by a
@@ -100,10 +116,18 @@ self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE).then(async (cache) => {
       await Promise.all(REQUIRED_ASSETS.map((url) => precache(cache, url)));
+      const statics = await caches.open(STATIC_CACHE);
       await Promise.allSettled(
-        OPTIONAL_ASSETS.map((url) =>
-          precache(cache, url).catch((err) => console.warn("[sw] precache miss:", url, err))
-        )
+        OPTIONAL_ASSETS.map(async (url) => {
+          try {
+            if (STATIC_ASSETS.includes(url)) {
+              // Already there from an earlier release: same name, same bytes. No download.
+              if (await statics.match(new URL(url, self.location).href)) return;
+              return await precache(statics, url);
+            }
+            return await precache(cache, url);
+          } catch (err) { console.warn("[sw] precache miss:", url, err); }
+        })
       );
     })
   );
@@ -120,6 +144,14 @@ self.addEventListener("activate", (e) => {
       // "delete every cache but mine" took other apps' caches with it.
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE).map((k) => caches.delete(k)));
+      // Static files this release no longer uses (a renamed picture's old name) leave the long-lived cache.
+      try {
+        const statics = await caches.open(STATIC_CACHE);
+        if (typeof statics.keys === "function") {
+          const keep = new Set([...STATIC_ASSETS, ...STATIC_FALLBACKS].map((a) => new URL(a, self.location).href));
+          for (const req of await statics.keys()) if (!keep.has(new URL(req.url).origin + new URL(req.url).pathname)) await statics.delete(req);
+        }
+      } catch (err) { /* a stale picture costs space, never correctness */ }
       // Navigation preload was enabled by 3.6.0 and earlier, whose navigations went to
       // the network first. They no longer do, so a preload request would be
       // a wasted download on every start - and the setting outlives the
@@ -140,6 +172,9 @@ self.addEventListener("message", (e) => {
 
 function isPrecached(url) {
   return ASSETS.some((a) => new URL(a, self.location).pathname === url.pathname);
+}
+function isStaticAsset(url) {
+  return [...STATIC_ASSETS, ...STATIC_FALLBACKS].some((a) => new URL(a, self.location).pathname === url.pathname);
 }
 
 self.addEventListener("fetch", (e) => {
@@ -200,6 +235,20 @@ self.addEventListener("fetch", (e) => {
   // the background (that would write another release's bytes under this
   // release's name). A precached file missing from the cache - an optional
   // asset whose download failed at install - is fetched and filled in once.
+  // Q-56: images, fonts and icons from the long-lived cache, filled once on a miss.
+  if (isStaticAsset(url)) {
+    e.respondWith(
+      (async () => {
+        const statics = await caches.open(STATIC_CACHE);
+        const hit = await statics.match(req, { ignoreSearch: true });
+        if (hit) return hit;
+        const res = await fetch(req);
+        if (res && res.ok && !res.redirected && res.type === "basic") statics.put(req, res.clone()).catch(() => {});
+        return res;
+      })()
+    );
+    return;
+  }
   e.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);

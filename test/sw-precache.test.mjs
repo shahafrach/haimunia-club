@@ -45,7 +45,10 @@ test("every asset the app references is precached", () => {
   const src = read("index.html") + read("app.js");
   const refs = new Set([...src.matchAll(/\.?\/?(assets\/[A-Za-z0-9_./-]+\.(?:png|jpe?g|woff2))/g)].map((m) => m[1]));
   assert.ok(refs.size > 10, "found the asset references");
-  for (const r of refs) assert.ok(OPTIONAL.includes(r) || REQUIRED.includes(r), `${r} is used but not precached`);
+  // Q-56: a scene photo's JPEG is the fallback for engines without image-set() type(); its WebP twin is the
+  // precached copy, and sw.js keeps the JPEG in the static cache if an old engine fetches it.
+  const twin = (r) => r.replace(/\.jpe?g$/, ".webp");
+  for (const r of refs) assert.ok(OPTIONAL.includes(r) || REQUIRED.includes(r) || (/\.jpe?g$/.test(r) && OPTIONAL.includes(twin(r))), `${r} is used but not precached`);
 });
 
 test("the worker answers SKIP_WAITING - the message 2.x's update banner sends", () => {
