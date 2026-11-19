@@ -3253,19 +3253,27 @@ async function buildBackupPayload() {
       sessionNotes[row.key.slice("sessionNote:".length)] = row.value;
     }
   }
+  // Q-51 CQ-01: every backup (export, the rollback file, the transfer code, the safety backup before "delete
+  // everything") is built from a fresh read of IndexedDB, not from this tab's in-memory arrays, which can be
+  // behind another tab's writes. A store that cannot be read falls back to the in-memory copy, so a backup is
+  // never emptier than what the member sees.
+  const fresh = async (load, sanitize, mem) => {
+    try { return sanitizeList(await load(), sanitize); } catch (e) { return mem; }
+  };
+  const byTs = (a, b) => (b.ts || 0) - (a.ts || 0);
   return {
     app: BACKUP_APP_ID,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    entries,
-    customMovements,
-    wodEntries,
-    customWods,
-    bodyweightEntries,
-    measureTypes,
-    measureEntries,
+    entries: (await fresh(dbLoadAll, sanitizeEntry, entries)).sort(byTs),
+    customMovements: await fresh(dbLoadMovements, sanitizeMovement, customMovements),
+    wodEntries: (await fresh(dbLoadWodEntries, sanitizeWodEntry, wodEntries)).sort(byTs),
+    customWods: await fresh(dbLoadCustomWods, sanitizeCustomWod, customWods),
+    bodyweightEntries: (await fresh(dbLoadBodyweight, sanitizeBodyweight, bodyweightEntries)).sort(byTs),
+    measureTypes: await fresh(dbLoadMeasureTypes, sanitizeMeasureType, measureTypes),
+    measureEntries: await fresh(dbLoadMeasurements, sanitizeMeasurement, measureEntries),
     sessionNotes,
-    customWodMovementTags,
+    customWodMovementTags: await fresh(dbLoadWodMovementTags, sanitizeWodMovementTag, customWodMovementTags),
   };
 }
 
