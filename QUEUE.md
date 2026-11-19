@@ -52,6 +52,7 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 - ALL MERGED: demo #188 #190 #189, club #40..#47. set-auth-config run after #188 and after #189 (green). Cloudflare deploy of club main green.
 - fixes next: Q-46 first (owner feedback), then Q-40 (owner is on the phone, wants zero cmd): club 3.19.0 bump, CHANGES.md, PROJECT_STATUS, sync-version, one PR. Then Q-44 remaining parts and Q-45. Rollback tags: list them in the PR body, Claude handles the rest.
 - fixes 10:20: merge club #49 (Q-46) then #48 (3.19.0). Q-45 = demo #191 (CI running). Next: Q-44 remaining parts.
+- fixes 10:45: club #48 now has Q-46 merged in (b007962; full npm test 557/0/1 skipped, version 3.19.0): #48 alone ships both, #49 can merge first or be closed by the merge. demo #191: 0162 test 30 used the old 300 ceiling; the TEST is updated to 3000 (561bb00), the order of the limits is unchanged. CI running.
 
 - Owner merges demo #188, #190, runs set-auth-config, merges club #40 now.
 - 07:50: #188 merged 04:44 UTC, migration-status green. set-auth-config run by Claude 05:50 UTC. demo #190 (updated on main) fails user-tests step 'The old password and the old code no longer work' (dana): likely a Q-41/#188 recovery change that the e2e suite still expects. Fix it in #190 or a tiny PR first (main may carry the same failure: run the e2e locally on main to tell).
