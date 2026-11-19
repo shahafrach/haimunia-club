@@ -338,7 +338,7 @@ function renderTabHeader(navId) {
 // One shared real-photo header - the crop/overlay/lazy-load rules live here
 // exactly once rather than being re-decided per screen; each render function
 // only picks which asset per README1's photo-mapping table. assetPath is
-// root-relative (e.g. "assets/photos/club-rig-wide.jpeg"), sized 960x260 to
+// root-relative (e.g. "assets/club-photos/add-stripe-wall.webp"), sized 960x260 to
 // match the .photo-header aspect-ratio exactly (index.html) - explicit
 // width/height reserves the box before the file loads, avoiding layout
 // shift. opts.eager skips loading="lazy" for the one screen that is already
@@ -1245,7 +1245,7 @@ const SEEN_ACHIEVEMENTS_KEY = "haimunia:seenAchievements";
 let seenAchievementIds = new Set();
 async function loadSeenAchievements() {
   try {
-    const v = await dbGetSetting(SEEN_ACHIEVEMENTS_KEY);
+    const v = await bootSetting(SEEN_ACHIEVEMENTS_KEY);
     if (Array.isArray(v)) { seenAchievementIds = new Set(v); return; }
   } catch (e) { /* fall through to baseline */ }
   // First time this ships: baseline whatever's already earned silently, so
@@ -1576,7 +1576,7 @@ const LAST_SEEN_VERSION_KEY = "haimunia:lastSeenVersion";
 let lastSeenVersion = null;
 async function loadLastSeenVersion() {
   try {
-    const v = await dbGetSetting(LAST_SEEN_VERSION_KEY);
+    const v = await bootSetting(LAST_SEEN_VERSION_KEY);
     lastSeenVersion = typeof v === "string" ? v : null;
   } catch (e) { lastSeenVersion = null; }
 }
@@ -1773,7 +1773,7 @@ const HAS_ONBOARDED_KEY = "haimunia:hasOnboarded";
 let hasOnboarded = true; // default true so existing devices never see it by accident
 async function loadOnboardedFlag() {
   try {
-    const v = await dbGetSetting(HAS_ONBOARDED_KEY);
+    const v = await bootSetting(HAS_ONBOARDED_KEY);
     hasOnboarded = v === true;
   } catch (e) { hasOnboarded = true; }
 }
@@ -1863,7 +1863,7 @@ const FIRST_OPEN_DATE_KEY = "haimunia:firstOpenDate";
 let firstOpenDate = null;
 async function loadFirstOpenDate() {
   try {
-    const v = await dbGetSetting(FIRST_OPEN_DATE_KEY);
+    const v = await bootSetting(FIRST_OPEN_DATE_KEY);
     firstOpenDate = v ? cleanISODate(v) : null;
   } catch (e) { /* treated as "unknown" - see maybeShowInstallBanner() */ }
 }
@@ -1875,7 +1875,7 @@ async function loadFirstOpenDate() {
 const FIRST_LOG_CELEBRATED_KEY = "haimunia:firstLogCelebrated";
 let firstLogCelebrated = false;
 async function loadFirstLogCelebrated() {
-  try { firstLogCelebrated = (await dbGetSetting(FIRST_LOG_CELEBRATED_KEY)) === true; }
+  try { firstLogCelebrated = (await bootSetting(FIRST_LOG_CELEBRATED_KEY)) === true; }
   catch (e) { firstLogCelebrated = true; }
 }
 // "The arrival card is owed and has not been answered yet." Distinct from
@@ -2915,7 +2915,7 @@ const USER_NAME_KEY = "haimunia:userName";
 let userName = null;
 async function loadUserName() {
   try {
-    const stored = await dbGetSetting(USER_NAME_KEY);
+    const stored = await bootSetting(USER_NAME_KEY);
     if (stored !== null && stored !== undefined) { userName = cleanStr(stored, LIMITS.nameLen); return; }
   } catch (e) { /* fall through to migration */ }
   // one-time migration off localStorage
@@ -2935,7 +2935,7 @@ const BOX_START_KEY = "haimunia:boxStartDate";
 let boxStartDate = null;
 async function loadBoxStartDate() {
   try {
-    const v = await dbGetSetting(BOX_START_KEY);
+    const v = await bootSetting(BOX_START_KEY);
     boxStartDate = v ? cleanISODate(v) : null;
   } catch (e) { /* keep the default */ }
 }
@@ -3144,7 +3144,7 @@ function wodEffortTag(rx) {
 let wodRxDefault = null;
 async function loadWodRxDefault() {
   try {
-    const v = await dbGetSetting(WOD_RX_DEFAULT_KEY);
+    const v = await bootSetting(WOD_RX_DEFAULT_KEY);
     wodRxDefault = wodEffortAnswered(v) ? v : null;
   } catch (e) { wodRxDefault = null; }
   // A remembered answer pre-selects the toggle; no answer leaves it unset.
@@ -3168,7 +3168,7 @@ function setWodRx(rx) {
 const BAR_WEIGHT_KEY = "haimunia:barWeight";
 async function loadBarWeight() {
   try {
-    const stored = await dbGetSetting(BAR_WEIGHT_KEY);
+    const stored = await bootSetting(BAR_WEIGHT_KEY);
     if (BAR_OPTIONS.includes(stored)) barWeight = stored;
   } catch (e) { /* keep the default */ }
 }
@@ -3203,7 +3203,7 @@ const PCT_INCREMENT_KEY = "haimunia:pctIncrement";
 let pctIncrement = 2.5;
 async function loadPctIncrement() {
   try {
-    const stored = await dbGetSetting(PCT_INCREMENT_KEY);
+    const stored = await bootSetting(PCT_INCREMENT_KEY);
     if (PCT_INCREMENTS.includes(stored)) pctIncrement = stored;
   } catch (e) { /* keep the default */ }
 }
@@ -3275,7 +3275,7 @@ const LAST_EXPORT_KEY = "boxlog:lastExportAt";
 let lastExportAt = null;
 async function loadLastExport() {
   try {
-    const v = await dbGetSetting(LAST_EXPORT_KEY);
+    const v = await bootSetting(LAST_EXPORT_KEY);
     if (v) { lastExportAt = Number(v); return; }
   } catch (e) {}
   try {
@@ -4786,7 +4786,7 @@ const EDITION = "standalone-1";
 let editionMarker = null;
 let upgradeBackupOffered = false;
 async function loadEditionMarker() {
-  try { editionMarker = (await dbGetSetting(EDITION_KEY)) || null; } catch (e) { editionMarker = null; }
+  try { editionMarker = (await bootSetting(EDITION_KEY)) || null; } catch (e) { editionMarker = null; }
 }
 function markEditionSeen() {
   editionMarker = EDITION;
@@ -8818,6 +8818,20 @@ document.getElementById("wodPickerSearch").addEventListener("keydown", (e) => {
 });
 
 // ---------- Init ----------
+// Q-56: boot reads every setting in ONE transaction (dbGetAllSettings) instead of twelve sequential gets, one per
+// loader below. The snapshot answers only during boot; a key missing from it is a setting never stored (null).
+// If the snapshot itself failed, each loader falls back to its own read, as before.
+let bootSettings = null;
+async function bootSetting(key) {
+  if (bootSettings) return bootSettings.has(key) ? bootSettings.get(key) : null;
+  return dbGetSetting(key);
+}
+async function loadBootSettings() {
+  try {
+    const rows = await dbGetAllSettings();
+    bootSettings = new Map((Array.isArray(rows) ? rows : []).filter((r) => r && typeof r.key === "string").map((r) => [r.key, r.value]));
+  } catch (e) { bootSettings = null; }
+}
 async function init() {
   loadThemePref();
   applyThemePref();
@@ -8835,6 +8849,7 @@ async function init() {
   // as a fresh install - welcome sheet, edition marker, first-open date and
   // all, written over their real settings. Stop here instead and say so.
   if (!(await reloadFromDb())) { showBootError("storage"); setUpServiceWorker(); return; }
+  await loadBootSettings();
   await loadUserName();
   await loadLastExport();
   await loadBarWeight();
@@ -8847,6 +8862,7 @@ async function init() {
   await loadFirstOpenDate();
   await loadFirstLogCelebrated();
   await loadEditionMarker();
+  bootSettings = null; // every later read goes to the database
   // Bootstrap flags that predate this device ever tracking them. A device
   // with real data/a name already existed before update-notifications and
   // onboarding shipped — it must never see either retroactively. A device

@@ -75,6 +75,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="האימוניה" />
+<!-- Q-56: the boot title's face (8 KB), so the first paint is not followed by a swap. -->
+<link rel="preload" href="./assets/fonts/secularone-400-hebrew.woff2" as="font" type="font/woff2" crossorigin />
+<!-- Q-56: the splash photo is the first paint's largest element; fetch it before the scripts. type= limits it to
+     engines that take WebP, which are the ones the @supports rule gives it to. -->
+<link rel="preload" href="./assets/club-photos/add-stripe-wall.webp" as="image" type="image/webp" fetchpriority="high" />
 <link rel="manifest" href="./manifest.json" />
 <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <link rel="icon" href="./icon-192.png" />
@@ -788,6 +793,17 @@
   .scene-page--library{ --scene-image:url('./assets/club-photos/library-rings.jpg'); --scene-position:center 45%; }
   .scene-page--community{ --scene-image:url('./assets/club-photos/community-logo-wall.jpg'); }
   .scene-page--achievements{ --scene-image:url('./assets/club-photos/achievements-plates.jpg'); }
+  /* Q-56: WebP (about 45% smaller) where image-set() with type() is understood (Safari 17+, Chrome, Firefox);
+     the JPEG above stays for older engines. The @supports keeps an engine that cannot parse it on the JPEG,
+     instead of an invalid custom property that would leave no photo at all. */
+  @supports (background-image: image-set(url('./x.webp') type('image/webp'))) {
+    .scene-page--add{ --scene-image:image-set(url('./assets/club-photos/add-stripe-wall.webp') type('image/webp'), url('./assets/club-photos/add-stripe-wall.jpg') type('image/jpeg')); }
+    .scene-page--history{ --scene-image:image-set(url('./assets/club-photos/achievements-plates.webp') type('image/webp'), url('./assets/club-photos/achievements-plates.jpg') type('image/jpeg')); }
+    .scene-page--progress{ --scene-image:image-set(url('./assets/club-photos/progress-blue-rig.webp') type('image/webp'), url('./assets/club-photos/progress-blue-rig.jpg') type('image/jpeg')); }
+    .scene-page--library{ --scene-image:image-set(url('./assets/club-photos/library-rings.webp') type('image/webp'), url('./assets/club-photos/library-rings.jpg') type('image/jpeg')); }
+    .scene-page--community{ --scene-image:image-set(url('./assets/club-photos/community-logo-wall.webp') type('image/webp'), url('./assets/club-photos/community-logo-wall.jpg') type('image/jpeg')); }
+    .scene-page--achievements{ --scene-image:image-set(url('./assets/club-photos/achievements-plates.webp') type('image/webp'), url('./assets/club-photos/achievements-plates.jpg') type('image/jpeg')); }
+  }
   .scene-page__scrim{ position:absolute; z-index:-2; inset:0; pointer-events:none;
     background:linear-gradient(180deg, var(--p-030a14-a24) 0, var(--p-030a14-a8) 25%, var(--p-030a14-a54) 47%, var(--p-030a14-a76) 100%); }
   :root[data-scheme="dark"] .scene-page__scrim{ background:linear-gradient(180deg, var(--p-030a14-a34) 0, var(--p-030a14-a14) 25%, var(--p-030a14-a64) 47%, var(--p-030a14-a86) 100%); }
@@ -804,6 +820,18 @@
   .scene-page__brand{ font-size:var(--fs-1); font-weight:700; letter-spacing:.5px; opacity:.85; margin-bottom:6px; }
   .scene-page__title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:var(--fs-display); line-height:1.05; color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a48); margin:0 0 6px; display:flex; align-items:center; gap:10px; }
   .scene-page__subtitle{ font-size:var(--fs-2); font-weight:600; margin:0; }
+  /* Q-56: the boot splash. The רישום photo full screen under a navy scrim, the title and the status line; the
+     real screen paints the same photo over the same ground, so nothing jumps. */
+  /* Q-56: the boot splash. The רישום photo at the top (its own size, as on the real screen: a full-screen picture
+     does not count as content), the title on it, the status line below on navy. */
+  .boot-splash{ min-height:100svh; display:flex; flex-direction:column; align-items:center; gap:var(--space-5); background:var(--club-navy); color:var(--p-fff); text-align:center; }
+  .boot-photo{ align-self:stretch; height:clamp(360px, 58svh, 520px); display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:var(--space-3); padding-bottom:var(--space-5);
+    background:linear-gradient(180deg, var(--p-0a0d16-a22) 0%, var(--p-0a0d16-a4) 45%, var(--p-081523-a72) 80%, var(--club-navy) 100%), url('./assets/club-photos/add-stripe-wall.jpg') center top / cover no-repeat; }
+  @supports (background-image: image-set(url('./x.webp') type('image/webp'))) {
+    .boot-photo{ background:linear-gradient(180deg, var(--p-0a0d16-a22) 0%, var(--p-0a0d16-a4) 45%, var(--p-081523-a72) 80%, var(--club-navy) 100%), image-set(url('./assets/club-photos/add-stripe-wall.webp') type('image/webp'), url('./assets/club-photos/add-stripe-wall.jpg') type('image/jpeg')) center top / cover no-repeat; }
+  }
+  .boot-title{ font-family:'Secular One','Rubik',sans-serif; font-weight:400; font-size:var(--fs-display); line-height:1.05; color:var(--p-fff); text-shadow:0 2px 16px var(--p-000000-a48); }
+  .boot-status{ font-size:var(--fs-2); font-weight:700; color:var(--p-fff); }
   /* Q-53: a scrim behind the photo titles, so white text keeps 4.5:1 over any part of the photo (white text on
      the 72% navy core measures above 7:1 even over a white pixel). */
   .scene-page__intro{ isolation:isolate; }
@@ -3274,10 +3302,16 @@
      which is common right as a page first loads/navigates. Same fix,
      same reasoning as the .scene-sheet/body dvh fix earlier - this
      instance was missed then because it isn't a scene page. -->
-<div id="loading" role="status" aria-live="polite" style="min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;">
-  <img src="./assets/mark.png" alt="" width="40" height="46" style="opacity:.85;" />
-  <div style="color:var(--steel); font-size:var(--fs-2); font-weight:700;">טוען את היומן שלך…</div>
+<div id="loading" class="boot-splash" role="status" aria-live="polite">
+  <!-- Q-56: the first paint is the רישום screen's own photo and title, in the page itself, instead of a small
+       line of text until app.js has run (LCP was the photo painted after boot). Hidden from screen readers, which
+       hear the status line below and then the real heading. -->
+  <div class="boot-photo" aria-hidden="true">
+    <div class="boot-title">רישום אימון</div>
+  </div>
+  <div class="boot-status">טוען את היומן שלך…</div>
 </div>
+
 
 <!-- Plain block below the desktop breakpoint (#appShell/#desktopSidebar's
      CSS rules are entirely inside the @media (min-width:900px) block, see
