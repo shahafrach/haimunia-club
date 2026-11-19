@@ -561,6 +561,11 @@
      element rather than each computing its own safe-area offset. Flush to
      the true bottom edge, not a floating pill inset from it - the safe-area
      inset is this bar's OWN bottom padding. */
+  /* Q-46: four tab names (the tour's) must fit at 200% text, where the bar is about 188 CSS px wide. The label
+     size follows the bar's own width (container query): 12px from a 375px bar up, never under 10px. */
+  .tabbar{ container-type:inline-size; }
+  .tabbtn > span:last-child{ font-size:clamp(10px, 3.2cqi, 12px); }
+  @container (max-width: 260px){ .tabbtn{ padding-inline:0; } .tabbtn > span:last-child{ font-size:9.5px; letter-spacing:-.2px; } }
   .tabbar{ max-width:480px; margin:0 auto; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px); gap:2px; box-shadow:0 -4px 16px var(--p-000000-a18); }
   /* font-size raised from 10.5px (UX audit, defect 3): this labels the
      app's primary navigation and it was the smallest text in the whole
@@ -1256,10 +1261,6 @@
      renderTextScaleRow(). Until then, separate them enough to read as two. */
   #textScaleRow{ margin-top:12px; }
   .segmented-opt, #themeRow [role="radio"], #textScaleRow [role="radio"]{ min-width:0; min-height:44px; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:15px; font-weight:600; color:var(--steel); background:transparent; border:1px solid transparent; text-decoration:none; padding:8px 6px; }
-  .segmented-opt[aria-pressed="true"]{ background:var(--surface); color:var(--chalk); font-weight:800; border-color:var(--brass); box-shadow:var(--shadow-card); }
-  /* Q-43: the הרמה | WOD toggle sits at the top of the photo, under the header, so it costs the sheet no
-     height. Not on the compact (movement picked) lift screen, whose photo is too short for it. */
-  .scene-page > .training-toggle{ position:absolute; z-index:2; inset-block-start:calc(env(safe-area-inset-top,0px) + 72px); inset-inline:var(--scene-inline); max-width:320px; margin-inline:auto; }
   .segmented-opt[aria-checked="true"], #themeRow [role="radio"][aria-checked="true"], #textScaleRow [role="radio"][aria-checked="true"]{ background:var(--surface); color:var(--chalk); font-weight:800; border-color:var(--brass); box-shadow:var(--shadow-card); }
   /* COMM-323: card-based Settings redesign. Noam's own .settings-* CSS
      wasn't something this workspace could copy verbatim (crossfit-pwa-Noam
