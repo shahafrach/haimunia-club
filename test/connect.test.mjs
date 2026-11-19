@@ -526,7 +526,7 @@ test("first screen: one primary action (the code), one secondary (an account); o
 test("no screen tells a member to ask the coach; they are told where the code is", () => {
   const src = readFileSync(path.join(root, "src/connect.js"), "utf8");
   assert.doesNotMatch(src, /מהמאמן|מבקשים .*מהמאמן|שקיבלתם מהמאמן/);
-  assert.match(src, /בקבוצת המועדון, או ב-QR במכון/);
+  assert.match(src, /בקבוצת המועדון, או ב-QR שבמועדון/);
 });
 
 test("a 21-character transfer code typed in the join field goes to the transfer screen, filled in", async () => {

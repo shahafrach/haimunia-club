@@ -260,7 +260,7 @@
       return head("הקוד שלכם", "") +
         '<div id="transferNewCode" class="mono" dir="ltr" style="font-size:var(--fs-5); font-weight:700; letter-spacing:1px; text-align:center; color:var(--chalk); margin:0 0 12px; user-select:all; -webkit-user-select:all;">' + esc(T.code) + "</div>" +
         '<button type="button" class="save-btn" data-transfer="copy" style="max-width:none; margin-bottom:12px;">העתקת הקוד</button>' +
-        '<div style="color:var(--steel); font-size:var(--fs-2); line-height:1.55; margin-bottom:14px;">הקוד מוצג פעם אחת. הוא תקף פעם אחת ול-24 שעות. באפליקציה המותקנת במסך הבית: הגדרות ← הזנת קוד העברה, ומדביקים. היומן כאן לא נמחק.</div>' +
+        '<div style="color:var(--steel); font-size:var(--fs-2); line-height:1.55; margin-bottom:14px;">הקוד מוצג פעם אחת. הוא תקף פעם אחת ול-24 שעות. באפליקציה המותקנת במסך הבית: הגדרות ← מתקדם ← הזנת קוד העברה, ומדביקים. היומן כאן לא נמחק.</div>' +
         '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="close">סגירה</button></div>';
     }
     return head("העברה לאפליקציה המותקנת", "האפליקציה במסך הבית נפתחת ריקה. קוד העברה מעביר אליה את כל היומן: אימונים, תרגילים ואימונים שהוספתם, משקל גוף, מדידות, הערות והגדרות. הכול מוצפן כאן בטלפון לפני שליחה, והשרת לא יכול לקרוא אותו. הקוד תקף פעם אחת ול-24 שעות.") +
@@ -290,7 +290,7 @@
         '<button type="button" class="save-btn" data-transfer="close" style="max-width:none; margin-bottom:10px;">הבנתי</button>' +
         '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="to-create">רוצים להעביר מכאן? יצירת קוד העברה</button></div>';
     }
-    return head("הזנת קוד העברה", "יוצרים קוד העברה באפליקציה הישנה או בהאימוניה בדפדפן, ומדביקים אותו כאן. הוא תקף פעם אחת ו-24 שעות. הרישומים, כולל משקל הגוף, עוברים מוצפנים ומתווספים לנתונים שכבר יש כאן.") +
+    return head("הזנת קוד העברה", "יוצרים קוד העברה באפליקציה הישנה או באימוניה שבדפדפן, ומדביקים אותו כאן. הוא תקף פעם אחת ו-24 שעות. הרישומים, כולל משקל הגוף, עוברים מוצפנים ומתווספים לנתונים שכבר יש כאן.") +
       (T.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(T.error) + "</span></div>" : "") +
       '<form data-transfer-form novalidate>' +
       '<label for="transferCode" style="display:block; color:var(--steel); font-size:var(--fs-1); margin-bottom:6px;">קוד העברה (21 תווים, מהאפליקציה הישנה)</label>' +

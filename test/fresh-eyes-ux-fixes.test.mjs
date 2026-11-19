@@ -143,7 +143,7 @@ test("a one-day streak reads '1 יום ברצף', not the grammatically wrong '1
   // Q-43: the progress card names the medals (the weekly streak card is the one streak there); the day count
   // is on the desktop sidebar's card.
   openProgress(window);
-  assert.equal(window.document.querySelector("#progressWho .who-sub").textContent, "המדליות וההישגים שלי");
+  assert.equal(window.document.querySelector("#progressWho .who-sub").textContent, "המדליות שלי");
   const who = window.document.querySelector("#desktopSidebar .who-sub");
   assert.equal(who.textContent, "1 יום ברצף");
 

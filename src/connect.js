@@ -290,9 +290,9 @@
   }
 
   var JOIN_TEXT = {
-    invalid: "הקוד או הקישור לא תקפים. בודקים את 8 התווים ומנסים שוב. הקוד העדכני נמצא בקבוצת המועדון, או ב-QR במכון.",
+    invalid: "הקוד או הקישור לא תקפים. בודקים את 8 התווים ומנסים שוב. הקוד העדכני נמצא בקבוצת המועדון, או ב-QR שבמועדון.",
     circle_full: "המועדון מלא כרגע.",
-    too_many_circles: "החשבון כבר חבר במספר המקסימלי של מעגלים.",
+    too_many_circles: "החשבון כבר חבר במספר המרבי של מועדונים וקבוצות.",
     rate_limited: "ניסיתם יותר מדי פעמים בשעה האחרונה. אפשר לנסות שוב בעוד שעה.",
     offline: "אין חיבור כרגע. אפשר לנסות שוב כשהחיבור חוזר.",
     error: "ההצטרפות לא הושלמה. אפשר לנסות שוב.",
@@ -635,7 +635,7 @@
     S.drafts = { displayName: name, emoji: emoji };
     var errs = {};
     if (name.length < 2 || name.length > 40) errs.displayName = "השם צריך להיות באורך 2 עד 40 תווים.";
-    if (!emoji || Array.from(emoji).length > 16 || !EMOJI_RE.test(emoji)) errs.emoji = "בחרו אימוג'י אחד או שניים.";
+    if (!emoji || Array.from(emoji).length > 16 || !EMOJI_RE.test(emoji)) errs.emoji = "בחרו אימוג׳י אחד או שניים.";
     if (Object.keys(errs).length) return fail("profile", errs);
     S.busy = true; S.error = ""; S.errors = {}; paint();
     if (!(await saveProfile(name, emoji))) return fail("profile", {}, "שמירת הפרופיל נכשלה, נסו שוב");
@@ -827,7 +827,7 @@
     if (v === "choice") {
       // Q-37: the code is the first thing asked. A link already carries it, so the button goes on.
       // Q-42: one primary action (the code) and one secondary (an existing account); the rest is folded.
-      return head("הצטרפות למועדון", "האימונים שלכם נשמרים רק בטלפון, גם בלי חיבור. כדי להצטרף, מקלידים את קוד ההצטרפות. הקוד נמצא בקבוצת המועדון, או ב-QR במכון.") +
+      return head("הצטרפות למועדון", "האימונים שלכם נשמרים רק בטלפון, גם בלי חיבור. כדי להצטרף, מקלידים את קוד ההצטרפות. הקוד נמצא בקבוצת המועדון, או ב-QR שבמועדון.") +
         (joinToken
           ? '<div class="join-lead">קוד ההצטרפות מוכן.</div>' + btn("המשך", 'data-connect="go-signup"')
           : '<form id="connectForm" data-connect-form="code-first" novalidate>' + codeFieldHtml("קוד הצטרפות (8 תווים)") + submitBtn("המשך") + "</form>") +
@@ -917,7 +917,7 @@
     }
     if (v === "join") {
       if (S.busy) return head("מצטרפים למועדון…");
-      return head("הצטרפות למועדון", joinToken ? "הקוד מוכן." : "מקלידים את קוד ההצטרפות, או מדביקים את הקישור. הקוד נמצא בקבוצת המועדון, או ב-QR במכון.") + bigErrorHtml() +
+      return head("הצטרפות למועדון", joinToken ? "הקוד מוכן." : "מקלידים את קוד ההצטרפות, או מדביקים את הקישור. הקוד נמצא בקבוצת המועדון, או ב-QR שבמועדון.") + bigErrorHtml() +
         (joinToken
           ? btn("הצטרפות", 'data-connect="join-now"')
           : '<form id="connectForm" data-connect-form="join" novalidate>' + codeFieldHtml("קוד הצטרפות (8 תווים)") + submitBtn("הצטרפות") + "</form>") +
@@ -942,10 +942,10 @@
       var dn = S.drafts.displayName != null ? S.drafts.displayName : ((S.profile && S.profile.display_name) || (typeof userName === "string" ? userName : ""));
       var em = S.drafts.emoji != null ? S.drafts.emoji : ((S.profile && S.profile.emoji) || "💪");
       S.drafts.displayName = dn; S.drafts.emoji = em;
-      return head("השם שרואים במועדון", "זה השם והאימוג'י שחברי המועדון יראו. אפשר שם מלא, בעברית או באנגלית.") + errorHtml() +
+      return head("השם שרואים במועדון", "זה השם והאימוג׳י שחברי המועדון יראו. אפשר שם מלא, בעברית או באנגלית.") + errorHtml() +
         '<form id="connectForm" data-connect-form="profile" novalidate>' +
         fieldHtml("displayName", "שם", "text", 'autocomplete="off" dir="auto" maxlength="40"') +
-        fieldHtml("emoji", "אימוג'י", "text", 'autocomplete="off" maxlength="16"') +
+        fieldHtml("emoji", "אימוג׳י", "text", 'autocomplete="off" maxlength="16"') +
         submitBtn("שמירה") + "</form>" +
         (S.profile && S.profile.display_name ? '<div style="text-align:center;">' + linkBtn("ביטול", 'data-connect="go-status"') + "</div>" : "");
     }
@@ -965,7 +965,7 @@
       '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:var(--fs-2); font-weight:700;">' + (S.inClub ? "חברים במועדון" : "עדיין לא במועדון") + "</div>" +
       '<div style="color:var(--steel); font-size:var(--fs-1); margin-top:4px;">האימונים והמשקלים שלכם נשארים בטלפון הזה. למועדון נשלחים רק אימונים שבחרתם לשתף.</div></div>' +
       (S.inClub === false ? btn("הצטרפות למועדון", 'data-connect="go-join"') : "") +
-      (S.inClub ? '<div style="text-align:center;">' + linkBtn("שינוי השם והאימוג'י במועדון", 'data-connect="go-profile"') + "</div>" : "") +
+      (S.inClub ? '<div style="text-align:center;">' + linkBtn("שינוי השם והאימוג׳י במועדון", 'data-connect="go-profile"') + "</div>" : "") +
       (signedIn() && passkeyReady() ? '<div style="text-align:center;">' + linkBtn("הפעלת כניסה עם " + passkeyName() + "", 'data-connect="passkey-register-status"') + "</div>" : "") +
       (signedIn() ? '<div style="text-align:center;">' + linkBtn("קוד השחזור שלי", 'data-connect="go-code-view"') + "</div>" : "") +
       '<div style="text-align:center;">' + linkBtn("התנתקות", 'data-connect="signout"') + "</div>" +
@@ -1146,7 +1146,7 @@
     var w = esc(where || "add");
     return '<form class="card join-card" data-join-inline="' + w + '" id="joinCard-' + w + '" novalidate>' +
       '<div class="join-card-title">הצטרפות למועדון</div>' +
-      '<label class="join-card-label" for="joinCardInput-' + w + '">קוד הצטרפות (8 תווים, מקבוצת המועדון או מה-QR במכון)</label>' +
+      '<label class="join-card-label" for="joinCardInput-' + w + '">קוד הצטרפות (8 תווים, מקבוצת המועדון או מה-QR שבמועדון)</label>' +
       '<div class="join-card-row"><input id="joinCardInput-' + w + '" name="code" class="text-input join-card-input" dir="ltr" maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD 2345" />' +
       '<button type="submit" class="save-btn join-card-btn">הצטרפות</button></div>' +
       '<div class="join-card-err" role="alert" hidden></div></form>';

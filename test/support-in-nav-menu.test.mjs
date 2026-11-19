@@ -72,7 +72,7 @@ test("sent from the sidebar row: the text goes to feedback_submit, with the than
   await waitFor(() => feedbackCalls().length === 1);
   assert.equal(feedbackCalls()[0].body.p_body, "הכפתור לא מגיב");
   assert.equal(feedbackCalls()[0].body.p_screen, "add");
-  await waitFor(() => /תודה\. קראנו כל פנייה\./.test($(window, "#feedbackNote").textContent));
+  await waitFor(() => /תודה\. אנחנו קוראים כל פנייה\./.test($(window, "#feedbackNote").textContent));
 });
 
 test("offline from the sidebar row: it waits in the same queue and says so", async () => {
