@@ -36,16 +36,17 @@ async function boot(opts = {}) {
   const feedbackCalls = () => calls.filter((c) => c.url.endsWith("/rest/v1/rpc/feedback_submit"));
   return { window, state, feedbackCalls };
 }
+// Q-43a: the phone's ☰ menu is gone (on a phone, feedback is Settings > עזרה > שליחת משוב). The desktop
+// sidebar keeps the support row, so these go through it.
 async function openNavMenu(window) {
-  $(window, "#navMenuBtn, [data-action='open-nav-menu']").click();
-  const overlay = window.document.getElementById("navMenuOverlay");
-  assert.ok(overlay.classList.contains("open"), "the menu opened");
-  return overlay;
+  const sidebar = window.document.getElementById("desktopSidebar");
+  assert.ok(sidebar.querySelector('[data-action="open-support"]'), "the sidebar has the support row");
+  return sidebar;
 }
 const feedbackOpen = (w) => w.document.getElementById("feedbackOverlay").classList.contains("open");
 const checked = (w) => $(w, "[data-feedback-screen][aria-checked='true']")?.getAttribute("data-feedback-screen");
 
-test("the hamburger row opens the feedback box, closes the menu, and preselects the screen you came from", async () => {
+test("the sidebar's support row opens the feedback box and preselects the screen you came from", async () => {
   const { window } = await boot();
   window.document.getElementById("tabHistoryBtn").click();
   const menu = await openNavMenu(window);
@@ -53,7 +54,7 @@ test("the hamburger row opens the feedback box, closes the menu, and preselects 
   assert.match(row.textContent, /תמיכה ודיווח על תקלה/);
   row.click();
   await waitFor(() => feedbackOpen(window));
-  assert.equal(window.document.getElementById("navMenuOverlay").classList.contains("open"), false, "the menu closed: no stacked sheets");
+  assert.equal([...window.document.querySelectorAll(".modal-overlay.open")].map((o) => o.id).join(), "feedbackOverlay", "one sheet: no stacked dialogs");
   assert.equal(checked(window), "history", "the screen you came from");
   const body = $(window, "#feedbackBody").textContent;
   assert.match(body, /מה לא עובד טוב, או מה היה עוזר לכם\?/);
@@ -61,7 +62,7 @@ test("the hamburger row opens the feedback box, closes the menu, and preselects 
   assert.ok($(window, "#feedbackText") && $(window, "[data-feedback='send']"), "the text box and the send button");
 });
 
-test("sent from the menu: the text goes to feedback_submit, with the thank-you text", async () => {
+test("sent from the sidebar row: the text goes to feedback_submit, with the thank-you text", async () => {
   const { window, feedbackCalls } = await boot();
   const menu = await openNavMenu(window);
   menu.querySelector('[data-action="open-support"]').click();
@@ -74,7 +75,7 @@ test("sent from the menu: the text goes to feedback_submit, with the thank-you t
   await waitFor(() => /תודה\. קראנו כל פנייה\./.test($(window, "#feedbackNote").textContent));
 });
 
-test("offline from the menu: it waits in the same queue and says so", async () => {
+test("offline from the sidebar row: it waits in the same queue and says so", async () => {
   const { window, state, feedbackCalls } = await boot({ offline: true });
   const menu = await openNavMenu(window);
   menu.querySelector('[data-action="open-support"]').click();
@@ -110,7 +111,6 @@ test("from Settings: one row, 'שליחת משוב', to the same box, preselecti
 
 test("the desktop sidebar keeps the row, and it does not wear the Settings icon", async () => {
   const { window } = await boot();
-  assert.ok(window.document.getElementById("desktopSidebar").querySelector('[data-action="open-support"]'));
   const menu = await openNavMenu(window);
   const settingsIcon = menu.querySelector('[data-action="open-settings"] svg');
   const supportIcon = menu.querySelector('[data-action="open-support"] svg');

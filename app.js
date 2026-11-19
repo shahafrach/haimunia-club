@@ -174,10 +174,13 @@ function getNavItems() {
   // at it, so grouping the registry cannot change either of them. One
   // registry, three renderings.
   const items = [
-    { id: "add", tab: "add", rowId: "tabAddBtn", label: "רישום", tint: "energy", icon: ICONS.logIcon, main: true, group: "mine" },
+    { id: "add", tab: "add", rowId: "tabAddBtn", label: "אימון", tint: "energy", icon: ICONS.logIcon, main: true, group: "mine" },
     { id: "history", tab: "history", rowId: "tabHistoryBtn", label: "התקדמות", tint: "blue", icon: ICONS.chartIcon, main: true, group: "mine" },
-    { id: "calendar", tab: "calendar", rowId: "tabCalendarBtn", label: "לוח שנה", tint: "yellow", icon: ICONS.calendarIcon, main: true, group: "mine" },
-    { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "אימונים", tint: "purple", icon: ICONS.stopwatchIcon, main: true, group: "mine" },
+    { id: "calendar", tab: "calendar", rowId: "tabCalendarBtn", label: "יומן", tint: "yellow", icon: ICONS.calendarIcon, main: true, group: "mine" },
+    // Q-43: WOD is the second half of the אימון tab (the toggle at the top of both screens), not a tab of its
+    // own. `partOf` keeps it out of the bottom bar and the desktop sidebar and lights אימון for it; the hidden
+    // nav-menu copy keeps #tabWodBtn and every switch-tab data-tab="wod" deep link working.
+    { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "WOD", tint: "purple", icon: ICONS.stopwatchIcon, main: false, partOf: "add", group: "mine" },
   ];
   // The club tab exists only for a connected member of the club.
   if (window.haimuniaClub && window.haimuniaClub.available()) {
@@ -191,9 +194,20 @@ function getNavItems() {
 // hamburger menu and desktop sidebar. Regenerated on every render() call,
 // same "always regenerated, just glued into a fixed container" treatment
 // renderNavMenuList/renderSettingsBody already rely on.
+// The bar item a screen belongs to: WOD lights אימון (Q-43).
+function navTabFor(t) {
+  const item = getNavItems().find((i) => i.tab === t);
+  return item && item.partOf ? item.partOf : t;
+}
+// Q-43: one אימון tab, two kinds. A two-option switch at the top of the lift screen and of the WOD screen.
+// No ids: #tabAddBtn/#tabWodBtn stay on the nav rows.
+function renderTrainingToggle() {
+  const opt = (t, label) => `<button class="segmented-opt" data-action="switch-tab" data-tab="${t}" aria-pressed="${tab === t}">${label}</button>`;
+  return `<div class="segmented training-toggle" role="group" aria-label="סוג האימון">${opt("add", "הרמה")}${opt("wod", "WOD")}</div>`;
+}
 function renderBottomTabBar() {
   return getNavItems().filter((item) => item.main).map((item) => {
-    const isActive = tab === item.tab;
+    const isActive = navTabFor(tab) === item.tab;
     return `
       <button class="tabbtn${isActive ? " active" : ""}" id="${item.rowId}" data-action="switch-tab" data-tab="${item.tab}" role="tab" aria-selected="${isActive}" aria-controls="content" tabindex="${isActive ? "0" : "-1"}"${item.badge ? ` aria-label="${esc(item.label)}, ${item.badge} דיווחים ממתינים"` : ""}>
         <span style="position:relative;display:inline-flex;">${item.icon}${item.badge ? `<span class="tab-badge" aria-hidden="true" style="position:absolute;top:-4px;left:-8px;margin:0;min-width:14px;height:14px;font-size:9px;">${item.badge}</span>` : ""}</span>
@@ -207,9 +221,11 @@ function renderBottomTabBar() {
 // a normally-hidden container" treatment renderSettingsBody() already relies on
 // - so the tabAddBtn/tabHistoryBtn/etc. ids these rows carry stay resolvable
 // at all times, exactly like the old static tabbar's buttons always were.
-function renderNavWho() {
+function renderNavWho(opts) {
   const initial = userName ? userName.trim().charAt(0) : "";
   const streak = computeCurrentStreak();
+  // Q-43: on התקדמות the weekly streak card is the one streak, so this card names the medals instead.
+  const noStreak = !!(opts && opts.noStreak);
   // data-action="open-achievements" added here (2026-09-08, immersive
   // redesign): the ONLY two existing triggers for this
   // (#userGreeting/the "לכל המדליות..." link) both live inside the main
@@ -259,7 +275,7 @@ function renderNavWho() {
              who land here - someone who has never trained and someone whose
              streak lapsed - which "בואו נתחיל להתאמן" was not, and it leaves
              "בואו נתחיל" to the two buttons that actually ask for a tap. -->
-        <div class="who-sub">${streak > 0 ? `${streak} ${streak === 1 ? "יום" : "ימים"} ברצף` : "הרצף מתחיל באימון הבא"}</div>
+        <div class="who-sub">${noStreak ? "המדליות וההישגים שלי" : streak > 0 ? `${streak} ${streak === 1 ? "יום" : "ימים"} ברצף` : "הרצף מתחיל באימון הבא"}</div>
       </div>
       <div class="flex items-center gap-6" style="flex-shrink:0; color:var(--steel); font-size:12px; font-weight:700;" aria-hidden="true">
         <span>מדליות</span>
@@ -301,7 +317,7 @@ function renderNavRows(withIds, onlyOther, pick) {
   let items = onlyOther ? getNavItems().filter((item) => !item.main) : getNavItems();
   if (typeof pick === "function") items = items.filter(pick);
   return items.map((item) => {
-    const isActive = tab === item.tab;
+    const isActive = withIds ? tab === item.tab : navTabFor(tab) === item.tab;
     // The "tabbtn" class here is load-bearing, not styling (its visual
     // rules are neutralized for .navrow.tabbtn in index.html's CSS):
     // cloud.js has its own capture-phase click listener that detects
@@ -405,7 +421,7 @@ function renderNavMenuList() {
 // every item (onlyOther=false) - there's no separate bottom bar at this
 // width for the main tabs to split against (COMM-327).
 function renderDesktopSidebar() {
-  return renderNavWho() + `<div class="nav-destinations" role="tablist" aria-label="מסכי האפליקציה" aria-orientation="vertical">${renderNavRows(false, false)}</div>` + renderNavSettingsRow();
+  return renderNavWho() + `<div class="nav-destinations" role="tablist" aria-label="מסכי האפליקציה" aria-orientation="vertical">${renderNavRows(false, false, (i) => !i.partOf)}</div>` + renderNavSettingsRow();
 }
 // Live report: "when I move my finger from the left side it opens another
 // app or something." manifest.json ships display:standalone - an installed
@@ -1426,7 +1442,6 @@ function showCelebration(prLabel, badges, opts) {
 function closeCelebration() {
   document.body.style.overflow = "";
   document.getElementById("celebrationOverlay").classList.remove("open", "arrival-card");
-  if (pendingClubShare) { const p = pendingClubShare; pendingClubShare = null; setTimeout(() => askClubShare(...p), 0); }
   if (celebrationOpenerEl && typeof celebrationOpenerEl.focus === "function") celebrationOpenerEl.focus();
   celebrationOpenerEl = null;
   // THE moment S5 has been waiting for: not "the overlay stopped being
@@ -1628,14 +1643,24 @@ function renderNotificationsList(showAll) {
 // release notes moved into Settings (see the "מה חדש" row there) as a
 // permanent link that no longer needs to fight for header space to stay
 // discoverable.
+// Q-43a: what's new is a dot on the header's gear (Settings > מתקדם > מה חדש) and one toast per version.
 function updateNotificationsBadge() {
   const badge = document.getElementById("notificationsBadge");
-  const btn = document.getElementById("notificationsBellBtn");
+  const btn = document.getElementById("settingsGearBtn");
   if (!badge) return;
   const count = unseenReleaseNotes().length;
-  badge.textContent = count > 9 ? "9+" : String(count);
-  badge.style.display = count > 0 ? "flex" : "none";
-  if (btn) btn.setAttribute("aria-label", "עדכוני גרסה");
+  badge.textContent = "";
+  badge.style.display = count > 0 ? "block" : "none";
+  if (btn) btn.setAttribute("aria-label", count > 0 ? "הגדרות, יש חדש באפליקציה" : "הגדרות");
+}
+const WHATS_NEW_TOAST_KEY = "haimunia:whatsNewToasted";
+function whatsNewToastOnce() {
+  if (!unseenReleaseNotes().length) return;
+  let shown = null;
+  try { shown = localStorage.getItem(WHATS_NEW_TOAST_KEY); } catch (e) {}
+  if (shown === APP_VERSION) return;
+  try { localStorage.setItem(WHATS_NEW_TOAST_KEY, APP_VERSION); } catch (e) {}
+  showToast("יש חדש באפליקציה. בהגדרות, תחת מתקדם.");
 }
 // Prefers the real community notification center when there's something
 // unread there; falls back to the offline release-notes overlay otherwise
@@ -2045,24 +2070,39 @@ function removeRecordFromClub(entryId) {
 function shareDayToClub(day) {
   try { if (day && window.haimuniaClub && window.haimuniaClub.available()) window.haimuniaClub.postDay(day); } catch (e) { /* never in the way of the log */ }
 }
-// Owner decision (2026-11-14): every new workout asks once whether it goes to the club. Yes posts the
-// day (and its PR card, if any); "not this time", Escape or a tap outside keeps it on the phone. An
-// edit keeps the answer it already had.
-let pendingClubShare = null;
+// Owner decision (2026-11-14): the member chooses per workout whether it goes to the club. Q-43 (owner approved
+// 2026-11-18): the choice is a checkbox on the save bar, "לשתף במועדון", and there is no dialog after saving.
+// Ticked, the save posts the day (and its PR card, if any); unticked, the workout stays on the phone. The box
+// starts each app open from the Settings default (CLUB_SHARE_DEFAULT_KEY, off unless the member turned it on:
+// decided by fixes, owner to confirm), then keeps what the member last set. An edit keeps the answer it had.
+const CLUB_SHARE_DEFAULT_KEY = "haimunia:clubShareDefault";
+let clubShareNext = null;
+function clubShareDefault() {
+  try { return localStorage.getItem(CLUB_SHARE_DEFAULT_KEY) === "1"; } catch (e) { return false; }
+}
+function setClubShareDefault(on) {
+  try { localStorage.setItem(CLUB_SHARE_DEFAULT_KEY, on ? "1" : "0"); } catch (e) { /* the box still works this time */ }
+  clubShareNext = !!on;
+}
+function clubShareChecked() { return clubShareNext === null ? clubShareDefault() : clubShareNext; }
+function clubShareAvailable() {
+  try { return !!(window.haimuniaClub && window.haimuniaClub.available()); } catch (e) { return false; }
+}
+// The save bar's checkbox: shown with a lift or WOD save button for a club member, not while editing.
+function syncClubShareCheck() {
+  const box = document.getElementById("clubShareCheck"), input = document.getElementById("clubShareInput");
+  const btn = document.getElementById("bottomBarBtn");
+  if (!box || !input || !btn) return;
+  const action = btn.dataset.action;
+  const show = clubShareAvailable() && ((tab === "add" && action === "save-set" && !editingEntryId) || (tab === "wod" && action === "save-wod" && !editingWodEntryId));
+  box.hidden = !show;
+  input.checked = clubShareChecked();
+}
 function askClubShare(entry, label, prDetail) {
   try {
-    if (!entry || !window.haimuniaClub || !window.haimuniaClub.available()) return;
-    // A PR or first-entry card is showing: ask when it closes, not on top of it.
-    const cel = document.getElementById("celebrationOverlay");
-    if (cel && cel.classList.contains("open")) { pendingClubShare = [entry, label, prDetail]; return; }
-    askAppConfirm({
-      title: "לשתף במועדון?",
-      message: `${label}. בפיד יופיעו שם האימון והתוצאה, בלי משקלים.`,
-      confirmLabel: "לשתף", cancelLabel: "לא הפעם",
-      action: "club-share-entry",
-      payload: { entry, prDetail: prDetail || null },
-      onCancel: () => { try { window.haimuniaClub.setShared(entry.id, false); } catch (e) { /* never in the way */ } },
-    });
+    if (!entry || !clubShareAvailable()) return;
+    if (clubShareChecked()) confirmClubShare({ entry, prDetail: prDetail || null });
+    else window.haimuniaClub.setShared(entry.id, false);
   } catch (e) { /* never in the way of the log */ }
 }
 function confirmClubShare(p) {
@@ -4804,6 +4844,7 @@ function renderLogTab() {
   return `
     <section class="scene-page ${PAGE_SCENES.add.className}${movementExplicitlyChosen ? " scene-page--compact" : ""}" aria-labelledby="pageTitle-add">
       <div class="scene-page__media" aria-hidden="true"></div>
+      ${movementExplicitlyChosen ? "" : renderTrainingToggle()}
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <div class="scene-page__brand">${esc(brandWordmark())}</div>
@@ -4884,7 +4925,6 @@ function renderLogTab() {
     </div>` : ""}
     <div class="bar-wrap" id="barWrap">
       <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא חדש!</span></div>
-      ${isDuration || !isBarbell ? "" : `<div id="barbellVisual">${renderBarbell(weight)}</div>`}
     </div>
 
     <div class="steppers">
@@ -4949,7 +4989,8 @@ function renderLogTab() {
     })() : ""}
     </div>
     <details class="log-more"${logMoreOpen ? " open" : ""}>
-      <summary class="link-btn link-btn--tap">עוד אפשרויות: סוג רישום, תאריך, 1RM, אחוזים, סולם</summary>
+      <summary class="link-btn link-btn--tap">כלים: מוט ומשקולות, סולם, טבלת אחוזים, 1RM</summary>
+    ${isDuration || !isBarbell ? "" : `<div id="barbellVisual" class="bar-wrap">${renderBarbell(weight)}</div>`}
     <div class="rx-toggle" role="radiogroup" aria-label="סוג רישום">
       <button class="rx-btn ${!isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="reps" role="radio" aria-checked="${!isDuration}">משקל וחזרות</button>
       <button class="rx-btn ${isDuration ? "active-type" : ""}" data-action="set-log-entry-type" data-type="duration" role="radio" aria-checked="${isDuration}"><span style="display:inline-flex; width:16px; height:16px; vertical-align:-3px; margin-left:4px;">${ICONS.stopwatchIcon}</span>החזקה בזמן</button>
@@ -5671,7 +5712,7 @@ function renderCalendarTab() {
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <div class="scene-page__brand">${esc(brandWordmark())}</div>
-        <h1 id="pageTitle-calendar" class="scene-page__title">לוח שנה</h1>
+        <h1 id="pageTitle-calendar" class="scene-page__title">יומן</h1>
       </div>
       <div class="scene-sheet">
     <div class="stripe-ribbon" aria-hidden="true"></div>
@@ -5732,6 +5773,7 @@ function renderBodyweightArea() {
   el.innerHTML = header + detail;
 }
 
+let measureFoldOpen = false;
 function renderMeasureArea() {
   const el = document.getElementById("measureArea");
   if (!el) return;
@@ -5750,7 +5792,7 @@ function renderMeasureArea() {
            <button data-action="cancel-add-measure-type" style="color:var(--steel); font-size:13px; padding:0 10px;">ביטול</button>
          </div>
        </div>`
-    : `<button class="link-btn" data-action="open-add-measure-type" style="margin-top:${types.length ? "8px" : "0"};">+ הוספת מדד חדש</button>`;
+    : `<button class="link-btn link-btn--tap" data-action="open-add-measure-type" style="margin-top:${types.length ? "8px" : "0"};">+ הוספת מדד חדש</button>`;
 
   const rows = types.map((t) => {
     const expanded = measureExpandedId === t.id;
@@ -5796,10 +5838,14 @@ function renderMeasureArea() {
     return header + detail;
   }).join("");
 
+  // Q-43: folded by default (most members never measure); open while adding a type, and as the member left it.
+  const open = measureFoldOpen || measureAddOpen;
   el.innerHTML = `
-    <h2 class="section-label" style="margin-top:4px;">מדדי גוף</h2>
+    <details class="measure-fold" id="measureFold"${open ? " open" : ""}>
+      <summary class="exercise-row"><h2 class="section-label" style="margin:0;">מדדי גוף</h2><span aria-hidden="true" style="display:inline-flex; flex-shrink:0; transition:transform .2s; transform:rotate(${open ? "90deg" : "180deg"});">${ICONS.chevron}</span></summary>
     ${rows}
     ${addRow}
+    </details>
   `;
   if (measureAddOpen) {
     const input = document.getElementById("measureTypeInput");
@@ -6109,13 +6155,12 @@ function renderMonthBlock(sum, current) {
 }
 function renderMonthlySummary() {
   const { last, current } = monthlySummaries();
-  const streak = weeklyStreak();
-  const streakText = streak.weeks === 0 ? "אין עדיין רצף שבועי" : streak.weeks === 1 ? "רצף של שבוע אחד" : `רצף של ${streak.weeks} שבועות`;
+  // Q-43: the streak is on its own card above (one streak card), not repeated here.
   return `<div class="chart-card monthly-summary" id="monthlySummary" style="margin-bottom:16px; display:flex; flex-direction:column; gap:12px;">
       <h2 class="section-label" style="margin:0;">סיכום חודשי</h2>
       ${renderMonthBlock(last, false)}
       ${renderMonthBlock(current, true)}
-      <div class="footer-note" style="margin:0;">${streakText}. אישי בלבד: לא נשלח לשום מקום.</div>
+      <div class="footer-note" style="margin:0;">אישי בלבד: לא נשלח לשום מקום.</div>
     </div>`;
 }
 function renderHistoryTab() {
@@ -6188,6 +6233,11 @@ function renderConnectRow() {
           </div>
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
         </button>
+        ${clubShareAvailable() ? `<label class="club-share-default" id="clubShareDefaultRow">
+          <input type="checkbox" id="clubShareDefaultInput" ${clubShareDefault() ? "checked" : ""} />
+          <span>לסמן "לשתף במועדון" בכל אימון חדש</span>
+        </label>
+        <div class="footer-note" style="margin:4px 0 0;">בפיד מופיעים שם התרגיל או האימון והתוצאה, בלי משקלים. משקל גוף לא נשלח אף פעם.</div>` : ""}
       </div>`;
 }
 function renderSettingsBody() {
@@ -6209,10 +6259,13 @@ function renderSettingsBody() {
   // menu already renders) rather than a near-duplicate; every
   // Community-only row (cloud/backup panel, legal links) is preserved as
   // its own section, not dropped.
+  // Q-43a (owner approved 2026-11-18): four blocks, then everything else behind one "מתקדם" fold.
   return `
     <div class="settings-pane">
       <div class="settings-club-edge" aria-hidden="true"></div>
-      <div class="who" style="margin:0;">
+      <div class="settings-block" id="settingsProfileBlock">
+        <div class="settings-block-title">פרופיל</div>
+        <div class="who" style="margin:0 0 8px;">
         <div class="who-avatar">${esc(initial)}</div>
         <div style="flex:1; min-width:0;">
           <div class="who-name">${userName ? bidiText(userName) : "אורח/ת"}</div>
@@ -6220,53 +6273,34 @@ function renderSettingsBody() {
         </div>
         <button class="icon-chip icon-chip-steel" data-action="edit-user-name" aria-label="עריכת פרופיל">${ICONS.edit}</button>
       </div>
-
-      ${renderConnectRow()}
-
-      <div class="settings-block">
-        <div class="settings-block-title">מראה</div>
-        ${renderThemeRow()}
-        ${renderTextScaleRow()}
-      </div>
-
-      <!-- Design spec §1.5. Every surface the first-run sequence defers has
-           to have somewhere to live, or deferring it is just deleting it.
-           This card is that somewhere: the explainer that is no longer a
-           gate, the install prompt that no longer fires on load, and the
-           box-start date that no longer appears on the welcome sheet. Each
-           row is the permanent home of exactly one thing §1.2 moved out of
-           the member's first minute. -->
-      <div class="settings-block">
-        <div class="settings-block-title">עזרה והתאמה</div>
-        <button class="exercise-row" data-action="open-onboarding" style="margin-bottom:8px;">
-          <span style="font-weight:700; font-size:13.5px;">סיור באפליקציה</span>
-          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
-        </button>
-        <!-- Fresh-eyes audit: this used to be the header's always-visible
-             icon, which meant the least exciting thing in the app (a
-             changelog) had the most prominent real estate on every screen.
-             Settings is its permanent home now - still one tap away, just
-             not competing with the community notification badge for the
-             one slot every screen shares. -->
-        <button class="exercise-row" data-action="open-release-notes" style="margin-bottom:8px;">
-          <span style="font-weight:700; font-size:13.5px;">מה חדש באפליקציה</span>
-          <span class="flex items-center gap-6" style="flex-shrink:0;">${unseenReleaseNotes().length ? `<span class="tab-badge" aria-hidden="true">${unseenReleaseNotes().length}</span>` : ""}<span style="color:var(--steel);">${ICONS.chevronsLeft}</span></span>
-        </button>
-        ${isStandalone() ? "" : `
-        <button class="exercise-row" data-action="show-install-hint" style="margin-bottom:8px;">
-          <span style="font-weight:700; font-size:13.5px;">התקנה במסך הבית</span>
-          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
-        </button>`}
-        <button class="exercise-row" data-action="edit-box-start-date" style="margin-bottom:8px;">
+        <button class="exercise-row" data-action="edit-box-start-date" style="margin:0;">
           <div style="text-align:right;">
             <div style="font-weight:700; font-size:13.5px;">מתי התחלתי להתאמן בבוקס</div>
             <div style="color:var(--steel); font-size:12px; margin-top:2px;">${boxStartDate ? esc(fmtDate(boxStartDate)) : "לא הוגדר — פותח את מדליות הוותק"}</div>
           </div>
           <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
         </button>
-        <!-- 3.12.0: the feedback box (src/feedback.js). Anonymous: the typed text, the screen, the version
-             and the device type; no name or username. Opened from here it is about Settings (3.14.0). Since
-             Q-27 it is also where the menu's "תמיכה ודיווח על תקלה" leads: one feedback screen. -->
+      </div>
+
+      ${renderConnectRow()}
+
+      <div class="settings-block" id="settingsDisplayBlock">
+        <div class="settings-block-title">תצוגה</div>
+        ${renderThemeRow()}
+        ${renderTextScaleRow()}
+      </div>
+
+      <div class="settings-block" id="settingsHelpBlock">
+        <div class="settings-block-title">עזרה</div>
+        <button class="exercise-row" data-action="open-onboarding" style="margin-bottom:8px;">
+          <span style="font-weight:700; font-size:13.5px;">סיור באפליקציה</span>
+          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
+        </button>
+        ${isStandalone() ? "" : `
+        <button class="exercise-row" data-action="show-install-hint" style="margin-bottom:8px;">
+          <span style="font-weight:700; font-size:13.5px;">התקנה במסך הבית</span>
+          <span style="color:var(--steel); flex-shrink:0;">${ICONS.chevronsLeft}</span>
+        </button>`}
         <button class="exercise-row" data-feedback-open="settings" style="margin:0;">
           <div style="text-align:right;">
             <div style="font-weight:700; font-size:13.5px;">שליחת משוב</div>
@@ -6276,6 +6310,8 @@ function renderSettingsBody() {
         </button>
       </div>
 
+      <details class="settings-advanced" id="settingsAdvanced">
+        <summary>מתקדם${unseenReleaseNotes().length ? ' <span class="tab-badge" aria-hidden="true" style="margin-inline-start:8px;">חדש</span>' : ""}</summary>
       <div class="settings-block">
         <div class="settings-block-title">קובץ גיבוי להורדה</div>
         <div class="footer-note"${storageOK ? "" : ' style="color:var(--red-text);" role="alert"'}>${storageOK ? esc("נשמר במכשיר הזה בלבד, ללא שרת") : esc(storageErrMsg || "שמירה נכשלה — בדקו את מקום האחסון") + storageFeedbackLink("settings")}</div>
@@ -6301,7 +6337,11 @@ function renderSettingsBody() {
       </div>
 
       <div class="settings-block">
-        <div class="settings-block-title">משפטי</div>
+        <div class="settings-block-title">מה חדש ופרטיות</div>
+        <button class="exercise-row" data-action="open-release-notes" style="margin-bottom:8px;">
+          <span style="font-weight:700; font-size:13.5px;">מה חדש באפליקציה</span>
+          <span class="flex items-center gap-6" style="flex-shrink:0;">${unseenReleaseNotes().length ? `<span class="tab-badge" aria-hidden="true">${unseenReleaseNotes().length}</span>` : ""}<span style="color:var(--steel);">${ICONS.chevronsLeft}</span></span>
+        </button>
         <div class="flex items-center justify-center gap-8"><a class="link-btn" href="./privacy.html" target="_blank" rel="noopener">פרטיות</a></div>
       </div>
 
@@ -6336,6 +6376,8 @@ function renderSettingsBody() {
       </div>
       <div class="footer-note" style="text-align:center; margin-top:2px;">© ${new Date().getFullYear()} Shahaf Rachmany · v${APP_VERSION}</div>
       ${renderUpdateCheck()}
+      ${renderUpdateCheck()}
+      </details>
     </div>`;
 }
 
@@ -6587,7 +6629,9 @@ function render() {
         document.getElementById("saveBtnLabel").textContent = "בחירת תרגיל";
       }
     } else if (tab === "history") {
-      content = renderHistoryTab();
+      // Q-43a: the member's card (name, streak, the way to medals) heads התקדמות now that the header's medals
+      // icon, its greeting and the ☰ menu are gone. The same component the desktop sidebar shows.
+      content = `<div id="progressWho" style="margin-bottom:12px;">${renderNavWho({ noStreak: true })}</div>` + renderHistoryTab();
     } else if (tab === "calendar") {
       content = renderCalendarTab();
     } else if (tab === "club") {
@@ -6639,6 +6683,7 @@ function render() {
   // COMM-360: the save action only appears once something is actually
   // chosen on either tab - same rule, applied symmetrically.
   document.getElementById("bottomBar").style.display = ((tab === "add" && movementExplicitlyChosen) || (tab === "wod" && wodSubTab === "log" && wodById(selectedWodId))) ? "flex" : "none";
+  syncClubShareCheck();
   // §1.2 S6: the install prompt is a deferred question, so its gate has to
   // be re-checked as the member's situation changes rather than once at the
   // moment the browser offered it. No-op unless all four conditions hold.
@@ -6693,7 +6738,7 @@ function render() {
   if (toastDock) toastDock.innerHTML = renderToastBar();
   toastPaintOwed = false;
   const contentPanel = document.getElementById("content");
-  const activeNavItem = getNavItems().find((i) => i.tab === tab);
+  const activeNavItem = getNavItems().find((i) => i.tab === navTabFor(tab));
   if (activeNavItem && document.getElementById(activeNavItem.rowId)) contentPanel.setAttribute("aria-labelledby", activeNavItem.rowId);
   else contentPanel.removeAttribute("aria-labelledby");
   if (focusKey) {
@@ -7191,6 +7236,7 @@ function renderWodTab() {
   return `
     <section class="scene-page ${PAGE_SCENES.wod.className}" aria-labelledby="pageTitle-wod">
       <div class="scene-page__media" aria-hidden="true"></div>
+      ${renderTrainingToggle()}
       <div class="scene-page__scrim" aria-hidden="true"></div>
       <div class="scene-page__intro">
         <h1 id="pageTitle-wod" class="scene-page__title">ספריית אימונים</h1>
@@ -8135,7 +8181,8 @@ document.addEventListener("click", (e) => {
   else if (action === "dismiss-ios-install-hint") { dismissIOSInstallBanner(); }
   else if (action === "ios-install-expand") { iosInstallExpandedFor = iosInstallDockKey(); syncIOSInstallDock(); }
   else if (action === "switch-tab") { tab = el.dataset.tab; closeNavMenu(); render(); window.scrollTo(0, 0); }
-  else if (action === "open-nav-menu") { openNavMenu(); }
+  // Q-43a: the ☰ menu is gone from the header; an old link to it opens Settings, which holds what it held.
+  else if (action === "open-nav-menu") { openSettings(); }
   else if (action === "close-nav-menu") {
     if (el.id === "navMenuOverlay" && e.target !== el) return;
     closeNavMenu();
@@ -8292,6 +8339,7 @@ document.addEventListener("click", (e) => {
     // pinned for a WOD you're no longer even looking at.
     const w = wodSubTab === "log" ? wodById(selectedWodId) : null;
     document.getElementById("bottomBar").style.display = w ? "flex" : "none";
+    syncClubShareCheck();
     syncWodSaveCta(w);
   }
   else if (action === "open-wod-picker") { openWodPicker(); }
@@ -8530,6 +8578,20 @@ document.addEventListener("keydown", (e) => {
   }
 });
 // "עוד אפשרויות" (log screen): remember the member's choice, so a re-render does not fold it back.
+// Q-43: the מדדי גוף fold keeps its state across re-renders.
+document.addEventListener("toggle", (e) => {
+  if (!e.target || e.target.id !== "measureFold") return;
+  measureFoldOpen = e.target.open;
+  const ch = e.target.querySelector("summary > span[aria-hidden='true']");
+  if (ch) ch.style.transform = `rotate(${e.target.open ? "90deg" : "180deg"})`;
+}, true);
+// Q-43: the save bar's "לשתף במועדון" box and its Settings default.
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (!t || !t.id) return;
+  if (t.id === "clubShareInput") clubShareNext = !!t.checked;
+  else if (t.id === "clubShareDefaultInput") setClubShareDefault(!!t.checked);
+});
 document.addEventListener("toggle", (e) => {
   if (e.target && e.target.classList && e.target.classList.contains("log-more")) logMoreOpen = e.target.open;
 }, true);
@@ -8712,7 +8774,7 @@ async function init() {
   // cover them, and the name typed into a Safari tab would not reach the installed app anyway.
   else if (window.haimuniaConnect && window.haimuniaConnect.opensInstall()) { /* connect.js shows the code screen */ }
   else if (userName === null && isFreshInstall) openWelcomeModal();
-  else openNotifications({ onlyIfUnseen: true });
+  else whatsNewToastOnce();
 
   setUpServiceWorker();
 }

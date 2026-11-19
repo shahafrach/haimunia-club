@@ -5,7 +5,7 @@
 //   - after picking the exercise: the steppers (weight, reps, sets), the plate visualizer and the save
 //     button are on screen and are what document.elementFromPoint() hits (nothing covers them), at scrollY 0;
 //   - after a save: the same, plus "עוד סט זהה"; one tap on it logs the same set again;
-//   - a PR still shows its card, and after it the club share question (connected mode, fake client);
+//   - a PR still shows its card, with no share question after it: the save bar's box decides (Q-43);
 //   - F-024: iPhone 13 in a Safari tab (390×664) with the iOS install banner showing: the same controls are on
 //     screen and hit. Before picking the banner is one line; with an exercise picked it steps aside and a link
 //     under the controls opens the full two steps.
@@ -55,11 +55,12 @@ function fakeClubClient() {
   window.supabase = { createClient: () => client };
 }
 
-async function openWithHistory(size, { connected = false, device = null } = {}) {
+async function openWithHistory(size, { connected = false, device = null, zoom = 1 } = {}) {
   const ctx = await browser.newContext(device ? { ...device } : { viewport: size, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   const errors = await consoleErrorCollector(page);
   await installMockCloud(page);
+  if (zoom !== 1) await page.addInitScript((z) => { document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.zoom = String(z); }); }, zoom);
   if (connected) await page.addInitScript(fakeClubClient);
   await page.goto(target.url, { waitUntil: "networkidle" });
   await dismissWelcomeModal(page);
@@ -105,7 +106,7 @@ const CONTROLS = {
   "reps +": ".log-controls [data-action='step'][data-field='reps'][data-dir='1']",
   "sets +": ".log-controls [data-action='step'][data-field='sets'][data-dir='1']",
   "sets −": ".log-controls [data-action='step'][data-field='sets'][data-dir='-1']",
-  "plate visualizer": "#barbellVisual",
+  // Q-43: the plate visualizer is under "כלים" now, not on the first screen.
   "save": "#bottomBarBtn",
 };
 function report(label, r) {
@@ -176,20 +177,42 @@ for (const [w, h, name] of [[390, 844, "390x844"], [360, 780, "360x780"]]) {
   check("connected: the fake club is available", await page.evaluate(() => !!(window.haimuniaClub && window.haimuniaClub.available())));
   await pickBackSquat(page);
   for (let i = 0; i < 4; i++) await page.click(".log-controls [data-action='step'][data-field='weight'][data-dir='1']"); // 110 kg: a PR
+  // Q-43: the "לשתף במועדון" box sits on the save bar, at least 44px tall, and the save button stays whole.
+  const bar = await page.evaluate(() => {
+    const l = document.getElementById("clubShareCheck"), b = document.getElementById("bottomBarBtn");
+    const r = l.getBoundingClientRect(), br = b.getBoundingClientRect();
+    return { shown: !l.hidden && r.height >= 44, inside: r.left >= 0 && r.right <= innerWidth + 1 && br.left >= 0 && br.right <= innerWidth + 1, labelWhole: b.scrollWidth <= b.clientWidth + 1 };
+  });
+  check("connected: the share box is on the save bar, >= 44px, and the bar fits", bar.shown && bar.inside && bar.labelWhole, JSON.stringify(bar));
+  await page.click("#clubShareCheck");
   await page.click("#bottomBarBtn");
   const card = await page.waitForSelector("#celebrationOverlay.open", { timeout: 4000 }).then(() => true).catch(() => false);
   check("PR: the celebration card shows", card);
   if (card) {
     await page.click("#celebrationOverlay [data-action='close-celebration']").catch(async () => { await page.keyboard.press("Escape"); });
   }
-  const asked = await page.waitForSelector("#appConfirmOverlay[data-confirm-kind='club-share-entry']", { timeout: 4000 }).then(() => true).catch(() => false);
-  check("PR: then the club share question", asked);
-  if (asked) {
-    await page.click("[data-action='app-confirm-yes']");
-    await page.waitForFunction(() => window.__clubCalls.includes("pr_share") || window.__clubCalls.includes("upsert:workout_posts"), null, { timeout: 4000 }).catch(() => {});
-    check("PR: sharing sends the day post and the PR card", await page.evaluate(() => window.__clubCalls.includes("upsert:workout_posts") && window.__clubCalls.includes("pr_share")), await page.evaluate(() => window.__clubCalls.join(",")));
-  }
+  const asked = await page.waitForSelector("#appConfirmOverlay.open", { timeout: 1500 }).then(() => true).catch(() => false);
+  check("PR: and no share question after it (Q-43)", !asked);
+  await page.waitForFunction(() => window.__clubCalls.includes("pr_share") && window.__clubCalls.includes("upsert:workout_posts"), null, { timeout: 4000 }).catch(() => {});
+  check("PR: the ticked box sends the day post and the PR card", await page.evaluate(() => window.__clubCalls.includes("upsert:workout_posts") && window.__clubCalls.includes("pr_share")), await page.evaluate(() => window.__clubCalls.join(",")));
   check("connected: no console errors", errors.length === 0, errors.join(" | "));
+  await ctx.close();
+}
+
+// Q-43: the save bar with its "לשתף במועדון" box on a 375px phone at 200% text: both whole, both >= 44px.
+{
+  const { ctx, page, errors } = await openWithHistory({ width: 375, height: 812 }, { connected: true, zoom: 2 });
+  await page.waitForFunction(() => window.haimuniaClub && window.haimuniaClub.available(), null, { timeout: 8000 }).catch(() => {});
+  await pickBackSquat(page);
+  const bar = await page.evaluate(() => {
+    const l = document.getElementById("clubShareCheck"), b = document.getElementById("bottomBarBtn");
+    const r = l.getBoundingClientRect(), br = b.getBoundingClientRect(), w = document.documentElement.clientWidth;
+    return { shown: !l.hidden, h: [Math.round(r.height), Math.round(br.height)], inside: r.left >= 0 && r.right <= w + 1 && br.left >= 0 && br.right <= w + 1,
+      whole: b.scrollWidth <= b.clientWidth + 1 && l.scrollWidth <= l.clientWidth + 1, page: document.documentElement.scrollWidth <= w + 1 };
+  });
+  check("375px 200%: the share box and the save button are whole, >= 44px, no sideways scroll", bar.shown && bar.h[0] >= 44 && bar.h[1] >= 44 && bar.inside && bar.whole && bar.page, JSON.stringify(bar));
+  await page.screenshot({ path: "/tmp/claude-0/-home-user/2bd321ec-b56f-56fc-bbf9-9cf5d21706bb/scratchpad/q43c-savebar-200.png" }).catch(() => {});
+  check("375px 200%: no console errors", errors.length === 0, errors.join(" | "));
   await ctx.close();
 }
 

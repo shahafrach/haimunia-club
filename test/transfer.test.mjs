@@ -126,7 +126,9 @@ test("a round trip: one request carrying only the lookup, then the log, body wei
   assert.ok(bw.some((b) => b.weight === 81.4 && b.date === "2026-11-01"), "body weight came across");
   assert.equal((await window.dbLoadAll()).length, fixture.entries.length);
   // Device settings on a fresh device.
-  assert.match($(window, "#userGreeting").textContent, /דנה/);
+  window.openSettings();
+  assert.match($(window, "#settingsProfileBlock .who-name").textContent, /דנה/, "the name is on screen (Q-43a: Settings' profile block)");
+  window.closeSettings();
   assert.equal(await window.dbGetSetting("haimunia:userName"), "דנה");
   assert.equal(await window.dbGetSetting("haimunia:barWeight"), 15);
   assert.equal(await window.dbGetSetting("haimunia:pctIncrement"), 1);

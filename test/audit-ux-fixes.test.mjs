@@ -37,11 +37,13 @@ test("8: backup export and import are full buttons, export first", async () => {
   assert.ok(exp.compareDocumentPosition(imp) & window.Node.DOCUMENT_POSITION_FOLLOWING, "export comes first");
 });
 
-test("11: the version-updates button opens the release notes even when nothing is new", async () => {
+test("11: what's new (Settings > מתקדם) opens the release notes even when nothing is new", async () => {
   const window = await bootApp();
   window.saveWelcomeForm("רונית");
-  // A fresh install has already seen every note.
-  window.document.querySelector("[data-action='open-notifications']").click();
+  // A fresh install has already seen every note. Q-43a: the header's sparkle is gone; what's new is
+  // Settings > מתקדם > "מה חדש באפליקציה".
+  window.document.getElementById("settingsGearBtn").click();
+  window.document.querySelector("#settingsAdvanced [data-action='open-release-notes']").click();
   const overlay = window.document.getElementById("notificationsOverlay");
   assert.ok(overlay.classList.contains("open"), "the sheet opens");
   const list = window.document.getElementById("notificationsList").textContent;
@@ -83,12 +85,12 @@ test("17: the welcome sheet still cannot be dismissed with Escape", async () => 
   assert.ok(ov.classList.contains("open"));
 });
 
-test("20: the header date is rewritten when the app comes back to the foreground", async () => {
+// Q-43a: the header is the logo and the gear; the date label (finding 20) went with the greeting block.
+test("20 (Q-43a): the header is the logo and one gear, and coming back to the foreground still works", async () => {
   const window = await bootApp();
-  const label = window.document.getElementById("dateLabel");
-  const fresh = label.textContent;
-  assert.ok(fresh.length > 0);
-  label.textContent = "אתמול";
+  const header = window.document.querySelector("header.header");
+  assert.deepEqual([...header.querySelectorAll("button")].map((b) => b.id), ["settingsGearBtn"]);
+  assert.ok(header.querySelector("img.header-logo"));
+  for (const gone of ["navMenuBtn", "medalsBtn", "notificationsBellBtn", "userGreeting", "dateLabel"]) assert.equal(window.document.getElementById(gone), null, gone);
   window.document.dispatchEvent(new window.Event("visibilitychange"));
-  assert.equal(label.textContent, fresh);
 });

@@ -68,10 +68,10 @@ check("no dialog was accidentally opened or closed by the bare swipe", dialogsOp
 // close the dialog (the pre-existing feature), not just re-anchor and
 // leave the dialog sitting open. Proves the new listener defers to the
 // dialog one instead of unconditionally eating every pop. ----
-await page.click("#navMenuBtn");
-await page.waitForSelector("#navMenuOverlay.open", { state: "visible", timeout: 5000 });
+await page.click("#settingsGearBtn");
+await page.waitForSelector("#settingsOverlay.open", { state: "visible", timeout: 5000 });
 await page.evaluate(() => history.back());
-await page.waitForFunction(() => !document.getElementById("navMenuOverlay")?.classList.contains("open"), { timeout: 5000 });
+await page.waitForFunction(() => !document.getElementById("settingsOverlay")?.classList.contains("open"), { timeout: 5000 });
 check("control: with a dialog open, the same back-navigation still closes it (existing feature untouched)", true);
 
 check("no console errors", errors.length === 0, errors.join(" | "));

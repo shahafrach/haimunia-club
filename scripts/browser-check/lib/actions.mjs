@@ -68,8 +68,11 @@ export async function dismissWelcomeModal(page, name = "בדיקה") {
   // First run now also asks once: connect with a username, or stay offline.
   // Scenarios run offline, so they answer "stay offline".
   try {
-    await page.waitForSelector("#connectOverlay.open [data-connect='offline']", { timeout: 2000 });
-    await page.click("[data-connect='offline']");
+    await page.waitForSelector("#connectOverlay.open [data-connect='offline']", { state: "attached", timeout: 2000 });
+    // Q-42: "להישאר בלי חיבור" sits under the closed "אפשרויות נוספות" fold; open it as a member would.
+    const fold = page.locator("#connectMoreOptions:not([open]) > summary");
+    if (await fold.count()) await fold.click();
+    await page.click("#connectOverlay [data-connect='offline']");
     await page.waitForFunction(
       () => !document.getElementById("connectOverlay")?.classList.contains("open"),
       { timeout: 10000 },
@@ -263,9 +266,12 @@ export async function switchTab(page, tabId) {
   }
   // Library and staff tools retain their IDs in the secondary navigation.
   // Follow the visible menu route when a destination is not in the four-tab bar.
-  if (!await page.locator(`#${tabId}`).isVisible()) {
-    await page.click("#navMenuBtn");
-    await page.waitForSelector("#navMenuOverlay.open");
+  // Q-43a: every screen is in the tab bar now; the ☰ menu route is gone.
+  // Q-43b: WOD is not a tab of its own; a member reaches it through אימון and the toggle at its top.
+  if (tabId === "tabWodBtn") {
+    await page.click("#tabAddBtn");
+    await page.click("#content .training-toggle [data-tab='wod']");
+    return;
   }
   await page.click(`#${tabId}`);
 }
@@ -275,14 +281,8 @@ export async function switchTab(page, tabId) {
 // menu. Opens the menu if needed, taps its settings row, and waits for
 // the settings overlay to actually be open before returning.
 export async function openSettings(page) {
-  const menuOpen = await page.evaluate(() => document.getElementById("navMenuOverlay")?.classList.contains("open"));
-  if (!menuOpen) await page.click("[data-action='open-nav-menu']");
-  // Scoped to the nav-menu overlay specifically: the desktop sidebar (Phase
-  // 4) renders its own "open-settings" row from the same markup, always in
-  // the DOM (just CSS-hidden below the 900px breakpoint) - a bare
-  // [data-action='open-settings'] selector resolves in DOM order and can
-  // silently grab that hidden copy instead of the visible mobile one.
-  await page.click("#navMenuOverlay [data-action='open-settings']");
+  // Q-43a: Settings is the header's gear (the ☰ menu is gone).
+  await page.click("#settingsGearBtn");
   await page.waitForFunction(() => document.getElementById("settingsOverlay")?.classList.contains("open"), { timeout: 5000 });
 }
 

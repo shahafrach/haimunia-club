@@ -201,6 +201,10 @@
   // ---- Flow --------------------------------------------------------------------------
   async function submit(form) {
     var code = String(form.elements.code.value || "");
+    // Q-42: an 8-character join code typed here goes to joining the club instead.
+    var conn = window.haimuniaConnect;
+    var join = conn && conn.parseToken ? conn.parseToken(code) : null;
+    if (join && conn.isCode(join)) { close(); conn.joinWith(join); return; }
     T.draft = groupCode(code);
     if (!decodeCode(code)) { T.error = ERRORS.bad_code; return paint(); }
     T.busy = true; T.error = ""; paint();
@@ -267,7 +271,14 @@
   function viewHtml() {
     if (T.mode === "create") return createHtml();
     if (T.busy) return head("רגע, מעבירים…", "הפענוח קורה בטלפון הזה.");
-    if (T.view === "done") return head("ההעברה הושלמה", T.message) + '<button type="button" class="save-btn" data-transfer="close" style="max-width:none;">סגירה</button>';
+    // Q-42: after a transfer the guided first run goes straight on to joining the club.
+    if (T.view === "done") {
+      var joinNext = !!(window.haimuniaConnect && window.haimuniaConnect.enabled() && !window.haimuniaConnect.info().inClub);
+      return head("ההעברה הושלמה", T.message) +
+        (joinNext ? '<button type="button" class="save-btn" data-transfer="to-join" style="max-width:none; margin-bottom:10px;">המשך: הצטרפות למועדון</button>' +
+          '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="close">אחר כך</button></div>'
+          : '<button type="button" class="save-btn" data-transfer="close" style="max-width:none;">סגירה</button>');
+    }
     if (T.view === "keep") {
       return head("ההעברה התקבלה ולא נשמרה עדיין", "הקוד כבר נוצל, אבל הנתונים עדיין כאן. אפשר לנסות לייבא שוב, או לשמור אותם כקובץ גיבוי. כשסוגרים את החלון הם נמחקים מהזיכרון.") +
         '<button type="button" class="save-btn" data-transfer="retry" style="max-width:none; margin-bottom:10px;">ניסיון חוזר לייבא</button>' +
@@ -282,7 +293,7 @@
     return head("הזנת קוד העברה", "יוצרים קוד העברה באפליקציה הישנה או בהאימוניה בדפדפן, ומדביקים אותו כאן. הוא תקף פעם אחת ו-24 שעות. הרישומים, כולל משקל הגוף, עוברים מוצפנים ומתווספים לנתונים שכבר יש כאן.") +
       (T.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(T.error) + "</span></div>" : "") +
       '<form data-transfer-form novalidate>' +
-      '<label for="transferCode" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">קוד העברה</label>' +
+      '<label for="transferCode" style="display:block; color:var(--steel); font-size:12px; margin-bottom:6px;">קוד העברה (21 תווים, מהאפליקציה הישנה)</label>' +
       '<input id="transferCode" name="code" class="text-input" type="text" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="26" inputmode="text" placeholder="XXXX-XXXX-XXXX-XXXX-XXXXX" value="' + esc(T.draft) + '" style="margin-bottom:14px; text-align:center; letter-spacing:1px;" />' +
       '<button type="submit" class="save-btn" style="max-width:none; margin-bottom:10px;">העברה</button></form>' +
       '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap" data-transfer="close">ביטול</button></div>';
@@ -296,10 +307,10 @@
   }
 
   /** open() or open("take"): enter a code. open("create"): make one here. */
-  function open(mode) {
+  function open(mode, draft) {
     var o = el("transferOverlay");
     if (!o) return;
-    T = { mode: mode === "create" ? "create" : "take", view: "", busy: false, error: "", draft: "", payload: null, message: "", code: "" };
+    T = { mode: mode === "create" ? "create" : "take", view: "", busy: false, error: "", draft: draft ? groupCode(draft) : "", payload: null, message: "", code: "" };
     var title = el("transferTitle");
     if (title) title.textContent = T.mode === "create" ? "יצירת קוד העברה" : "הזנת קוד העברה";
     opener = document.activeElement;
@@ -328,6 +339,7 @@
     else if (a === "to-create") { T.mode = "create"; T.error = ""; var h = el("transferTitle"); if (h) h.textContent = "יצירת קוד העברה"; paint(); }
     else if (a === "create") runCreate();
     else if (a === "copy") copyCode();
+    else if (a === "to-join") { close(); if (window.haimuniaConnect) window.haimuniaConnect.open("choice", true); }
   }
   function onSubmit(e) {
     var f = e.target.closest && e.target.closest("[data-transfer-form]");
@@ -345,6 +357,8 @@
   document.addEventListener("submit", onSubmit);
   document.addEventListener("input", onInput);
 
-  window.haimuniaTransfer = { open: open, close: close, isOpen: isOpen, decodeCode: decodeCode, groupCode: groupCode, fetchAndDecrypt: fetchAndDecrypt,
+  // Q-42: 21 letters and digits (any case, dashes and spaces ignored) is a transfer code, wherever it is typed.
+  function looksLikeTransferCode(text) { return String(text || "").replace(/[\s-]/g, "").length === CODE_CHARS && !!decodeCode(text); }
+  window.haimuniaTransfer = { open: open, close: close, isOpen: isOpen, decodeCode: decodeCode, looksLikeTransferCode: looksLikeTransferCode, groupCode: groupCode, fetchAndDecrypt: fetchAndDecrypt,
     encodeCode: encodeCode, createCode: createCode };
 })();

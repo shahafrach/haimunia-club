@@ -105,16 +105,17 @@ test("the repeat is saveSet() itself, so the sanity confirm, PR detection and sh
   assert.deepEqual(calls[0], [], "with no 'already confirmed' flag: the sanity check runs as for the button");
 });
 
-test("everything else is under 'עוד אפשרויות', which stays open across re-renders", async () => {
+test("everything else is under 'כלים' (Q-43: the plates too), which stays open across re-renders", async () => {
   const window = await bootWithHistory([row("s1", dayBefore(1), 100, 5)]);
   await pick(window);
   const more = $(window, "details.log-more");
   assert.ok(more, "the options fold");
   for (const sel of ["[data-action='set-log-entry-type']", "#logDateInput", "[data-action='prefill-last']", "[data-action='toggle-ladder-mode']"]) {
-    assert.ok(more.querySelector(sel), sel + " is under עוד אפשרויות");
+    assert.ok(more.querySelector(sel), sel + " is under כלים");
   }
   assert.ok(!$(window, ".log-controls #logDateInput"), "today: the date is not in the controls");
-  assert.ok($(window, ".log-controls #barbellVisual"), "the plate visualizer is in the controls");
+  assert.ok(more.querySelector("#barbellVisual"), "the plate visualizer is under כלים");
+  assert.ok(!$(window, ".log-controls #barbellVisual"), "not in the controls");
   more.open = true;
   more.dispatchEvent(new window.Event("toggle"));
   window.render();

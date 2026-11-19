@@ -123,6 +123,20 @@ for (const scale of [1, 2]) {
   await page.waitForSelector("[data-connect='passkey-register']");
   await screen(page, tag, "D. Face ID offer");
 
+  // E (Q-38g): sign-up's visible rules and the show-password button.
+  await page.evaluate(() => { window.haimuniaConnect.close(); window.haimuniaConnect.open("signup"); });
+  await page.waitForSelector("#connect-password-hint");
+  const hints = await page.evaluate(() => ({ u: document.getElementById("connect-username-hint").textContent, p: document.getElementById("connect-password-hint").textContent,
+    font: parseFloat(getComputedStyle(document.getElementById("connect-password-hint")).fontSize) }));
+  check(`[${tag}] E. sign-up: the rules are visible text (>= 14px)`, /בלי עברית/.test(hints.u) && hints.p === "לפחות 10 תווים" && hints.font >= 14, JSON.stringify(hints));
+  await page.click("[data-connect='toggle-pw'][data-for='connect-password']");
+  check(`[${tag}] E. the show-password button shows it`, (await page.getAttribute("#connect-password", "type")) === "text");
+  await screen(page, tag, "E. sign-up");
+  // F (Q-38g): the recovery code seen again (here with none kept on the device).
+  await page.evaluate(() => { window.haimuniaConnect.close(); window.haimuniaConnect.open("code-view"); });
+  await page.waitForSelector("[data-connect='retry-code']");
+  await screen(page, tag, "F. recovery code view");
+
   check(`[${tag}] no console errors`, errors.length === 0, errors.join(" | "));
   check(`[${tag}] nothing left the origin`, page.__foreignRequests.length === 0, page.__foreignRequests.join(" "));
   await context.close();

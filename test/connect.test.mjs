@@ -72,6 +72,7 @@ async function boot(opts = {}) {
     matchMedia: opts.standalone ? (q) => /display-mode: standalone/.test(q) : undefined,
     beforeScripts: (w) => {
       if (opts.ios) Object.defineProperty(w.navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Safari/604.1", configurable: true });
+      if (opts.ua) Object.defineProperty(w.navigator, "userAgent", { value: opts.ua, configurable: true });
       w.supabase = { createClient: () => be.client };
       w.turnstile = { render: (_h, o) => { w.__ts = o; }, execute: () => { w.__ts.callback("ts-token"); } };
       w.scrollTo = () => {};
@@ -201,7 +202,9 @@ test("a device that chose to be connected restores its session on open; an offli
   assert.ok(row, "Settings has the club row");
 });
 
-test("the code never reaches storage, and no private-log data is part of any call", async () => {
+// Q-38g: the recovery code is kept on purpose now, in the app's IndexedDB settings only (tested below), never in
+// localStorage or sessionStorage.
+test("no web storage for codes, and no private-log data is part of any call", async () => {
   const src = readFileSync(path.join(root, "src/connect.js"), "utf8");
   assert.doesNotMatch(src, /localStorage\.setItem|sessionStorage|private_records|bodyweight|entries/i);
   assert.match(src, /"haimunia:auth"/);
@@ -445,3 +448,149 @@ test("the client opts in to Supabase's experimental passkeys", () => {
   assert.doesNotMatch(src, /request-reset|reset_code|club_issue_reset_code/, "no self-service request, no coach code");
 });
 
+// ---- Q-38g: sign-up and the recovery code -------------------------------------------------------------------
+
+test("sign-up: the rules are visible text, the password needs only 10 characters, and it can be shown", async () => {
+  const { window, log } = await boot();
+  await firstRunName(window);
+  $(window, "[data-connect='go-signup']").click();
+  assert.match($(window, "#connect-username-hint").textContent, /אותיות אנגליות קטנות.*בלי עברית/);
+  assert.equal($(window, "#connect-password-hint").textContent, "לפחות 10 תווים");
+  assert.equal($(window, "#connect-password").getAttribute("placeholder"), null, "not a placeholder that vanishes");
+  assert.match($(window, "#connect-password").getAttribute("aria-describedby"), /connect-password-hint/);
+  // Show the password, and hide it again.
+  const eye = $(window, "[data-connect='toggle-pw'][data-for='connect-password']");
+  eye.click();
+  assert.equal($(window, "#connect-password").type, "text");
+  assert.equal(eye.getAttribute("aria-pressed"), "true");
+  eye.click();
+  assert.equal($(window, "#connect-password").type, "password");
+  // 9 characters: refused, nothing sent.
+  setVal(window, "username", "dana_k"); setVal(window, "password", "abcdefghi"); setVal(window, "passwordConfirm", "abcdefghi");
+  submit(window);
+  assert.match($(window, "#connectBody").textContent, /קצרה מדי/);
+  assert.equal(log.update, null);
+  // 10 lowercase letters: enough.
+  setVal(window, "username", "dana_k"); setVal(window, "password", "abcdefghij"); setVal(window, "passwordConfirm", "abcdefghij");
+  submit(window);
+  await until(() => $(window, "#connectSaved"), "recovery code");
+  assert.equal(log.update.a.password, "abcdefghij");
+});
+
+test("the recovery code: one tap to share, kept on this phone while signed in, seen again from status, gone on sign-out", async () => {
+  const { window } = await boot({ backend: { member: true, profile: { display_name: "דנה", emoji: "💪" } } });
+  await firstRunName(window);
+  $(window, "[data-connect='go-signup']").click();
+  setVal(window, "username", "dana_k"); setVal(window, "password", "abcdefghij"); setVal(window, "passwordConfirm", "abcdefghij");
+  submit(window);
+  await until(() => $(window, "#connectRecoveryCode"), "code");
+  // jsdom has no canvas, so the text goes to the share sheet; a phone gets the picture.
+  const shared = [];
+  Object.defineProperty(window.navigator, "share", { value: async (d) => { shared.push(d); }, configurable: true });
+  $(window, "[data-connect='share-code']").click();
+  await until(() => shared.length === 1, "shared");
+  assert.match(shared[0].text, /ABCD-EFGH-JKLM-NPQR/);
+  assert.equal(await window.dbGetSetting("haimunia:recoveryCode"), "ABCD-EFGH-JKLM-NPQR", "kept on this phone");
+  const cb = $(window, "#connectSaved"); cb.checked = true; cb.dispatchEvent(new window.Event("change", { bubbles: true }));
+  $(window, "[data-connect='after-code']").click();
+  window.haimuniaConnect.open("status");
+  await until(() => $(window, "[data-connect='go-code-view']"), "status");
+  $(window, "[data-connect='go-code-view']").click();
+  await until(() => $(window, "#connectRecoveryCode"), "seen again");
+  assert.equal($(window, "#connectRecoveryCode").textContent, "ABCD-EFGH-JKLM-NPQR");
+  assert.ok($(window, "[data-connect='go-status']"), "a way back");
+  window.haimuniaConnect.open("status");
+  await until(() => $(window, "[data-connect='signout']"), "status again");
+  $(window, "[data-connect='signout']").click();
+  await until(async () => true, "tick");
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(await window.dbGetSetting("haimunia:recoveryCode"), null, "forgotten on sign-out");
+});
+
+
+// ---- Q-42: the guided first run --------------------------------------------------------------------------------
+
+test("first screen: one primary action (the code), one secondary (an account); offline and no-code are folded", async () => {
+  const { window } = await boot({ standalone: true });
+  await firstRunInstalled(window);
+  const body = $(window, "#connectBody");
+  assert.equal(body.querySelectorAll("button.save-btn, button[type=submit]").length, 1, "one primary button");
+  assert.ok($(window, "#connectBody > div [data-connect='go-login']"), "the secondary: an existing account");
+  const more = $(window, "#connectMoreOptions");
+  assert.ok(more && more.tagName === "DETAILS" && !more.open, "a closed 'אפשרויות נוספות'");
+  assert.ok(more.querySelector("[data-connect='offline']") && more.querySelector("[data-connect='go-signup']"), "offline and no-code live inside it");
+  assert.match($(window, "label[for='connect-link']").textContent, /8 תווים/);
+});
+
+test("no screen tells a member to ask the coach; they are told where the code is", () => {
+  const src = readFileSync(path.join(root, "src/connect.js"), "utf8");
+  assert.doesNotMatch(src, /מהמאמן|מבקשים .*מהמאמן|שקיבלתם מהמאמן/);
+  assert.match(src, /בקבוצת המועדון, או ב-QR במכון/);
+});
+
+test("a 21-character transfer code typed in the join field goes to the transfer screen, filled in", async () => {
+  const { window, log } = await boot({ standalone: true });
+  await firstRunInstalled(window);
+  const code = window.haimuniaTransfer.encodeCode(new Uint8Array(13).fill(7));
+  setVal(window, "link", code.replace(/-/g, "").toLowerCase());
+  submit(window);
+  await until(() => $(window, "#transferOverlay").classList.contains("open"), "transfer");
+  assert.equal($(window, "#transferCode").value, window.haimuniaTransfer.groupCode(code));
+  assert.equal(open(window), false, "the connect dialog closed");
+  assert.deepEqual(log.rpc, [], "nothing sent to join");
+});
+
+test("an 8-character join code typed in the transfer field goes to joining the club", async () => {
+  const { window } = await boot({ standalone: true });
+  await firstRunInstalled(window);
+  window.haimuniaConnect.close();
+  window.haimuniaTransfer.open("take");
+  $(window, "#transferCode").value = "abcd-2345";
+  $(window, "[data-transfer-form]").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await until(() => open(window) && $(window, "#connectBody [name='username']"), "on to the account, with the code kept");
+  assert.equal($(window, "#transferOverlay").classList.contains("open"), false);
+});
+
+test("install steps per browser: WhatsApp's in-app browser, iOS 26 Safari, Samsung Internet; Android cannot go on in the browser", async () => {
+  const cases = [
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 WhatsApp/2.24", (w) => assert.ok($(w, "#connectInAppWarning"), "WhatsApp: open in Safari or Chrome first")],
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 Version/26.1 Mobile/15E148 Safari/604.1", (w) => assert.match($(w, "#connectInstallSteps").textContent, /⋯/, "iOS 26: Share is behind ⋯")],
+    ["Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 SamsungBrowser/25.0 Chrome/121 Mobile Safari/537.36", (w) => assert.match($(w, "#connectInstallSteps").textContent, /הוספת דף ל/, "Samsung Internet's own menu")],
+  ];
+  for (const [ua, check] of cases) {
+    const { window } = await boot({ url: "https://haimunia.pages.dev/#j=ABCD2345", ua });
+    await until(() => $(window, "#connectJoinCode"), "install screen " + ua.slice(0, 30));
+    check(window);
+    if (/Android/.test(ua)) assert.equal($(window, "[data-connect='install-skip']"), null, "no continue-in-browser on Android");
+  }
+});
+
+test("where the browser offers it, one 'התקנה' button replaces the steps", async () => {
+  const { window } = await boot({ url: "https://haimunia.pages.dev/#j=ABCD2345", ua: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/131 Mobile Safari/537.36" });
+  let prompted = 0;
+  // The browser's own event, which app.js keeps for its install button.
+  const evt = new window.Event("beforeinstallprompt", { cancelable: true });
+  evt.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; };
+  evt.userChoice = Promise.resolve({ outcome: "accepted" });
+  window.dispatchEvent(evt);
+  window.haimuniaConnect.open("install");
+  await until(() => $(window, "[data-connect='install-prompt']"), "install button");
+  assert.equal($(window, "#connectInstallSteps"), null);
+  $(window, "[data-connect='install-prompt']").click();
+  await until(() => window.__prompted === 1, "prompted");
+  prompted = window.__prompted;
+  assert.equal(prompted, 1);
+});
+
+test("the first sign-in on an empty installed app offers the transfer code and the backup file, once", async () => {
+  const { window } = await boot({ standalone: true });
+  await firstRunInstalled(window);
+  $(window, "[data-connect='go-login']").click();
+  setVal(window, "username", "dana_k"); setVal(window, "password", "abcdefghij");
+  submit(window);
+  await until(() => $(window, "[data-connect='restore-transfer']"), "restore offer");
+  assert.ok($(window, "[data-connect='restore-file']"));
+  $(window, "[data-connect='restore-transfer']").click();
+  await until(() => $(window, "#transferOverlay").classList.contains("open"), "transfer opened");
+  assert.equal(await window.dbGetSetting("haimunia:restoreOffered"), true, "asked once");
+});
