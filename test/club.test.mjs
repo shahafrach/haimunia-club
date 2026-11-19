@@ -502,3 +502,8 @@ test("F-018: a PR share that fails paints its toast too", async () => {
   assert.equal(rpcs(calls, "pr_share").length, 1);
   await until(() => /השיא נשמר בטלפון\. השיתוף במועדון לא הצליח הפעם\./.test(dockText(window)), "the PR failure toast in the dock");
 });
+
+test("staff never reset a member's password (Q-38c): recovery is self-service only", () => {
+  const src = readFileSync(path.join(root, "src/club.js"), "utf8");
+  assert.doesNotMatch(src, /club_issue_reset_code|איפוס סיסמה/);
+});

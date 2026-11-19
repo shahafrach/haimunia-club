@@ -98,7 +98,9 @@
       libPromise = loadScript("./vendor/supabase.js", "supabase").then(function () {
         var c = cfg();
         client = window.supabase.createClient(c.supabaseUrl, c.supabasePublishableKey, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_STORAGE_KEY },
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_STORAGE_KEY,
+            // Q-38c: Supabase's native passkeys (Face ID / Touch ID). Experimental: opt-in, see decisions.md.
+            experimental: { passkey: true } },
         });
         return client;
       }).catch(function (e) { libPromise = null; throw e; });
@@ -204,7 +206,9 @@
 
   // After any sign-in or restore: where does this member go next?
   function nextView() {
-    if (!signedIn()) return "choice";
+    // Q-38b: a device that chose to connect and lost its session is told so (status), never sent back to
+    // the first-run choice as if it had never had an account.
+    if (!signedIn()) return S.choice === "connected" ? "status" : "choice";
     if (S.inClub === false) return "join";
     if (S.inClub && (!S.profile || !S.profile.display_name)) return "profile";
     return "status";
@@ -240,6 +244,7 @@
       var ref = await c.auth.refreshSession().then(function (r) { return r; }, function () { return null; });
       S.user = ref && ref.data && ref.data.session ? ref.data.session.user : (up.data && up.data.user);
       setChoice("connected");
+      offerSave(username, password);
       S.drafts = {}; S.inClub = false; S.profile = null; // a new account is in no circle yet
       await issueCode();
     } catch (e) { fail("signup", {}, authErrorText(e) || "לא ניתן להתחבר כרגע, נסו שוב"); }
@@ -312,6 +317,109 @@
     if (status === "invalid" || status === "circle_full" || status === "too_many_circles") joinToken = null;
     S.error = JOIN_TEXT[status] || JOIN_TEXT.error;
     paint();
+  }
+
+  // ---- Signing in and getting back in (Q-38c, Q-38d, Q-38e) ---------------------------------------------
+  // Self-service only; no coach, no owner, no person. Face ID (a passkey, Supabase's native WebAuthn, relying
+  // party haimunia.pages.dev) is offered right after sign-up and is the first button on every sign-in screen.
+  // The password stays as a fallback. Forgot: Face ID, or the recovery code; when both are gone, a new account
+  // with the club's join code (the training log is on the phone, never on the server; the old account is
+  // deleted after a year without use, backend 202611180003).
+  async function invokeFn(name, body) {
+    try {
+      var c = await getClient();
+      var r = await c.functions.invoke(name, { body: body });
+      if (r.error) return { ok: false, network: isNetwork(r.error) || r.error.name === "FunctionsFetchError" };
+      return { ok: !!(r.data && r.data.ok), data: r.data || {} };
+    } catch (e) { return { ok: false, network: true }; }
+  }
+  // Where the browser can store a password itself (Chrome, Android), it is offered; Safari offers from the form.
+  function offerSave(username, password) {
+    try {
+      if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
+        navigator.credentials.store(new window.PasswordCredential({ id: username, password: password, name: username })).catch(function () {});
+      }
+    } catch (e) {}
+  }
+  async function signInAfterReset(username, password) {
+    try {
+      var c = await getClient();
+      var r = await withCaptcha(function (t) { return c.auth.signInWithPassword({ email: toEmail(username), password: password, options: t ? { captchaToken: t } : undefined }); });
+      if (r.error) return false;
+      setChoice("connected");
+      await loadAccount();
+      offerSave(username, password);
+      return true;
+    } catch (e) { return false; }
+  }
+  function newPassword(form, errs) {
+    var pw = formValue(form, "password");
+    if (passwordError(pw)) errs.password = passwordError(pw);
+    if (pw !== formValue(form, "passwordConfirm")) errs.passwordConfirm = "הסיסמאות לא תואמות";
+    return pw;
+  }
+  async function afterReset(username, password, newRecoveryCode) {
+    var ok = await signInAfterReset(username, password);
+    S.busy = false; S.drafts = {}; S.error = ""; S.errors = {};
+    if (!ok) { S.drafts = { username: username }; S.view = "login"; paint(); if (typeof showToast === "function") showToast("הסיסמה הוחלפה. נכנסים עם הסיסמה החדשה."); return; }
+    if (newRecoveryCode) { S.code = newRecoveryCode; S.saved = false; S.copied = false; S.view = "code"; paint(); return; }
+    S.view = nextView(); paint();
+    if (typeof showToast === "function") showToast("הסיסמה הוחלפה. אתם מחוברים.");
+    if (S.view === "join" && joinToken) joinWithToken(joinToken);
+  }
+  async function doRecover(form) {
+    var username = normUser(formValue(form, "username"));
+    var code = formValue(form, "recoveryCode");
+    keepDrafts(form);
+    var errs = {};
+    if (usernameError(username)) errs.username = usernameError(username);
+    if (String(code).replace(/[^A-Za-z0-9]/g, "").length !== 16) errs.recoveryCode = "קוד השחזור הוא 16 תווים, למשל 7K2M-QX9D-4HNC-WB8F.";
+    var pw = newPassword(form, errs);
+    if (Object.keys(errs).length) return fail("forgot", errs);
+    S.busy = true; S.error = ""; S.errors = {}; paint();
+    var r = await invokeFn("recover-password", { username: username, recovery_code: code, new_password: pw });
+    if (!r.ok) return fail("forgot", {}, r.network ? NET_FAIL : "שם המשתמש או קוד השחזור לא נכונים.");
+    await afterReset(username, pw, typeof r.data.recovery_code === "string" ? r.data.recovery_code : "");
+  }
+
+  function passkeyReady() { return !!(window.PublicKeyCredential && navigator.credentials); }
+  function passkeyError(err) {
+    var m = String((err && (err.code || err.error_code || err.name)) || "") + " " + String((err && err.message) || "");
+    if (/NotAllowed|ABORT|cancel/i.test(m)) return "הכניסה עם Face ID בוטלה. אפשר לנסות שוב, או להיכנס עם הסיסמה.";
+    if (/credential_not_found/i.test(m)) return "בטלפון הזה אין Face ID שמור לחשבון. נכנסים עם הסיסמה, ואז אפשר להפעיל Face ID.";
+    if (isNetwork(err)) return NET_FAIL;
+    return "הכניסה עם Face ID לא הצליחה. אפשר להיכנס עם הסיסמה.";
+  }
+  async function doPasskeySignIn() {
+    if (S.busy) return;
+    var from = S.view || "login";
+    S.busy = true; S.error = ""; S.errors = {}; paint();
+    try {
+      var c = await getClient();
+      if (!c.auth.signInWithPasskey) return fail(from, {}, "הכניסה עם Face ID לא זמינה כאן. אפשר להיכנס עם הסיסמה.");
+      var r = await c.auth.signInWithPasskey();
+      if (r.error) return fail(from, {}, passkeyError(r.error));
+      setChoice("connected");
+      await loadAccount();
+      S.busy = false; S.drafts = {}; S.view = nextView(); paint();
+      if (S.view === "join" && joinToken) joinWithToken(joinToken);
+    } catch (e) { fail(from, {}, passkeyError(e)); }
+  }
+  // After sign-up's (or a recovery's) code screen, and from the status screen. The answer is shown as a toast;
+  // a cancel or a phone without Face ID changes nothing, since the password still works.
+  async function doPasskeyRegister(then) {
+    var ok = false;
+    try {
+      var c = await getClient();
+      if (c.auth.registerPasskey) { var r = await c.auth.registerPasskey(); ok = !r.error; }
+    } catch (e) { ok = false; }
+    if (typeof showToast === "function") showToast(ok ? "Face ID הופעל. בפעם הבאה נכנסים במבט." : "Face ID לא הופעל. אפשר להפעיל אחר כך במסך המועדון.");
+    then();
+  }
+  function afterCodeScreen() {
+    S.code = ""; S.saved = false;
+    S.view = nextView();
+    if (S.view === "join" && joinToken) { joinWithToken(joinToken); } else paint();
   }
 
   var CODE_FORMAT_ERROR = "זה לא קוד הצטרפות. הקוד הוא 8 אותיות באנגלית וספרות, למשל ABCD 2345.";
@@ -442,14 +550,22 @@
   function errorHtml() { return S.error ? '<div role="alert" class="settings-warn">⚠️<span>' + esc(S.error) + "</span></div>" : ""; }
   // Q-37: the join screens are for older members: one large field, large error text.
   function bigErrorHtml() { return S.error ? '<div role="alert" class="join-err" id="connect-join-error">' + esc(S.error) + "</div>" : ""; }
-  function codeFieldHtml(label) {
-    var err = S.errors.link;
-    return '<label for="connect-link" class="join-field-label">' + esc(label) + "</label>" +
-      '<input id="connect-link" name="link" class="text-input join-field" type="text" dir="ltr" value="' + esc(S.drafts.link || "") + '"' +
-      ' autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="ABCD 2345"' +
-      (err ? ' aria-invalid="true" aria-describedby="connect-link-err"' : "") + " />" +
-      (err ? '<div id="connect-link-err" role="alert" class="join-err">' + esc(err) + "</div>" : "");
+  function codeFieldHtml(label, name) {
+    name = name || "link";
+    var err = S.errors[name];
+    return '<label for="connect-' + name + '" class="join-field-label">' + esc(label) + "</label>" +
+      '<input id="connect-' + name + '" name="' + name + '" class="text-input join-field" type="text" dir="ltr" value="' + esc(S.drafts[name] || "") + '"' +
+      ' autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="ABCD 2345"' +
+      (err ? ' aria-invalid="true" aria-describedby="connect-' + name + '-err"' : "") + " />" +
+      (err ? '<div id="connect-' + name + '-err" role="alert" class="join-err">' + esc(err) + "</div>" : "");
   }
+  function newPasswordFields() {
+    // The rule is in the label, not a placeholder: at 17px a placeholder this long is cut off on a phone.
+    return fieldHtml("password", "סיסמה חדשה: " + PASSWORD_RULE, "password", 'autocomplete="new-password" dir="ltr" maxlength="72"') +
+      fieldHtml("passwordConfirm", "הסיסמה החדשה שוב", "password", 'autocomplete="new-password" dir="ltr" maxlength="72"');
+  }
+  function forgotLink() { return '<div style="text-align:center;"><button type="button" class="link-btn link-btn--tap join-forgot" data-connect="go-forgot">שכחתי סיסמה</button></div>'; }
+  function hhmm(iso) { var d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }); }
   function codeGroups(code) { return code.slice(0, 4) + " " + code.slice(4); }
   var PIC = {
     share: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>',
@@ -513,11 +629,30 @@
     }
     if (v === "login") {
       return head("כניסה לחשבון") + errorHtml() +
+        (passkeyReady() ? btn("כניסה עם Face ID", 'data-connect="passkey-signin"') + '<div class="join-lead" style="margin-bottom:8px;">או עם שם משתמש וסיסמה:</div>' : "") +
         '<form id="connectForm" data-connect-form="login" novalidate>' +
         fieldHtml("username", "שם לכניסה", "text", 'autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24"') +
         fieldHtml("password", "סיסמה", "password", 'autocomplete="current-password" dir="ltr" maxlength="72"') +
-        submitBtn("כניסה") + "</form>" +
+        submitBtn("כניסה") + "</form>" + forgotLink() +
         '<div style="text-align:center;">' + linkBtn("חזרה", 'data-connect="go-choice"') + "</div>";
+    }
+    if (v === "forgot") {
+      if (S.busy) return head("רגע…");
+      return head("שכחתי סיסמה") + bigErrorHtml() +
+        (passkeyReady() ? btn("כניסה עם Face ID", 'data-connect="passkey-signin"') : "") +
+        '<div class="join-lead">' + (passkeyReady() ? "או: " : "") + "שם המשתמש, קוד השחזור ששמרתם בהרשמה, וסיסמה חדשה.</div>" +
+        '<form id="connectForm" data-connect-form="recover" novalidate>' +
+        fieldHtml("username", "שם משתמש", "text", 'autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" maxlength="24"') +
+        fieldHtml("recoveryCode", "קוד שחזור", "text", 'autocomplete="off" autocapitalize="characters" spellcheck="false" dir="ltr" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX"') +
+        newPasswordFields() + submitBtn("שמירה וכניסה") + "</form>" +
+        '<div class="join-after" id="connectNewAccountNote">אין Face ID ואין קוד שחזור? פותחים חשבון חדש עם קוד ההצטרפות של המועדון: האימונים בטלפון נשארים כמו שהם, והחשבון הישן נמחק לבד אחרי שנה בלי שימוש.</div>' +
+        '<div style="text-align:center; margin-bottom:10px;">' + btn("פתיחת חשבון חדש", 'data-connect="new-account"', "chip-btn") + "</div>" +
+        '<div style="text-align:center;">' + linkBtn("חזרה", 'data-connect="go-login"') + "</div>";
+    }
+    if (v === "passkey") {
+      return head("כניסה מהירה עם Face ID", "בפעם הבאה נכנסים במבט אחד, בלי להקליד סיסמה. הסיסמה נשארת לגיבוי.") +
+        btn("הפעלת Face ID", 'data-connect="passkey-register"') +
+        '<div style="text-align:center;">' + linkBtn("לא עכשיו", 'data-connect="passkey-skip"') + "</div>";
     }
     if (v === "code") {
       if (S.busy) return head("רגע, מכינים קוד שחזור…");
@@ -563,17 +698,28 @@
         (S.profile && S.profile.display_name ? '<div style="text-align:center;">' + linkBtn("ביטול", 'data-connect="go-status"') + "</div>" : "");
     }
     // status
+    // Q-38b: a device that chose to connect and has no session says so, with the two ways back.
+    if (S.choice === "connected" && !signedIn()) {
+      return head("לא מחוברים") +
+        '<div class="join-lead" id="connectSignedOut">החשבון לא מחובר בטלפון הזה. האימונים שלכם שמורים בטלפון. נכנסים שוב עם שם המשתמש והסיסמה.</div>' +
+        (passkeyReady() ? btn("כניסה עם Face ID", 'data-connect="passkey-signin"') : "") +
+        btn(passkeyReady() ? "כניסה עם סיסמה" : "כניסה", 'data-connect="go-login"') + forgotLink();
+    }
     var name = memberName();
+    var uname = signedIn() && S.user.email ? String(S.user.email).split("@")[0] : "";
     return head(S.user ? "מחוברים" + (name ? " כ" + name : "") : "לא מחוברים") +
+      (uname ? '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:13.5px;">שם המשתמש לכניסה: <strong dir="ltr" id="connectUsername">' + esc(uname) + "</strong></div>" +
+        '<div style="color:var(--steel); font-size:12px; margin-top:4px;">רק אתם רואים אותו. בעזרתו ובסיסמה נכנסים בטלפון חדש.</div></div>' : "") +
       '<div class="settings-block" style="margin-bottom:12px;"><div style="font-size:13.5px; font-weight:700;">' + (S.inClub ? "חברים במועדון" : "עדיין לא במועדון") + "</div>" +
       '<div style="color:var(--steel); font-size:12px; margin-top:4px;">האימונים והמשקלים שלכם נשארים בטלפון הזה. למועדון נשלחים רק אימונים שבחרתם לשתף.</div></div>' +
       (S.inClub === false ? btn("הצטרפות למועדון", 'data-connect="go-join"') : "") +
       (S.inClub ? '<div style="text-align:center;">' + linkBtn("שינוי השם והאימוג'י במועדון", 'data-connect="go-profile"') + "</div>" : "") +
+      (signedIn() && passkeyReady() ? '<div style="text-align:center;">' + linkBtn("הפעלת כניסה עם Face ID", 'data-connect="passkey-register-status"') + "</div>" : "") +
       '<div style="text-align:center;">' + linkBtn("התנתקות", 'data-connect="signout"') + "</div>" +
       (signedIn() ? '<div style="text-align:center; margin-top:14px;">' + btn("מחיקת החשבון", 'data-connect="go-delete"', "chip-btn danger") + "</div>" : "");
   }
 
-  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
+  var TITLES = { choice: "חיבור", signup: "יצירת חשבון", login: "כניסה", code: "קוד שחזור", join: "הצטרפות למועדון", install: "הצטרפות למועדון", forgot: "שכחתי סיסמה", passkey: "Face ID", profile: "פרופיל במועדון", status: "המועדון", delete: "מחיקת החשבון" };
   function paint() {
     var body = el("connectBody");
     if (!body) return;
@@ -630,6 +776,13 @@
     else if (a === "go-login") { S.view = "login"; paint(); }
     else if (a === "go-choice") { S.view = "choice"; paint(); }
     else if (a === "go-join") { S.view = "join"; paint(); }
+    else if (a === "go-forgot") { S.drafts = {}; S.view = "forgot"; paint(); }
+    else if (a === "passkey-signin") { doPasskeySignIn(); }
+    else if (a === "passkey-register") { doPasskeyRegister(afterCodeScreen); }
+    else if (a === "passkey-skip") { afterCodeScreen(); }
+    else if (a === "passkey-register-status") { doPasskeyRegister(function () { paint(); }); }
+    // Q-38d: the last resort. A new account with the club's join code; the old one is never touched here.
+    else if (a === "new-account") { S.drafts = {}; S.errors = {}; S.view = "choice"; paint(); }
     else if (a === "go-profile") { if (S.inClub) { S.drafts = {}; S.view = "profile"; paint(); } }
     else if (a === "copy-join-code") {
       var doneJ = function (ok) { S.copied = !!ok; paint(); };
@@ -649,7 +802,11 @@
       try { navigator.clipboard.writeText(S.code).then(function () { done(true); }, function () { done(false); }); } catch (err) { done(false); }
     }
     else if (a === "retry-code") { issueCode(); }
-    else if (a === "after-code") { S.code = ""; S.saved = false; S.view = nextView(); if (S.view === "join" && joinToken) { joinWithToken(joinToken); } else paint(); }
+    else if (a === "after-code") {
+      // Q-38c: right after the recovery code, one button for Face ID (once per session; the password stays).
+      if (passkeyReady() && !S.passkeyOffered) { S.passkeyOffered = true; S.code = ""; S.saved = false; S.view = "passkey"; paint(); }
+      else afterCodeScreen();
+    }
     else if (a === "join-now") { joinWithToken(joinToken); }
     else if (a === "signout") { doSignOut(); }
   }
@@ -663,6 +820,7 @@
     else if (k === "login") doLogin(f);
     else if (k === "join") doJoinForm(f);
     else if (k === "code-first") doCodeFirst(f);
+    else if (k === "recover") doRecover(f);
     else if (k === "profile") doProfile(f);
   }
   function onChange(e) {
@@ -723,6 +881,7 @@
     setShareDefaults: function (d) { S.shareDefaults = Object.assign({}, S.shareDefaults || {}, d || {}); changed(); },
     statusLabel: function () {
       if (!enabled()) return null;
+      if (S.choice === "connected" && !signedIn() && !S.offline) return { title: "המועדון", sub: "לא מחוברים בטלפון הזה. נכנסים שוב עם שם המשתמש" };
       if (S.choice !== "connected" || !signedIn()) return { title: "חיבור למועדון", sub: "אפשר להתחבר עם שם משתמש ולהצטרף למועדון" };
       return { title: "המועדון", sub: S.inClub ? "מחוברים וחברים במועדון" : "מחוברים, עדיין לא במועדון" };
     },

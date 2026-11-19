@@ -22,10 +22,29 @@ function fakeBackend(opts = {}) {
       signInAnonymously: async (o) => { log.signIn++; log.captchaTokens.push(o && o.options && o.options.captchaToken); state.user = { id: "u1", is_anonymous: true }; return { data: { user: state.user }, error: null }; },
       updateUser: async (a, o) => { log.update = { a, o }; state.user = { id: "u1", is_anonymous: false, email: a.email }; return { data: { user: state.user }, error: null }; },
       refreshSession: async () => ({ data: { session: { user: state.user } } }),
-      signInWithPassword: async (a) => { log.login = a; state.user = { id: "u1", is_anonymous: false }; return { data: {}, error: null }; },
+      signInWithPassword: async (a) => { log.login = a; state.user = { id: "u1", is_anonymous: false, email: a.email }; return { data: {}, error: null }; },
+      // Q-38c: Supabase's native passkeys. passkeyUser: who the authenticator signs in as (null: none saved here).
+      signInWithPasskey: async () => {
+        log.passkeySignIn = (log.passkeySignIn || 0) + 1;
+        if (!state.passkeyUser) return { data: null, error: { code: "webauthn_credential_not_found", message: "not found" } };
+        state.user = state.passkeyUser; return { data: { user: state.user, session: { user: state.user } }, error: null };
+      },
+      registerPasskey: async () => { log.passkeyRegister = (log.passkeyRegister || 0) + 1; return state.passkeyCancel ? { data: null, error: { name: "NotAllowedError", message: "cancelled" } } : { data: { id: "pk1" }, error: null }; },
       signOut: async () => { state.user = null; },
     },
-    functions: { invoke: async (n) => { log.invoke.push(n); return { data: { recovery_code: "ABCD-EFGH-JKLM-NPQR" }, error: null }; } },
+    functions: {
+      invoke: async (n, o) => {
+        log.invoke.push(n);
+        const b = (o && o.body) || {};
+        log.bodies = log.bodies || []; log.bodies.push([n, b]);
+        const no = { data: null, error: { name: "FunctionsHttpError", message: "Edge Function returned a non-2xx status code" } };
+        if (n === "recover-password" && "reset_code" in b) return b.reset_code === "ABCD2345" ? { data: { ok: true, username: "dana_k" }, error: null } : no;
+        if (n === "recover-password") return b.recovery_code === "7K2M-QX9D-4HNC-WB8F" ? { data: { ok: true, recovery_code: "NEWC-ODEN-EWCO-DE22" }, error: null } : no;
+        if (n === "request-reset" && b.action === "request") return { data: { ok: true, request_token: "ef".repeat(32), request_ref: "A1B2C3", ready_at: "2026-11-18T20:00:00Z" }, error: null };
+        if (n === "request-reset" && b.action === "complete") return state.resetReady ? { data: { ok: true, recovery_code: "NEWC-ODEN-EWCO-DE22" }, error: null } : no;
+        return { data: { recovery_code: "ABCD-EFGH-JKLM-NPQR" }, error: null };
+      },
+    },
     rpc: async (n, a) => {
       log.rpc.push([n, a]);
       if (n === "join_circle") { if (state.joinStatus === "joined") state.member = true; return { data: { status: state.joinStatus }, error: null }; }
@@ -56,6 +75,10 @@ async function boot(opts = {}) {
       w.supabase = { createClient: () => be.client };
       w.turnstile = { render: (_h, o) => { w.__ts = o; }, execute: () => { w.__ts.callback("ts-token"); } };
       w.scrollTo = () => {};
+      if (opts.passkey) {
+        w.PublicKeyCredential = function PublicKeyCredential() {};
+        if (!w.navigator.credentials) Object.defineProperty(w.navigator, "credentials", { value: {}, configurable: true });
+      }
     },
   });
   return { window, ...be };
@@ -301,3 +324,124 @@ test("a link opened before any choice goes straight to the account: the choice s
   await until(() => open(window) && $(window, "#connectBody [name='username']"), "sign-up");
   assert.ok($(window, "[data-connect='go-login']"), "an existing account can still sign in");
 });
+
+// ---- Q-38c / Q-38d / Q-38e: self-service sign-in and recovery, no person in it ------------------------------
+
+const DANA = { id: "u1", is_anonymous: false, email: "dana_k@members.haimuniya.invalid" };
+async function signedOutDevice(opts = {}) {
+  const b = await boot({ passkey: true, ...opts, backend: { member: true, profile: { display_name: "דנה", emoji: "💪" }, ...(opts.backend || {}) } });
+  await b.window.dbSetSetting("haimunia:connectChoice", "connected");
+  await b.window.haimuniaConnect.init();
+  b.window.haimuniaConnect.open();
+  await until(() => $(b.window, "#connectSignedOut"), "signed-out notice");
+  return b;
+}
+
+test("sign-in with Face ID: 1 tap from the signed-out notice, no username, no password", async () => {
+  const { window, log } = await signedOutDevice({ backend: { passkeyUser: DANA } });
+  assert.ok($(window, "[data-connect='passkey-signin']"), "Face ID is the first button");
+  $(window, "[data-connect='passkey-signin']").click();
+  await until(() => $(window, "#connectUsername"), "signed in");
+  assert.equal(log.passkeySignIn, 1);
+  assert.equal(log.login, undefined, "no password sign-in");
+  assert.equal($(window, "#connectUsername").textContent, "dana_k", "the username is shown");
+  assert.equal(await window.dbGetSetting("haimunia:connectChoice"), "connected");
+});
+
+test("Face ID with nothing saved on this phone: a plain answer, and the password is right there", async () => {
+  const { window } = await signedOutDevice();
+  $(window, "[data-connect='go-login']").click();
+  assert.ok($(window, "#connectBody [data-connect='passkey-signin']"), "the login screen has Face ID first");
+  $(window, "#connectBody [data-connect='passkey-signin']").click();
+  await until(() => /אין Face ID שמור/.test($(window, "#connectBody").textContent), "not found");
+  assert.ok($(window, "#connectBody [name='username']"), "the password form is still there");
+});
+
+test("without passkey support the screens simply have no Face ID button", async () => {
+  const { window } = await boot({ backend: { member: true } });
+  await window.dbSetSetting("haimunia:connectChoice", "connected");
+  await window.haimuniaConnect.init();
+  window.haimuniaConnect.open();
+  await until(() => $(window, "#connectSignedOut"), "notice");
+  assert.equal($(window, "[data-connect='passkey-signin']"), null);
+});
+
+test("right after sign-up's recovery code: one button turns on Face ID; 'not now' goes on; the password stays", async () => {
+  for (const choice of ["passkey-register", "passkey-skip"]) {
+    const { window, log } = await boot({ passkey: true, standalone: true });
+    await firstRunInstalled(window);
+    setVal(window, "link", "ABCD2345"); submit(window);
+    await until(() => $(window, "#connectBody [name='username']"), "sign-up");
+    setVal(window, "username", "dana_k"); setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+    submit(window);
+    await until(() => $(window, "#connectSaved"), "recovery code");
+    const cb = $(window, "#connectSaved"); cb.checked = true; cb.dispatchEvent(new window.Event("change", { bubbles: true }));
+    $(window, "[data-connect='after-code']").click();
+    await until(() => $(window, "[data-connect='passkey-register']"), "the Face ID offer");
+    $(window, `[data-connect='${choice}']`).click();
+    await until(() => /חברים במועדון/.test($(window, "#connectBody").textContent), "joined");
+    assert.equal(log.passkeyRegister || 0, choice === "passkey-register" ? 1 : 0, choice);
+    assert.deepEqual(log.rpc, [["join_circle", { p_token: "ABCD2345" }]], "the join still follows");
+    assert.equal(log.update.a.password, "Abcdefghi1", "the password is set either way");
+  }
+});
+
+test("forgot: Face ID, or the recovery code; 3 taps; no coach and no self-service request anywhere", async () => {
+  const { window, log } = await signedOutDevice();
+  let taps = 0;
+  $(window, "[data-connect='go-forgot']").click(); taps++;
+  const t = $(window, "#connectBody").textContent;
+  assert.ok($(window, "#connectBody [data-connect='passkey-signin']"), "Face ID on the forgot screen");
+  assert.doesNotMatch(t, /מאמן קוד|קוד איפוס|אין קוד מהמאמן|בקשה/, "no coach code, no request");
+  assert.deepEqual([...window.document.querySelectorAll("#connectBody form input")].map((i) => i.name), ["username", "recoveryCode", "password", "passwordConfirm"]);
+  setVal(window, "username", "Dana_K"); setVal(window, "recoveryCode", "7K2M-QX9D-4HNC-WB8F");
+  setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window); taps++;
+  await until(() => /NEWC-ODEN-EWCO-DE22/.test($(window, "#connectBody").textContent), "new recovery code once");
+  assert.deepEqual(log.bodies.filter(([n]) => n === "recover-password").pop()[1], { username: "dana_k", recovery_code: "7K2M-QX9D-4HNC-WB8F", new_password: "Abcdefghi1" });
+  assert.equal(log.login.email, "dana_k@members.haimuniya.invalid", "signed in with the new password");
+  assert.deepEqual(log.bodies.filter(([n]) => n === "request-reset"), [], "request-reset is never called");
+  const cb = $(window, "#connectSaved"); cb.checked = true; cb.dispatchEvent(new window.Event("change", { bubbles: true }));
+  $(window, "[data-connect='after-code']").click(); taps++;
+  await until(() => $(window, "[data-connect='passkey-register']"), "and Face ID is offered again, the one that was lost");
+  assert.equal(taps, 3, "forgot, save, continue");
+});
+
+test("a wrong recovery code is one plain, large message", async () => {
+  const { window } = await signedOutDevice();
+  $(window, "[data-connect='go-forgot']").click();
+  setVal(window, "username", "dana_k"); setVal(window, "recoveryCode", "ZZZZ-ZZZZ-ZZZZ-ZZZZ");
+  setVal(window, "password", "Abcdefghi1"); setVal(window, "passwordConfirm", "Abcdefghi1");
+  submit(window);
+  await until(() => $(window, "#connect-join-error"), "error");
+  assert.match($(window, "#connect-join-error").textContent, /לא נכונים/);
+});
+
+test("the last resort: 'פתיחת חשבון חדש', explained in one sentence, opens the join-code screen for a new account", async () => {
+  const { window, log } = await signedOutDevice();
+  $(window, "[data-connect='go-forgot']").click();
+  assert.match($(window, "#connectNewAccountNote").textContent, /האימונים בטלפון נשארים.*החשבון הישן נמחק לבד אחרי שנה/);
+  $(window, "[data-connect='new-account']").click();
+  await until(() => $(window, "#connectBody input.join-field[name='link']"), "the code field");
+  setVal(window, "link", "abcd 2345"); submit(window);
+  await until(() => $(window, "#connectBody [name='username']"), "a new username and password");
+  assert.equal(log.signIn, 0, "nothing sent before the new account's form");
+  assert.deepEqual(log.rpc, []);
+});
+
+test("signed in: the status screen can turn on Face ID later", async () => {
+  const { window, log } = await boot({ passkey: true, backend: { user: DANA, member: true, profile: { display_name: "דנה", emoji: "💪" } } });
+  await window.dbSetSetting("haimunia:connectChoice", "connected");
+  await window.haimuniaConnect.init();
+  window.haimuniaConnect.open();
+  await until(() => $(window, "[data-connect='passkey-register-status']"), "status link");
+  $(window, "[data-connect='passkey-register-status']").click();
+  await until(() => log.passkeyRegister === 1, "registered");
+});
+
+test("the client opts in to Supabase's experimental passkeys", () => {
+  const src = readFileSync(path.join(root, "src/connect.js"), "utf8");
+  assert.match(src, /experimental: \{ passkey: true \}/);
+  assert.doesNotMatch(src, /request-reset|reset_code|club_issue_reset_code/, "no self-service request, no coach code");
+});
+
