@@ -1137,6 +1137,34 @@
     }
   }
 
+  // Q-49: the one join component, used on רישום and on the מועדון tab for a guest: the 8-character code typed in
+  // place (any case, spaces and dashes ignored), a link pasted works too. joinWith() takes it from there: joins
+  // at once when signed in, else opens sign-up (or sign-in) with the code kept.
+  function joinCardHtml(where) {
+    var w = esc(where || "add");
+    return '<form class="card join-card" data-join-inline="' + w + '" id="joinCard-' + w + '" novalidate>' +
+      '<div class="join-card-title">הצטרפות למועדון</div>' +
+      '<label class="join-card-label" for="joinCardInput-' + w + '">קוד הצטרפות (8 תווים, מקבוצת המועדון או מה-QR במכון)</label>' +
+      '<div class="join-card-row"><input id="joinCardInput-' + w + '" name="code" class="text-input join-card-input" dir="ltr" maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD 2345" />' +
+      '<button type="submit" class="save-btn join-card-btn">הצטרפות</button></div>' +
+      '<div class="join-card-err" role="alert" hidden></div></form>';
+  }
+  document.addEventListener("submit", function (e) {
+    var f = e.target && e.target.closest ? e.target.closest("[data-join-inline]") : null;
+    if (!f) return;
+    e.preventDefault();
+    var raw = String((f.elements.code && f.elements.code.value) || "");
+    var code = parseToken(raw);
+    var err = f.querySelector(".join-card-err");
+    if (!code || !isCode(code)) {
+      if (window.haimuniaTransfer && window.haimuniaTransfer.looksLikeTransferCode && window.haimuniaTransfer.looksLikeTransferCode(raw)) { window.haimuniaTransfer.open("take", raw); return; }
+      if (err) { err.textContent = "זה לא נראה כמו קוד הצטרפות. הקוד הוא 8 תווים, אותיות ומספרים."; err.hidden = false; }
+      return;
+    }
+    if (err) err.hidden = true;
+    joinWith(code);
+  });
+  window.haimuniaJoin = { cardHtml: joinCardHtml };
   // Q-52: the one install-help component. Every install banner and the join screen read their steps from here.
   window.haimuniaInstall = { kind: browserKind, stepsHtml: function () { return stepsHtml(onIOS()); }, canPrompt: canPromptInstall };
   window.haimuniaConnect = {

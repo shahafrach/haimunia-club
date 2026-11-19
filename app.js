@@ -181,7 +181,8 @@ function getNavItems() {
     { id: "wod", tab: "wod", rowId: "tabWodBtn", label: "אימונים", tint: "purple", icon: ICONS.stopwatchIcon, main: true, group: "mine" },
   ];
   // The club tab exists only for a connected member of the club.
-  if (window.haimuniaClub && window.haimuniaClub.available()) {
+  // Q-49: a guest (not in a club yet, or offline) gets the מועדון tab too; it opens the join code field.
+  if ((window.haimuniaClub && window.haimuniaClub.available()) || (window.haimuniaConnect && window.haimuniaConnect.enabled())) {
     items.push({ id: "club", tab: "club", rowId: "tabClubBtn", label: "מועדון", tint: "energy", icon: ICONS.clubIcon, main: true, group: "club" });
   }
   return items;
@@ -4888,6 +4889,29 @@ function noteLogSaved(label) {
 
 // Q-48: the day's sets, built up as they are added, with a running total (sets and volume). The list itself
 // is the empty state. Shown under the controls once an exercise is chosen, and on its own before.
+// Q-49: on רישום, for a browser tab (not the installed app), a compact card with this browser's install steps
+// (the one install-help component, src/connect.js) and the one-tap install where the browser offers it. Gone
+// once installed. On an iPhone the install dock already shows these steps; the card takes over once the dock was
+// closed, so the way to install is never gone. Out of the way while a set is being logged.
+function renderInstallCard() {
+  if (isStandalone() || movementExplicitlyChosen || !window.haimuniaInstall) return "";
+  let dockDismissed = false;
+  try { dockDismissed = !!localStorage.getItem(IOS_INSTALL_DISMISS_KEY); } catch (e) { dockDismissed = false; }
+  if (isIOSDevice() && !dockDismissed) return "";
+  const steps = window.haimuniaInstall.stepsHtml().replace(/ id="connect[A-Za-z]+"/g, "");
+  const oneTap = window.haimuniaInstall.canPrompt() && window.haimuniaInstall.kind() !== "inapp";
+  return `<details class="card install-card" id="installCard">
+      <summary class="install-card-head"><span>מתקינים את האימוניה במסך הבית</span><span class="install-card-how">איך?</span></summary>
+      ${oneTap ? `<button class="save-btn" data-action="install-app" style="max-width:none; margin:10px 0;">התקנה</button>` : ""}
+      ${steps}
+    </details>`;
+}
+// Q-49: not in a club yet: the join code field, the one join component (src/connect.js), below the day's list.
+function renderJoinCard() {
+  if (!window.haimuniaJoin || !window.haimuniaConnect || !window.haimuniaConnect.enabled()) return "";
+  if (window.haimuniaClub && window.haimuniaClub.available()) return "";
+  return window.haimuniaJoin.cardHtml("add");
+}
 function renderDayLog(dayEntries, isToday, dayLabel) {
   if (dayEntries.length === 0) {
     return `<div class="day-empty">${ICONS.emptyDay}<span>${isToday ? "עדיין לא נרשמו סטים היום. כל סט שתוסיפו יופיע כאן." : `עדיין לא נרשמו סטים ב-${esc(dayLabel)}.`}</span></div>`;
@@ -4949,6 +4973,7 @@ function renderLogTab() {
       </label>
       ${isToday ? "" : `<button data-action="reset-log-date" class="link-btn link-btn--tap">חזרה להיום</button>`}
     </div>
+    ${renderInstallCard()}
 
     ${movementExplicitlyChosen ? "" : `
     ${renderDayLog(dayEntries, isToday, dayLabel)}
@@ -4974,6 +4999,7 @@ function renderLogTab() {
 
     ${movementExplicitlyChosen ? "" : `
     ${renderUpgradeBackupCard()}
+    ${renderJoinCard()}
 `}
     ${!movementExplicitlyChosen ? "" : `
     <!-- Layout A (owner, 2026-11-15; PR #21): what a set needs comes first, with no scroll at 390x844
@@ -6765,7 +6791,8 @@ function render() {
   // #app-scoped attribute could never reach the bottom bar's own styling.
   // Removed entirely on a non-scene tab (Settings/Manage/dialogs keep the
   // ordinary light chrome).
-  const scene = tab === "club" && !(window.haimuniaClub && window.haimuniaClub.available()) ? null : PAGE_SCENES[tab];
+  // Q-49: the guest club page (the join field) is a scene page too, so it gets the same header overlay.
+  const scene = PAGE_SCENES[tab];
   if (scene) document.body.dataset.scene = scene.className; else delete document.body.dataset.scene;
   if (tab !== lastCountedScreen) { lastCountedScreen = tab; countUsage("screen_open", tab); }
   // Captured BEFORE the swap, restored after - see focusFieldIdentity.

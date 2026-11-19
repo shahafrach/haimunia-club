@@ -39,8 +39,8 @@ for (const scale of [1, 2]) {
         page: de.scrollWidth <= de.clientWidth + 1,
       };
     }, id);
-    check(`[${tag}] ${label}: bar = רישום/התקדמות/לוח שנה/אימונים, lit, tabs >= 44px, nothing cut, no control on the photo, no sideways scroll`,
-      f.labels.join("/") === "רישום/התקדמות/לוח שנה/אימונים" && f.active && !f.small && !f.cut.length && !f.onPhoto && f.page, JSON.stringify(f));
+    check(`[${tag}] ${label}: bar = רישום/התקדמות/לוח שנה/אימונים (+ מועדון, Q-49), lit, tabs >= 44px, nothing cut, no control on the photo, no sideways scroll`,
+      ["רישום/התקדמות/לוח שנה/אימונים", "רישום/התקדמות/לוח שנה/אימונים/מועדון"].includes(f.labels.join("/")) && f.active && !f.small && !f.cut.length && !f.onPhoto && f.page, JSON.stringify(f));
     if (screen === "add" || screen === "wod") await page.screenshot({ path: `${SHOTS}/q46-${screen}-${scale}.png` }).catch(() => {});
   }
   check(`[${tag}] no console errors, nothing left the origin`, errors.length === 0 && page.__foreignRequests.length === 0, errors.concat(page.__foreignRequests).join(" | "));
