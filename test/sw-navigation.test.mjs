@@ -144,7 +144,8 @@ test("upgrade from 3.6.0: its cache is removed, other apps' caches stay, preload
   await w.install();
   await w.activate();
   const keys = [...w.stores.keys()].sort();
-  assert.deepEqual(keys, [`haimunia-v${SW_VERSION}`, "some-other-app-cache"].sort());
+  // Q-56: plus the long-lived picture/font/icon cache, which is this app's own and outlives releases.
+  assert.deepEqual(keys, [`haimunia-v${SW_VERSION}`, "haimunia-static", "some-other-app-cache"].sort());
   assert.equal(w.calls.preload, "disabled", "3.6.0 enabled navigation preload; this worker never uses it");
   assert.equal(w.calls.claim, 1);
 });
@@ -168,4 +169,34 @@ test("a precached response that arrived through a redirect is stored and served 
 test("the worker never touches member data", () => {
   assert.doesNotMatch(SW_SRC.replace(/\/\/.*$/gm, ""), /indexedDB|localStorage|IDB/,
     "member data lives in IndexedDB; the worker only handles cached files");
+});
+
+// Q-56: pictures, fonts and icons live in "haimunia-static", which outlives releases.
+test("Q-56: the next install downloads code again but no picture, font or icon it already has", async () => {
+  const w = makeWorker();
+  await w.install();
+  const statics = w.stores.get("haimunia-static");
+  assert.ok(await statics.match("./assets/club-photos/add-stripe-wall.webp"), "photos in the long-lived cache");
+  assert.ok(await statics.match("./assets/fonts/rubik-400-hebrew.woff2"), "fonts too");
+  assert.ok(!(await w.stores.get(`haimunia-v${SW_VERSION}`).match("./assets/fonts/rubik-400-hebrew.woff2")), "not in the versioned one");
+  const fetched = [];
+  const real = sandbox.__fetch;
+  sandbox.__fetch = (r) => { fetched.push(new URL(r.url || r, BASE).pathname); return real(r); };
+  await w.install(); // the next release, same pictures
+  sandbox.__fetch = real;
+  assert.ok(fetched.includes("/app.js"), "code is fetched for every release");
+  assert.deepEqual(fetched.filter((p) => /^\/(assets\/|icon-|apple-touch)/.test(p)), [], "no static file downloaded again");
+});
+
+test("Q-56: offline, pictures come from the long-lived cache; activate drops a picture no release uses", async () => {
+  const w = makeWorker();
+  await w.install();
+  const statics = w.stores.get("haimunia-static");
+  await statics.put("./assets/club-photos/old-name.webp", new Response("old"));
+  statics.keys = async () => [...statics.map.keys()].map((u) => ({ url: u }));
+  statics.delete = async (req) => statics.map.delete(new URL(req.url, BASE).href);
+  await w.activate();
+  assert.ok(!(await statics.match("./assets/club-photos/old-name.webp")), "a renamed picture's old name is dropped");
+  w.network.mode = "offline";
+  assert.equal(await text(w.fetch("./assets/club-photos/add-stripe-wall.webp")), "v1:/assets/club-photos/add-stripe-wall.webp");
 });
