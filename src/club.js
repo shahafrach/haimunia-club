@@ -392,7 +392,15 @@
 
   function renderTab() {
     var i = info();
-    if (!i.inClub) return '<div class="card" style="margin:16px; text-align:center;">המועדון זמין אחרי התחברות והצטרפות. אפשר להתחיל מההגדרות.</div>';
+    // Q-49: a guest gets the same join code field as on רישום (the one join component), on the club's own page.
+    if (!i.inClub) {
+      return '<section class="scene-page scene-page--community" aria-labelledby="pageTitle-club">' +
+        '<div class="scene-page__media" aria-hidden="true"></div><div class="scene-page__scrim" aria-hidden="true"></div>' +
+        '<div class="scene-page__intro"><h1 id="pageTitle-club" class="scene-page__title">מועדון</h1></div>' +
+        '<div class="scene-sheet"><div class="stripe-ribbon" aria-hidden="true"></div>' +
+        '<div class="join-lead" style="margin-bottom:12px;">בפיד של המועדון רואים את האימונים של כולם, מגיבים, וקוראים הודעות מהמאמן. הקוד נמצא בקבוצת המועדון, או ב-QR במכון.</div>' +
+        (window.haimuniaJoin ? window.haimuniaJoin.cardHtml("club") : "") + "</div></section>";
+    }
     ensureLoaded();
     return '<section class="scene-page scene-page--community" aria-labelledby="pageTitle-club">' +
       '<div class="scene-page__media" aria-hidden="true"></div><div class="scene-page__scrim" aria-hidden="true"></div>' +

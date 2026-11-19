@@ -116,10 +116,15 @@ async function logLift(window, weight, reps, share = true) {
   await window.saveSet();
 }
 
-test("offline, or not in the club: there is no club tab", async () => {
+// Q-49: a guest (offline, or not in the club) gets the מועדון tab too, and it opens the join code field.
+test("offline, or not in the club: the club tab is there and shows the join code field", async () => {
   const { window } = await boot({ connected: false });
   await wait(50);
-  assert.equal($(window, "[data-tab='club']"), null);
+  const tabBtn = $(window, "#bottomTabBar [data-tab='club']");
+  assert.ok(tabBtn, "the tab is in the bar");
+  tabBtn.click();
+  assert.ok($(window, "#content form[data-join-inline='club'] input[name='code']"), "the one join component");
+  assert.equal($(window, "#content article"), null, "no feed for a guest");
 });
 
 test("a member sees the feed and announcements, read-only: no coach tools anywhere", async () => {
