@@ -18,16 +18,7 @@
 // implementation of each — these are bindings to it, not copies of it.
 //
 // safe-helpers.js is the FIRST script index.html loads, so window.BoxLogSafe
-// is always populated by the time this line runs. cloud.js declares esc,
-// cssSel and cleanStr itself, off window.BoxLogSafe directly, because it is
-// evaluated before this file and its own code runs at that point. It used to
-// be able to use `const` for them, being its own IIFE; it gave that wrapper
-// up so src/community/*.js could share its scope, which put those three names
-// in the same global lexical environment as these — so they are `var` there
-// too, for the same reason the paragraph above gives for them being `var`
-// here. `var` plus `var` is legal and binds the identical function twice;
-// `const` plus `var` would be a redeclaration SyntaxError that killed
-// whichever script loaded second.
+// is always populated by the time this line runs.
 const SAFE = window.BoxLogSafe;
 var esc = SAFE.esc, cssSel = SAFE.cssSel, bag = SAFE.bag;
 var cleanStr = SAFE.cleanStr, cleanMultilineStr = SAFE.cleanMultilineStr, cleanNum = SAFE.cleanNum, cleanId = SAFE.cleanId;
