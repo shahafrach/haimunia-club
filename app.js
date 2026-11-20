@@ -107,24 +107,6 @@ let tab = VALID_TABS.includes(urlTab) ? urlTab : "add";
 // ICONS, which isn't defined until much later in this file - a function
 // body doesn't run until called, well after the whole script has loaded,
 // so the forward reference is safe the same way fieldMax's is.
-// COMM-327 originally kept `main: true` to the 4 offline training-log tabs
-// only, leaving Community as the hamburger-only 5th item - reasoned as
-// "Community needs a full-page sub-nav of its own once signed in, not a
-// single tap target." Revisited: that reasoning doesn't actually hold once
-// you notice the WOD tab already carries its own sub-nav (Log/History/
-// Benchmarks) while living in the bottom bar - "has sub-screens" was never
-// really disqualifying. Community is now `main: true` too, exactly the
-// same footing as WOD: one tap from anywhere, its own on-screen subtabbar
-// (cloud.js's `.subtabbar`, `setCommunityTab`) handles Feed/Boards/Coach/
-// Account navigation once you're on the tab, same as WOD's own subtabbar
-// handles Log/History/Benchmarks. `.tabbtn{flex:1}` (index.html) has no
-// hardcoded child count, so a 5th icon costs each ~20% width, nothing more.
-// The mobile hamburger's Community row and its `.subnav` preview
-// (renderNavRows' onlyOther branch below) naturally stop appearing there
-// once this flips - onlyOther now returns nothing to show, and the on-
-// screen subtabbar is real Community navigation now, not a fallback for a
-// preview that's gone. The desktop sidebar (onlyOther=false) is unaffected,
-// since it already showed every item including the preview regardless.
 // Immersive club redesign (2026-09-08 handoff, IMPLEMENTATION_SPEC.md §3).
 // One source of truth for which real `tab` value gets the full-bleed scene
 // treatment and which photo/sheet-tone it takes - render() reads this to
@@ -162,11 +144,6 @@ const PAGE_SCENES = Object.freeze({
   // available, the same condition renderTab() draws the scene under.
   club: { className: "scene-page--community" },
 });
-// A plain top-level `const` does NOT become a window property the way a
-// `var`/function declaration does - cloud.js (its own IIFE) reaches this
-// through window, per its own established convention for every other
-// cross-file reference, so it has to be assigned explicitly.
-window.PAGE_SCENES = PAGE_SCENES;
 function getNavItems() {
   // `group` is read by ONE surface: the desktop staff sidebar, which shows
   // these same destinations under three headings instead of as one list of
@@ -281,23 +258,9 @@ function renderNavWho(opts) {
 function navChevronHtml() {
   return `<span style="transform:scaleX(-1); display:inline-flex; color:var(--steel); flex-shrink:0;" aria-hidden="true">${ICONS.chevron}</span>`;
 }
-// Shared by the mobile nav menu and the desktop sidebar (renderNavMenuList/
-// renderDesktopSidebar below) - one pass over getNavItems(), one place that
-// knows about Community's sub-nav preview. withIds carries the real
-// tabAddBtn/tabHistoryBtn/etc ids (and, riding along with them, the
-// "tabbtn" class cloud.js's Community-tab-left detector needs - see the
-// comment inline below); the desktop copy renders withIds=false so the two
-// surfaces never produce duplicate DOM ids, using data-tab alone for the
-// click delegator, which already reads it independent of id. onlyOther
-// restricts the list to the non-main items - the mobile hamburger menu
-// uses this now that all 5 tabs live in the fixed bottom tab bar instead
-// (renderBottomTabBar), so their ids aren't duplicated between the two;
-// now that Community is `main: true` too, onlyOther's list on mobile is
-// empty and the Community `.subnav` preview branch below never fires
-// there - it's real dead weight on that path, kept only because the
-// desktop sidebar still passes onlyOther=false and shows every item
-// (including the preview) regardless, since it has no bottom bar to split
-// against.
+// The nav rows (renderNavMenuList, renderDesktopSidebar): one pass over getNavItems(). withIds carries the real
+// tabAddBtn/tabHistoryBtn/... ids; the desktop copy passes false so no id is duplicated, and the click delegator reads
+// data-tab either way. onlyOther keeps only the items that are not in the bottom tab bar.
 // `pick` (optional) narrows the registry further, after onlyOther. It exists
 // for the staff sidebar, which renders these same rows under three headings;
 // a caller that passes nothing gets exactly what this function always gave.
@@ -306,15 +269,7 @@ function renderNavRows(withIds, onlyOther, pick) {
   if (typeof pick === "function") items = items.filter(pick);
   return items.map((item) => {
     const isActive = tab === item.tab;
-    // The "tabbtn" class here is load-bearing, not styling (its visual
-    // rules are neutralized for .navrow.tabbtn in index.html's CSS):
-    // cloud.js has its own capture-phase click listener that detects
-    // "left the Community tab" by e.target.closest(".tabbtn") - not by
-    // id or data-action - to know when to reset the club_tab_viewed
-    // dedupe. Drop this class and re-entering Community stops counting
-    // as a new view. Only the withIds (mobile) copy carries it - only one
-    // of the two copies is ever visible/clickable at a given viewport
-    // width, so there's no ambiguity about which one a real click means.
+    // The withIds copy also carries "tabbtn" (its look is neutralized for .navrow.tabbtn in index.html).
     const idAttr = withIds ? ` id="${item.rowId}"` : "";
     const tabbtnClass = withIds ? " tabbtn" : "";
     return `
@@ -325,44 +280,7 @@ function renderNavRows(withIds, onlyOther, pick) {
       </button>`;
   }).join("");
 }
-// Phase 6: a small page-title at the top of each of the 4 solo tabs' own
-// content, reading its label straight from the same getNavItems() registry
-// the nav menu/sidebar use - one name for a tab, defined once. Additive
-// above whatever the tab already rendered; nothing existing is replaced.
-function renderTabHeader(navId) {
-  const item = getNavItems().find((i) => i.id === navId);
-  if (!item) return "";
-  return `<h1 class="page-title">${esc(item.label)}</h1>`;
-}
-// Direction 06 "Club Balance" handoff (README1.md/CLAUDE_CODE_PROMPT.md).
-// One shared real-photo header - the crop/overlay/lazy-load rules live here
-// exactly once rather than being re-decided per screen; each render function
-// only picks which asset per README1's photo-mapping table. assetPath is
-// root-relative (e.g. "assets/club-photos/add-stripe-wall.webp"), sized 960x260 to
-// match the .photo-header aspect-ratio exactly (index.html) - explicit
-// width/height reserves the box before the file loads, avoiding layout
-// shift. opts.eager skips loading="lazy" for the one screen that is already
-// on screen at first paint (the Add tab); every other screen is reached by
-// navigating there, so lazy-loading them costs nothing a member would
-// notice and keeps first paint from waiting on decorative photography.
-// A plain top-level function (not IIFE-scoped), so it becomes a window
-// property like every other cross-file shared helper here - cloud.js reaches
-// it as window.photoHeaderHtml(), the same way it reaches every other
-// platform module, per that file's own documented convention.
-function photoHeaderHtml(assetPath, altText, opts) {
-  opts = opts || {};
-  const loading = opts.eager ? "eager" : "lazy";
-  return `<div class="photo-header"><img src="${esc(assetPath)}" alt="${esc(altText)}" width="960" height="260" loading="${loading}"></div>`;
-}
 function renderNavSettingsRow() {
-  // Fresh-eyes audit: on the desktop sidebar (renderDesktopSidebar below)
-  // this section header renders in the same persistent column as
-  // Community's own "חשבון" subtab (cloud.js, the member's profile/privacy
-  // tab) once Community is open - two rows reading "חשבון" a few pixels
-  // apart, naming two different things. This one is a single link to
-  // app-level Settings, not an account, so the label changes rather than
-  // Community's - that one is a normal, unambiguous name for itself on
-  // every OTHER screen it appears on.
   return `
     <div class="divider-label">כללי</div>
     <button class="navrow" data-action="open-settings">
@@ -424,13 +342,9 @@ function renderDesktopSidebar() {
 // entry here, at boot, and re-planting it on any pop that isn't the dialog
 // system's own reserved one (see the popstate listener far below, and this
 // one), keeps every edge-swipe attempt landing back inside the app instead
-// of ever finding real history to fall through to. Placed after the notif-
-// param cleanup above (and after cloud.js's own invite-code cleanup, which
-// runs first - cloud.js is a `defer` script ordered before this one, see
-// index.html): an invite code is a live credential that MUST be scrubbed by
-// replaceState() before anything pushes a fresh entry, or the scrubbed URL
-// would sit safely on top while the original, credential-bearing entry
-// stayed reachable underneath it forever.
+// of ever finding real history to fall through to. Placed after src/connect.js has scrubbed a join link from the
+// URL (a defer script ordered before this one): the code must be replaced before anything pushes a fresh entry,
+// or the original, code-bearing entry would stay reachable underneath.
 try { history.pushState({ appAnchor: true }, ""); } catch (e) { /* history API unavailable in this embedding */ }
 window.addEventListener("popstate", () => {
   // appDialogHistoryPushed (declared later in this file) is only ever read
@@ -1492,8 +1406,7 @@ function celebrateFirstLog(label) {
 let celebrationOpenerEl = null;
 // UX audit: a celebration rendered on top of the 5-screen onboarding
 // explainer and hid it — both are .modal-overlay at the same z-index:50, so
-// two open at once stack by DOM order, not by which one is logically on top
-// (cloud.js hit the identical class of bug, see COMM-234 there). The
+// two open at once stack by DOM order, not by which one is logically on top. The
 // walkthrough is a flow you step through, not something to be interrupted,
 // so a celebration that lands while it is open is held and replayed on
 // close instead of being dropped: the badge is already marked seen by the
@@ -1801,12 +1714,6 @@ function whatsNewToastOnce() {
   try { localStorage.setItem(WHATS_NEW_TOAST_KEY, APP_VERSION); } catch (e) {}
   showToast("יש חדש באפליקציה. בהגדרות, תחת מתקדם.");
 }
-// Prefers the real community notification center when there's something
-// unread there; falls back to the offline release-notes overlay otherwise
-// (including when Community isn't configured at all, or the member isn't
-// signed into it - window.openCommunityNotifCenter simply isn't a function
-// yet in either case, same guard used everywhere else this app checks for
-// cloud.js).
 function openHeaderNotifications() {
   // onlyIfUnseen, and a toast when there is nothing: see openNotifications().
   // The bell is a notifications control, not a changelog link - answering it
@@ -2147,8 +2054,7 @@ function heaviestLoggedWeightFor(id, excludeId) {
 // own fresh uid() entry. Not a storage race (dbPut is awaited, but the
 // SYNCHRONOUS entry-creation/array-push above it runs to completion on
 // every call regardless); a plain in-flight guard around the whole
-// function is what's needed, same shape as cloud.js's reactionBusy for the
-// exact same class of bug on the cheer button. try/finally so every
+// function is what's needed. try/finally so every
 // existing early-return path (unchosen movement, invalid numbers, the
 // absurd-weight sanity-confirm prompt) still releases the guard - none of
 // those are "a save is in flight", only the path that reaches the actual
@@ -2399,25 +2305,6 @@ async function saveSet(sanityConfirmed) {
   // prTotal both read through it now, not the raw flag.
   const priorForExercise = entriesFor(selectedId, editId).filter((e) => (e.type === "duration") === (logEntryType === "duration")).length;
   const celebratePR = isPR && !existing && priorForExercise >= MIN_ENTRIES_BEFORE_PR;
-  // The community PR event deliberately does NOT take the >= 3 gate, only
-  // the never-on-an-edit half. Two reasons, both functional rather than
-  // editorial: PR_CREATED also drives an individual_performance challenge's
-  // numeric progress (see onPrCreatedForChallenges in cloud.js), so gating
-  // the EVENT would silently make challenge scoring depend on how many
-  // prior sets happen to be on file - a different bug, not a fix.
-  //
-  // Fresh-eyes audit: the event's OTHER consumer, cloud.js's PR-share
-  // prompt ("שיא חדש זוהה. לשתף עם המועדון?"), has no such excuse - it is
-  // pure praise/invitation-to-share, the exact thing celebratePR above
-  // exists to withhold, and a brand-new member hit it on their literal
-  // first-ever set, back to back with the achievement-unlock celebration
-  // for the same non-event. So the record now carries `trivial` (computed
-  // from this same priorForExercise, attached below) for that ONE consumer
-  // to check before opening its dialog - onPrCreatedForChallenges ignores
-  // the field entirely and keeps reading new_value_numeric unconditionally,
-  // so challenge progress is untouched by this.
-  const emitPR = isPR && !existing;
-  if (emitPR && prDetail) prDetail.priorForExercise = priorForExercise;
   // 3. And when an edit takes a row that WAS the record below the bar, say
   //    so once, plainly, in the smallest surface available — the member is
   //    owed the correction, not an apology and not a second party.
@@ -2578,14 +2465,8 @@ function prefillFromLast() {
   render();
 }
 // ---------- Confirm + undo for the offline log ----------
-// cloud.js already owns exactly this pattern for the community half
-// (askConfirm / closeConfirm / runConfirm + renderConfirmSheet, pinned by
-// test/community-confirm-flow.test.mjs), built precisely because three
-// different destructive-action patterns had grown side by side. It lives
-// inside that file's IIFE and never reaches window, so this side of the wall
-// cannot call it — what follows is the same pattern, the same markup, the
-// same two-button shape, deliberately NOT a third visual language and
-// deliberately not window.confirm(), which that same work removed.
+// One confirm pattern for every destructive action: the same markup and two-button shape everywhere, and
+// deliberately not window.confirm().
 //
 // The finding that brought it here was an asymmetry, not a missing dialog:
 // blocking a club member confirms, deleting a post confirms, and deleting
@@ -2644,8 +2525,6 @@ function runAppConfirm() {
 function renderAppConfirmSheet() {
   const c = appConfirmDialog;
   if (!c) return "";
-  // Markup mirrors cloud.js's renderConfirmSheet() field for field, so the
-  // two halves of the app can never drift into looking like two products.
   return `<div class="modal-overlay open" id="appConfirmOverlay" data-action="close-app-confirm" data-confirm-kind="${esc(c.action || "")}" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle" style="align-items:center;padding:0 20px;">
       <div class="modal-sheet" style="border-radius:22px;border-bottom:1px solid var(--border);max-height:none;">
         <div style="padding:24px 22px calc(env(safe-area-inset-bottom,0px) + 20px);">
@@ -2660,13 +2539,6 @@ function renderAppConfirmSheet() {
     </div>`;
 }
 
-// The audit asked for a confirmation AND a short undo, and it's right to
-// want both: a confirmation stops the accident, an undo repairs the one
-// that got through anyway (a confirmed delete of the wrong row). Five
-// seconds is the window every mail client settled on — long enough to read
-// the row you just removed, short enough that it never has to be dismissed.
-// Restoring is a plain re-put of the record we already hold in memory, so
-// nothing has to be reconstructed from the UI.
 // One non-blocking toast, used for two jobs that are the same shape: the
 // undo the audit asked for alongside the delete confirmation, and design
 // spec 5.2's tier B, the response level between a full-screen card and
@@ -2677,27 +2549,14 @@ function renderAppConfirmSheet() {
 // pure notification (the revoked-badge message), and restoring a deleted
 // record is a plain re-put of the object we already hold in memory, so
 // nothing has to be reconstructed from the UI.
-// `onExpire` is the third job, and the one the community half needs. Every
-// undo above REVERSES a write that already happened — the record is back in
-// IndexedDB before the toast is even drawn. A community delete cannot work
-// that way (see deferCommunityDelete(), cloud.js): the write is HELD for the
-// toast's window instead, so something has to say "the window closed and
-// nobody tapped בטלו — send it now". That is this callback, and it fires
-// exactly once per toast: on the timeout, or when a newer toast replaces
-// this one, and never when the action ran. One clock, owned here, rather
-// than a second timer in cloud.js that would eventually disagree with this
-// one about when five seconds are up.
 const TOAST_WINDOW_MS = 5000;
 let pendingToast = null;
 let toastTimeout = null;
-// `ran` is what separates "the member tapped בטלו" from every other way a
-// toast ends. Only the latter releases a held write.
-function settleToast(ran) {
+function settleToast() {
   const t = pendingToast;
   clearTimeout(toastTimeout);
   toastTimeout = null;
   pendingToast = null;
-  if (t && !ran && typeof t.onExpire === "function") t.onExpire();
   return t;
 }
 // F-018 (real Chromium, 3.9.0). showToast() used to only STORE the toast; render() paints it. A caller in an
@@ -2706,32 +2565,27 @@ function settleToast(ran) {
 // showToast() itself: a microtask renders unless a render painted the toast dock first, so a caller that
 // renders right after (most of app.js) still gets exactly one render.
 let toastPaintOwed = false;
-function showToast(label, action, onExpire) {
-  settleToast(false);
-  pendingToast = { label, action: action || null, onExpire: onExpire || null };
-  toastTimeout = setTimeout(() => { settleToast(false); render(); }, TOAST_WINDOW_MS);
+function showToast(label, action) {
+  settleToast();
+  pendingToast = { label, action: action || null };
+  toastTimeout = setTimeout(() => { settleToast(); render(); }, TOAST_WINDOW_MS);
   toastPaintOwed = true;
   queueMicrotask(() => { if (toastPaintOwed) render(); });
 }
-function offerUndo(label, restore, onExpire) {
-  showToast(label, { label: "בטלו", run: restore }, onExpire);
+function offerUndo(label, restore) {
+  showToast(label, { label: "בטלו", run: restore });
 }
 function runToastAction() {
-  const t = settleToast(true);
+  const t = settleToast();
   if (t && t.action) t.action.run();
   else render();
 }
-// A held write must not leave with the page. pagehide is the last event this
-// app is guaranteed on a real phone (iOS Safari does not fire beforeunload,
-// and a backgrounded tab's setTimeout is throttled to the point where the
-// five seconds may simply never elapse), so the window is closed by hand
-// there and whatever it was holding goes out immediately.
-// The repaint matters on the visibilitychange path and not on pagehide: a
-// tab that comes back would otherwise still be showing a toast whose window
-// has already closed, offering an undo that can no longer undo anything.
-window.addEventListener("pagehide", () => { settleToast(false); });
+// The undo window closes with the page view. A backgrounded tab's setTimeout is throttled until the five seconds
+// may never elapse, so pagehide and a hidden tab close it by hand; the visibilitychange path also repaints, or a
+// tab that comes back would still offer an undo whose window is over.
+window.addEventListener("pagehide", () => { settleToast(); });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden" && settleToast(false)) render();
+  if (document.visibilityState === "hidden" && settleToast()) render();
 });
 function renderToastBar() {
   if (!pendingToast) return "";
@@ -2772,8 +2626,7 @@ function renderToastBar() {
 // Live bug hunt (2026-09-11): used to seed the edit form straight from the
 // in-memory `entries` array, which can go stale for the whole rest of a
 // session on a device with two tabs/windows open against the same IndexedDB
-// origin — there is no cross-tab sync for the pure-offline path (unlike the
-// cloud-sync path's shouldApplyRemote() guard). A tab that booted before a
+// origin. A tab that booted before a
 // sibling tab's edit landed would silently overwrite that edit the next
 // time IT saved: saveSet() rebuilds the WHOLE record from whatever the form
 // was seeded with, and dbPut() is a blind full-record replace with no
@@ -3261,13 +3114,9 @@ const WOD_RX_DEFAULT_KEY = "haimunia:wodRxDefault";
 // rather than repeating the ternary, because that ternary had five copies and
 // this is exactly how the fifth one gets missed.
 //
-// AT THE CLOUD BOUNDARY IT IS Rx. club_wod_results.rx is a boolean column and
-// this branch adds no migration, so the three bridges that cross into cloud.js
-// coerce with `!== false`: an Rx+ result publishes to the club board as Rx,
-// which is true, rather than as a string the RPC would silently read as Rx
-// anyway (202609080002's jsonb_typeof guard) without anybody having decided
-// that here. The distinction is kept where it was asked for - the member's own
-// record and their own history.
+// SHARED TO THE CLUB IT IS Rx. The club post carries rx as a boolean (`e.rx !== false` in the share summary),
+// which is true: Rx+ is Rx, and more. The distinction is kept where it was asked for - the member's own record
+// and history.
 const WOD_EFFORT_PLUS = "plus";
 // The guard behind the save CTA, in one predicate instead of three copies of
 // `wodRx !== true && wodRx !== false`. null still means unanswered, and
@@ -4657,13 +4506,6 @@ const ICONS = {
   down: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2.2" stroke-linecap="round"><path d="M3 7l6 6 4-4 8 8"/><path d="M14 17h7v-7"/></svg>',
   flat: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
   chevronsLeft: '<span class="chev-fwd" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M15 6l-6 6 6 6"/></svg></span>',
-  // The two log-screen empty-state glyphs. Drawn to cloud.js's
-  // EMPTY_STATE_ICONS conventions on purpose - 28-box, 1.8 stroke, round
-  // caps and joins, currentColor - so the log screen's empty state and the
-  // coach dashboard's look like one set. Kept here rather than borrowed
-  // from cloud.js for the mirror image of the reason stated there: app.js
-  // is the offline log and must not depend on the community module loading.
-  emptyBarbell: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5M7 6.5v11M17 6.5v11M20 9.5v5M7 12h10"/></svg>',
   emptyDay: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="16" rx="2.5"/><path d="M9 2.8h6M8.5 10.5h7M8.5 15h4"/></svg>',
   ladder: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v18M18 3v18M6 8h12M6 13h12M6 18h12"/></svg>',
   repeat: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
@@ -4674,21 +4516,12 @@ const ICONS = {
   // glyphs on adjacent rows, and the pencil, which says "write something"
   // rather than "get help".
   helpIcon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a3 3 0 0 1 5.6 1c0 2-2.8 2.5-2.8 4"/><path d="M12 17.5h.01"/></svg>',
-  bell: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
   calendarIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   chartIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M12 20V4M20 20v-7"/></svg>',
   clubIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="7" r="2.4"/><path d="M16.5 12.2c2.7.3 4.5 2.4 4.5 5.3"/></svg>',
   stopwatchIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg>',
   logIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg>',
-  communityIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="9" r="2.3"/><path d="M16.3 14c2.6.2 4.5 2.1 5 5"/></svg>',
   settingsIcon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
-  // Redesign, Phase 3 fix: byte-identical gear glyph to settingsIcon above,
-  // just 22x22 instead of 20x20 - settingsIcon was sized for the 30px
-  // .icon-chip context (nav menu / settings row) and reusing it directly
-  // for the bottom tab bar's "ניהול" icon made it render 2px smaller than
-  // its five 22x22 siblings in the same row. Keep settingsIcon itself
-  // untouched so its existing .icon-chip usage doesn't shift.
-  manageTabIcon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
 };
 
 // ---------- Rendering ----------
@@ -6125,15 +5958,8 @@ function renderMeasureArea() {
 // the exercise list at the top of this screen; a second copy of them under
 // this heading (as 3.0.0 shipped) showed every lift twice.
 //
-// WHAT IT DELIBERATELY IS NOT: a second store. A Fran attempt IS a wod_entry
-// - the row this app has always written, already queued through
-// queueSyncRecord() into private_records, already covered by
-// buildBackupPayload(), already re-applied by applyRemotePrivateRecord(). So attempts sync exactly like every other
-// record because they ARE every other record, and nothing here writes
-// anything. A `benchmark_attempt` record type would also have needed a
-// migration to get past private_records' record_type check constraint
-// (202608260001), and supabase/migrations/ is the one directory two open
-// branches cannot both touch (CLAUDE.md, "Parallel work").
+// WHAT IT DELIBERATELY IS NOT: a second store. A Fran attempt IS a wod_entry - the row this app has always
+// written, already in buildBackupPayload() - so nothing here writes anything.
 //
 // This whole section reads and renders. Every number below is derived from
 // entries/wodEntries on each render, held nowhere, and invalidated by nothing.
@@ -6931,12 +6757,8 @@ function render() {
   }
   const navMenuListEl = document.getElementById("navMenuList");
   if (navMenuListEl) {
-    // Own try/catch, same reasoning as the tab-content one above: a
-    // problem building the nav menu (e.g. cloud.js's community-preview
-    // export mid-transition) must never take down the rest of render() -
-    // in particular the content write and the post-render Community
-    // hook below it, which is exactly the failure this guarded against
-    // during development.
+    // Own try/catch, same reasoning as the tab-content one above: a problem building the nav menu must never take
+    // down the rest of render().
     try { navMenuListEl.innerHTML = renderNavMenuList(); }
     catch (err) { console.error("nav menu render error:", err); }
   }
@@ -7091,9 +6913,7 @@ function render() {
     // on it could look like the app crashing to a blank screen.
     // syncAppDialogHistoryState() itself is shape-agnostic (it reads
     // currentAppDialog(), not any one overlay's node) - calling it here,
-    // after every render, the same call-based hook cloud.js's
-    // syncCloudDialogFocus() above already relies on for its OWN
-    // dynamically-rendered dialogs, closes the gap for appConfirm without
+    // after every render, closes the gap for appConfirm without
     // requiring every future dynamically-rendered dialog to remember to
     // reserve a permanent DOM node just to be observable.
     if (typeof syncAppDialogHistoryState === "function") syncAppDialogHistoryState();
@@ -7791,13 +7611,6 @@ document.addEventListener("keydown", (e) => {
 
 let navMenuOpen = false;
 let navMenuOpenerEl = null;
-function openNavMenu() {
-  navMenuOpen = true;
-  navMenuOpenerEl = document.activeElement;
-  document.body.style.overflow = "hidden";
-  document.getElementById("navMenuOverlay").classList.add("open");
-  setTimeout(() => focusFirstAppDialogEl("navMenuOverlay"), 50);
-}
 function closeNavMenu() {
   if (!navMenuOpen) return;
   navMenuOpen = false;
@@ -7813,12 +7626,7 @@ let settingsOpen = false;
 let settingsOpenerEl = null;
 // #settingsBody is repopulated on EVERY render() regardless of whether this
 // overlay is open (see renderSettingsBody and closeSettings for why that is
-// deliberate). The cost of that is a real defect: from the moment any
-// anonymous backup session exists, cloud.js's backupCredentials form sits in
-// the document permanently, and its `input[name="username"]
-// autocomplete="username"` collides with the identical field on the
-// Community login screen. Two same-named credential fields in one document
-// is how a password manager fills the wrong one.
+// deliberate), so a closed sheet's fields and buttons would sit in the document for assistive tech and the tab order.
 //
 // `inert` is the fix, rather than skipping the render: it takes the whole
 // closed overlay out of the accessibility tree, out of the tab order and out
@@ -8334,7 +8142,7 @@ async function checkForUpdate() {
   updateInProgress = true; // from here on, new saves and deletes wait (updateHoldsWrites)
   setUpdateCheck(true, version ? `יש גרסה חדשה ${version}. מעדכנים…` : "יש גרסה חדשה. מעדכנים…", "ok");
   // A delete still inside its undo window is written now, not dropped by the reload.
-  if (settleToast(false)) render();
+  if (settleToast()) render();
   if (!(await waitForSavesToFinish())) { updateInProgress = false; setUpdateCheck(false, UPDATE_CHECK_TEXT.busySave, "warn"); return; }
   pendingWorker = worker;
   updateBannerShowing = false;
