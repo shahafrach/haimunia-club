@@ -61,6 +61,10 @@ Full history: QUEUE-archive.md on this branch. Do not read it unless a row point
 | Q-08 | release | blocked | Q-21 | Dependabot in haimunia-app-demo after launch: #153 setup-cli, #155 supabase-js, #174 claude-code-action, #175 fake-indexeddb, #176 playwright 1.65 (browser-check), #177 jsdom 31 | – | Held until after launch (owner, 2026-11-15). #176 is a deliberate exact pin (scripts/browser-check/package.json: moving it means re-measuring). #177 is a jsdom major. Each one gets a full CI run on a branch updated from main. **release 2026-11-15:** launch postponed; take these after the gate pass (Q-21), one at a time. |
 | Q-20 | release | blocked | Shahaf | Standard template repository from haimunia-club | – | Needs Shahaf to create an empty repository and add it to the session. release then writes the fixes row. |
 
+## Status (Claude, 2026-11-20 11:27)
+- 3.21.0 LIVE (club #68, containing #65 #66 #67; Cloudflare green). #66 and #67 stay open on GitHub though their commits are in main: close them, no merge needed.
+- Queue empty. Next: owner phone round, then the 3-member pilot. fixes: stop and wait.
+
 ## Status (Claude, 2026-11-19 20:46)
 - 3.20.0 LIVE (club #58 #59 #60 #61 merged, Cloudflare green). fixes NEXT: Q-60 (in-app date picker), Q-61 (Settings cleanup), Q-63 (narrow screens, P0), Q-62 (visual polish from Grok), Q-64 (dead-code sweep), then a 3.21.0 release PR. Then stop: owner phone round, then the 3-member pilot.
 - fixes 00:40: Q-60 = club #63 (3.20.1, on main incl. #62). Q-61 = club #64, stacked on #63 (merging #64 alone ships both). Stopping here for the owner phone round.
