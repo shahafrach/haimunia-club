@@ -19,7 +19,7 @@ test("no px font-size: every size is a rem token (one narrow-bar exception, in r
 });
 
 test("hero titles have a scrim; the subtitle is not dimmed", () => {
-  assert.match(html, /--hero-title-scrim:radial-gradient\(/);
+  assert.match(html, /--hero-title-scrim:linear-gradient\(to top,/); // Q-62: a band, not a radial blob
   assert.match(html, /\.scene-page__intro::before\{[^}]*background:var\(--hero-title-scrim\)/);
   assert.doesNotMatch(html, /\.scene-page__subtitle\{[^}]*opacity:\.92/);
 });

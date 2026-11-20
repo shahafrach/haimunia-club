@@ -289,9 +289,15 @@
     var rows = a.rows.map(function (x) {
       return annCard(x, '<div class="chip-row" style="margin-top:8px;">' +
         '<button class="chip-btn" data-club="pin" data-id="' + esc(x.id) + '" data-pinned="' + (x.pinned ? "0" : "1") + '">' + (x.pinned ? "ביטול נעיצה" : "נעיצה") + "</button>" +
-        '<button class="chip-btn danger" data-club="del-ann" data-id="' + esc(x.id) + '">מחיקה</button></div>');
+        moreMenu("הודעה", '<button class="chip-btn danger" data-club="del-ann" data-id="' + esc(x.id) + '">מחיקת ההודעה</button>') + "</div>");
     }).join("");
     return '<h3 class="section-label">הודעות</h3>' + form + rows;
+  }
+  // Q-63: a destructive action sits behind "⋯" (עוד פעולות), not beside the everyday buttons, so a tap meant for
+  // נעיצה or a reaction cannot delete. The confirm the action already asks for still follows.
+  function moreMenu(label, inner) {
+    return '<details class="more-menu"><summary aria-label="' + esc("עוד פעולות: " + label) + '"><span aria-hidden="true">⋯</span></summary>' +
+      '<div class="more-menu-panel">' + inner + "</div></details>";
   }
   function adminHtml() {
     // Open when the member left it open, and whenever a new join link is showing (it is shown once only).
@@ -310,14 +316,14 @@
     }).join("") + "</div>";
   }
   function postHtml(r, staff) {
-    var del = staff ? '<button class="link-btn link-btn--tap" data-club="del-post" data-id="' + esc(r.post_id) + '">מחיקת הפוסט</button>' : "";
+    var del = staff ? moreMenu("פוסט", '<button class="chip-btn danger" data-club="del-post" data-id="' + esc(r.post_id) + '">מחיקת הפוסט</button>') : "";
     return '<article class="card" style="margin-bottom:10px;" aria-label="' + esc("פוסט של " + (r.author_name || "חבר/ה")) + '">' +
       '<div class="who" style="margin:0 0 8px;"><div class="who-avatar" aria-hidden="true">' + esc(r.author_emoji || "🙂") + "</div>" +
       '<div style="flex:1; min-width:0;"><div class="who-name">' + name(r.author_name) + '</div><div class="who-sub">' + esc(when(r.published_at)) + "</div></div></div>" +
       (r.title ? '<div style="font-weight:800; font-size:var(--fs-3);" dir="auto">' + bidiText(r.title) + "</div>" : "") +
       (r.result_text ? '<div style="font-size:var(--fs-2); margin-top:2px;" dir="auto">' + bidiText(r.result_text) + "</div>" : "") +
       (r.body ? '<div style="color:var(--steel); font-size:var(--fs-2); margin-top:6px; white-space:pre-wrap;" dir="auto">' + bidiText(r.body) + "</div>" : "") +
-      reactionsHtml(r) + (del ? '<div style="margin-top:4px;">' + del + "</div>" : "") + "</article>";
+      reactionsHtml(r) + (del ? '<div class="more-menu-row">' + del + "</div>" : "") + "</article>";
   }
   function feedHtml(staff) {
     var f = C.feed;
@@ -348,7 +354,7 @@
       var canRemove = i.staff && x.user_id !== i.userId && x.role !== "owner" && (x.role !== "coach" || i.role === "owner");
       return '<div class="who" style="margin:8px 0;"><div class="who-avatar" aria-hidden="true">' + esc(x.emoji) + "</div>" +
         '<div style="flex:1; min-width:0;"><div class="who-name">' + name(x.name) + "</div>" + (ROLE_LABEL[x.role] ? '<div class="who-sub">' + esc(ROLE_LABEL[x.role]) + "</div>" : "") + "</div>" +
-        (canRemove ? '<button class="chip-btn danger" data-club="rm-member" data-id="' + esc(x.user_id) + '" data-name="' + esc(x.name) + '">הסרה</button>' : "") + "</div>";
+        (canRemove ? moreMenu(x.name || "חבר/ה", '<button class="chip-btn danger" data-club="rm-member" data-id="' + esc(x.user_id) + '" data-name="' + esc(x.name) + '">הסרה מהמועדון</button>') : "") + "</div>";
     }).join("");
   }
 

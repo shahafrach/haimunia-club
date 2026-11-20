@@ -1,3 +1,24 @@
+# 3.21.0 — מסכים צרים, ליטוש ויזואלי וניקוי קוד — 2026-11-20
+
+- Q-63 (P0): on a 320px phone the −/+ steppers no longer sit under the save bar (a tap on + could tick
+  "לשתף במועדון", a tap on the weight could save a set): the three fit in one row, the bar is opaque with its fade
+  above it, and anything scrolled into view lands above the bars. The iOS install card fits under the header and
+  scrolls inside, with הבנתי pinned (its top, with the backup step, was out of reach). Also: the update banner no
+  longer covers the הגדרות gear; the picker searches no longer push the sheet sideways at large text; scene titles
+  stay above the sheet at large text; club deletes are behind a "⋯" menu.
+- Q-62: visual polish. One filled primary per screen (on רישום only בחירת תרגיל; the join and install buttons are
+  secondary). Hero titles sit on a linear band instead of a grey blob; the photos fill the width (no side seams)
+  and the club photo shows the wall's wordmark whole. Tab labels are never under the small text size and hide
+  (still read aloud) when large text leaves no room. One chevron (an SVG in the text colour), one secondary button,
+  one list row: Fran looks the same in התקדמות and in the catalog. A saved set's row tints once; a PR shows its
+  value large - and the PR moment now actually stays on screen (the re-render after a save hid it). Settings keeps
+  מתקדם open and its scroll on a re-render; each tab comes back where it was left. Sheets fade and slide in; the
+  save button says "שומרים…" while it saves. The update banner says "הקישו כאן כדי לעדכן עכשיו". The tour has a
+  fifth line for מועדון.
+- Q-64: dead code removed, about 46 KB less to download (unused functions, icons and CSS, and comments about
+  code that is not in this app). No behaviour change.
+- No IndexedDB change.
+
 # 3.20.1 — בחירת תאריך בתוך האפליקציה — 2026-11-19
 
 - Q-60: the date on רישום and אימונים opens the app's own sheet instead of the native iOS popover, which

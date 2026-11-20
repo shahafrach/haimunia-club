@@ -13,7 +13,7 @@
 //
 // SW_VERSION is written by scripts/sync-version.mjs from APP_VERSION in
 // app.js; the cache name carries it, so every release is a fresh cache.
-const SW_VERSION = "3.20.1";
+const SW_VERSION = "3.21.0";
 // The 2.x app's own prefix, kept: its caches are "haimunia-v2.34.0" and so
 // on, and the cleanup below removes them by this prefix.
 const CACHE_PREFIX = "haimunia-v";
@@ -56,7 +56,6 @@ const OPTIONAL_ASSETS = [
   "./icon-512-maskable.png",
   "./assets/mark.png",
   "./assets/icon-barbell.png",
-  "./assets/icon-chevrons.png",
   "./assets/logo-full.png",
   "./assets/medal-bronze.png",
   "./assets/medal-silver.png",
