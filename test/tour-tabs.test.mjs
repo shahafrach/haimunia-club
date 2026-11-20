@@ -15,9 +15,10 @@ test("the bar's tab names are the tour's, in the same order", async () => {
   const window = await bootApp();
   window.saveWelcomeForm("רונית");
   const bar = [...window.document.querySelectorAll("#bottomTabBar .tabbtn")].map((b) => b.textContent.trim());
-  assert.deepEqual(tourNames(), ["רישום", "התקדמות", "לוח שנה", "אימונים"]);
+  // Q-62: the tour adds a fifth line for מועדון; the owner's four come first, unchanged.
+  assert.deepEqual(tourNames(), ["רישום", "התקדמות", "לוח שנה", "אימונים", "מועדון"]);
   // Q-49: מועדון is a fifth tab for everyone the club can serve (a guest opens the join code there).
-  assert.deepEqual(bar.slice(0, 4), tourNames());
+  assert.deepEqual(bar.slice(0, 4), tourNames().slice(0, 4));
   assert.ok(bar.length === 4 || (bar.length === 5 && bar[4] === "מועדון"), bar.join("/"));
   assert.equal(window.document.getElementById("pageTitle-calendar"), null);
   window.document.getElementById("tabCalendarBtn").click();

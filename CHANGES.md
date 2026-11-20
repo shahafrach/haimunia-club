@@ -17,6 +17,15 @@
   scrolls inside, with הבנתי pinned (its top, with the backup step, was out of reach). Also: the update banner no
   longer covers the הגדרות gear; the picker searches no longer push the sheet sideways at large text; scene titles
   stay above the sheet at large text; club deletes are behind a "⋯" menu.
+- Q-62: visual polish. One filled primary per screen (on רישום only בחירת תרגיל; the join and install buttons are
+  secondary). Hero titles sit on a linear band instead of a grey blob; the photos fill the width (no side seams)
+  and the club photo shows the wall's wordmark whole. Tab labels are never under the small text size and hide
+  (still read aloud) when large text leaves no room. One chevron (an SVG in the text colour), one secondary button,
+  one list row: Fran looks the same in התקדמות and in the catalog. A saved set's row tints once; a PR shows its
+  value large - and the PR moment now actually stays on screen (the re-render after a save hid it). Settings keeps
+  מתקדם open and its scroll on a re-render; each tab comes back where it was left. Sheets fade and slide in; the
+  save button says "שומרים…" while it saves. The update banner says "הקישו כאן כדי לעדכן עכשיו". The tour has a
+  fifth line for מועדון.
 - No IndexedDB change.
 
 # 3.20.0 — רישום חדש, שיתוף בדיעבד, נגישות, עברית אחידה ופתיחה מהירה — 2026-11-19

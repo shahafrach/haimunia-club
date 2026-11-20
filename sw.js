@@ -56,7 +56,6 @@ const OPTIONAL_ASSETS = [
   "./icon-512-maskable.png",
   "./assets/mark.png",
   "./assets/icon-barbell.png",
-  "./assets/icon-chevrons.png",
   "./assets/logo-full.png",
   "./assets/medal-bronze.png",
   "./assets/medal-silver.png",

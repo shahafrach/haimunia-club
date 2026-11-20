@@ -562,9 +562,9 @@ function renderDateSheet() {
     }
     grid = `<div class="date-month" role="group" aria-label="${esc(title)}">
       <div class="date-month-head">
-        <button type="button" class="icon-btn date-month-nav" data-action="date-sheet-prev" aria-label="החודש הקודם"><span aria-hidden="true">›</span></button>
+        <button type="button" class="icon-btn date-month-nav" data-action="date-sheet-prev" aria-label="החודש הקודם">${ICONS.chevron}</button>
         <div class="date-month-title" aria-live="polite">${esc(title)}</div>
-        <button type="button" class="icon-btn date-month-nav" data-action="date-sheet-next" aria-label="החודש הבא"${atCurrent ? " disabled" : ""}><span aria-hidden="true">‹</span></button>
+        <button type="button" class="icon-btn date-month-nav" data-action="date-sheet-next" aria-label="החודש הבא"${atCurrent ? " disabled" : ""}>${ICONS.chevronsLeft}</button>
       </div>
       <div class="date-weekdays" aria-hidden="true">${HE_WEEKDAYS_SHORT.map((w) => `<span>${w}</span>`).join("")}</div>
       <div class="date-grid">${cells}</div>
@@ -2292,6 +2292,7 @@ function renderClubShareLine(ids, label) {
     : `<div class="club-share-line"><button class="chip-btn" data-action="club-share-later" data-ids="${list}" aria-label="שיתוף במועדון${what}">שיתוף במועדון</button></div>`;
 }
 
+let justSavedEntryId = null, justSavedTimer = null;
 async function saveSet(sanityConfirmed) {
   if (savingSet) return;
   if (updateHoldsWrites()) return; // F-020: the draft stays in the steppers
@@ -2431,7 +2432,11 @@ async function saveSet(sanityConfirmed) {
   // otherwise this reset-to-today would silently misdate rungs 2+ of a
   // ladder logged for a past date.
   if (!ladderMode) { logDate = todayISO(); logDateExplicitlyChosen = false; }
-  if (celebratePR) flashPR();
+  if (celebratePR) flashPR(entrySummary(entry));
+  // Q-62: the row of the set just saved gets a short success tint (CSS; off under prefers-reduced-motion).
+  justSavedEntryId = entry.id;
+  clearTimeout(justSavedTimer);
+  justSavedTimer = setTimeout(() => { justSavedEntryId = null; }, 1600);
   // Decided HERE, before the render below, not after it. That render is what
   // evaluates S5's consent card, so the debt has to already exist by the time
   // it runs — computing it afterwards is what made the ordering depend on
@@ -4608,16 +4613,25 @@ function flashWodPR(rx) {
 }
 
 let prFlashTimeout = null;
-function flashPR() {
+// Q-62: the PR badge names the new record in display size (the set's own summary, e.g. "100 ק״ג × 5").
+// Its state lives here, not only in the DOM: saveSet() re-renders the screen right after this call, and the
+// flash it had just shown was rebuilt hidden - the "שיא אישי חדש!" moment never reached the screen.
+let prFlashState = null; // { value, until }
+function prFlashActive() { return !!prFlashState && Date.now() < prFlashState.until; }
+function flashPR(valueText) {
+  prFlashState = { value: valueText || "", until: Date.now() + 1400 };
   const el = document.getElementById("barWrap");
-  if (!el) return;
-  el.classList.add("pr");
+  if (el) el.classList.add("pr");
   const flash = document.getElementById("prFlash");
+  const val = document.getElementById("prFlashValue");
+  if (val) val.textContent = prFlashState.value;
   if (flash) flash.style.display = "flex";
   clearTimeout(prFlashTimeout);
   prFlashTimeout = setTimeout(() => {
-    el.classList.remove("pr");
-    if (flash) flash.style.display = "none";
+    prFlashState = null;
+    const bar = document.getElementById("barWrap"), fl = document.getElementById("prFlash");
+    if (bar) bar.classList.remove("pr");
+    if (fl) fl.style.display = "none";
   }, 1400);
 }
 
@@ -4636,11 +4650,13 @@ const ICONS = {
   trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
   edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   dumbbell: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="2" stroke-linecap="round"><path d="M4 9v6M20 9v6M2 10v4M22 10v4M7 12h10"/></svg>',
-  chevron: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+  // Q-62: ONE chevron, an SVG in the text colour (currentColor); chevronsLeft is the same one mirrored for RTL
+  // "forward". The low-contrast PNG (icon-chevrons.png) and the text arrows are gone.
+  chevron: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg>',
   up: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>',
   down: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2.2" stroke-linecap="round"><path d="M3 7l6 6 4-4 8 8"/><path d="M14 17h7v-7"/></svg>',
   flat: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
-  chevronsLeft: '<img src="./assets/icon-chevrons.png" alt="" width="11" height="10" style="transform:scaleX(-1); vertical-align:middle;" />',
+  chevronsLeft: '<span class="chev-fwd" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M15 6l-6 6 6 6"/></svg></span>',
   // The two log-screen empty-state glyphs. Drawn to cloud.js's
   // EMPTY_STATE_ICONS conventions on purpose - 28-box, 1.8 stroke, round
   // caps and joins, currentColor - so the log screen's empty state and the
@@ -5040,7 +5056,7 @@ function renderInstallCard() {
   const oneTap = window.haimuniaInstall.canPrompt() && window.haimuniaInstall.kind() !== "inapp";
   return `<details class="card install-card" id="installCard">
       <summary class="install-card-head"><span>מתקינים את האימוניה במסך הבית</span><span class="install-card-how">איך?</span></summary>
-      ${oneTap ? `<button class="save-btn" data-action="install-app" style="max-width:none; margin:10px 0;">התקנה</button>` : ""}
+      ${oneTap ? `<button class="btn-secondary" data-action="install-app" style="width:100%; margin:10px 0;">התקנה</button>` : ""}
       ${steps}
     </details>`;
 }
@@ -5152,8 +5168,8 @@ function renderLogTab() {
     ${renderLastPerformance()}
     ${renderRepeatSet()}
 
-    <div class="bar-wrap" id="barWrap">
-      <div class="pr-flash" id="prFlash" style="display:none;">${ICONS.flame}<span>שיא אישי חדש!</span></div>
+    <div class="bar-wrap${prFlashActive() ? " pr" : ""}" id="barWrap">
+      <div class="pr-flash" id="prFlash" style="display:${prFlashActive() ? "flex" : "none"};">${ICONS.flame}<span>שיא אישי חדש!</span><bdi class="pr-flash-value mono" id="prFlashValue">${prFlashActive() ? esc(prFlashState.value) : ""}</bdi></div>
     </div>
 
     <!-- Q-48: one row in the order a member says it, סטים × חזרות @ משקל. -->
@@ -5731,7 +5747,7 @@ function renderDayEntriesListHtml(dayEntries, dayWods) {
         if (group.length === 1) {
           const e = group[0];
           return `
-        <div class="log-row">
+        <div class="log-row${e.id === justSavedEntryId ? " log-row--saved" : ""}">
           <div class="flex items-center gap-8">
             ${isFlameworthyEntry(e, celebratableIds) ? PR_FLAME : ""}
             <span style="font-weight:700; font-size:var(--fs-2);">${bidiText(movementById(e.exerciseId) ? movementById(e.exerciseId).name : "?")}</span>
@@ -6247,22 +6263,27 @@ function renderBenchmarkCard(item) {
     <div style="height:8px;"></div>`;
 }
 
+// Q-62: ONE list row for a named item (a benchmark in התקדמות, the same WOD in the אימונים catalog): the name and an
+// optional second line at the start, the best result and the chevron at the end. `title`/`sub`/`trail` are markup
+// the caller has already escaped (bidiText, bidiUnit, esc).
+function listRowHtml({ attrs, title, sub, trail, chevron, cls }) {
+  return `<button class="list-row${cls ? " " + cls : ""}" ${attrs}>
+      <span class="list-row-main"><span class="list-row-title">${title}</span>${sub ? `<span class="list-row-sub">${sub}</span>` : ""}</span>
+      ${trail ? `<span class="list-row-trail">${trail}</span>` : ""}
+      ${chevron || `<span class="list-row-chev">${ICONS.chevronsLeft}</span>`}
+    </button>`;
+}
 function renderBenchmarkRow(item) {
   const open = benchmarkExpandedId === item.id;
   const best = item.best ? formatBenchmarkValue(item, item.best.value) : null;
-  return `
-    <button class="exercise-row ${open ? "active" : ""}" data-action="toggle-benchmark" data-id="${esc(item.id)}" aria-expanded="${open}" style="${open ? "margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;" : ""}">
-      <div class="flex items-center gap-8">
-        <span style="display:inline-flex; transition:transform .2s; transform:rotate(${open ? "90deg" : "180deg"});">${ICONS.chevron}</span>
-        <span style="font-weight:700; font-size:var(--fs-2);">${bidiText(item.name)}</span>
-        ${item.retestDue ? `<span data-benchmark-retest="${esc(item.id)}" style="color:var(--brass); border:1px solid var(--brass); border-radius:999px; padding:1px 7px; font-size:var(--fs-caption); font-weight:700;">לבדיקה מחדש</span>` : ""}
-      </div>
-      <span style="text-align:left;">
-        ${best
-          ? `<span class="mono" style="display:block; color:var(--brass); font-weight:700; font-size:var(--fs-2);">${bidiUnit(best)}</span>`
-          : `<span style="display:block; color:var(--steel); font-size:var(--fs-1);">טרם נוסה</span>`}
-      </span>
-    </button>`;
+  return listRowHtml({
+    cls: `exercise-row${open ? " active list-row--open" : ""}`,
+    attrs: `data-action="toggle-benchmark" data-id="${esc(item.id)}" aria-expanded="${open}"`,
+    title: bidiText(item.name),
+    sub: item.retestDue ? `<span data-benchmark-retest="${esc(item.id)}" class="list-row-tag">לבדיקה מחדש</span>` : "",
+    trail: best ? `<span class="mono list-row-best">${bidiUnit(best)}</span>` : `<span class="list-row-none">טרם נוסה</span>`,
+    chevron: `<span class="list-row-chev" style="transform:rotate(${open ? "-90deg" : "0deg"});">${ICONS.chevronsLeft}</span>`,
+  });
 }
 
 // THE REMINDER, AND WHERE IT IS ALLOWED TO APPEAR. On this screen and nowhere
@@ -6921,8 +6942,20 @@ function render() {
   }
   const settingsBodyEl = document.getElementById("settingsBody");
   if (settingsBodyEl) {
+    // Q-62: a re-render while Settings is open (a toggle, a backup, the update check) keeps the מתקדם fold as it
+    // was and the sheet where it was scrolled; it used to snap closed and back to the top.
+    const keep = settingsOpen ? {
+      adv: !!(document.getElementById("settingsAdvanced") || {}).open,
+      scroll: [settingsBodyEl, settingsBodyEl.parentElement, document.getElementById("settingsSheet"), document.getElementById("settingsOverlay")]
+        .filter(Boolean).map((el) => [el, el.scrollTop]),
+    } : null;
     try { settingsBodyEl.innerHTML = renderSettingsBody(); }
     catch (err) { console.error("settings render error:", err); }
+    if (keep) {
+      const adv = document.getElementById("settingsAdvanced");
+      if (adv && keep.adv) adv.open = true;
+      for (const [el, top] of keep.scroll) el.scrollTop = top;
+    }
   }
   const desktopSidebarEl = document.getElementById("desktopSidebar");
   if (desktopSidebarEl) {
@@ -7481,10 +7514,13 @@ function renderWodBenchmarksSection() {
   return groups.map(([cat, list]) => `
     <div class="cat-group">
       <div class="cat-head"><h2 class="cat-name">${esc(wodCatLabel(cat))}</h2></div>
-      ${list.map((w) => `<button class="movement-btn" data-action="select-benchmark" data-id="${esc(w.id)}">
-        <div><span style="font-weight:700;">${bidiText(w.name)}</span>${w.desc ? `<div class="wod-desc">${bidiText(w.desc)}</div>` : ""}</div>
-        <span aria-hidden="true">›</span>
-      </button>`).join("")}
+      ${list.map((w) => { const best = formatWodBest(w.id); return listRowHtml({
+        cls: "exercise-row",
+        attrs: `data-action="select-benchmark" data-id="${esc(w.id)}"`,
+        title: bidiText(w.name),
+        sub: w.desc ? bidiText(w.desc) : "",
+        trail: best && best !== "—" ? `<span class="mono list-row-best">${bidiUnit(best)}</span>` : "",
+      }); }).join("")}
     </div>`).join("");
 }
 
@@ -8499,6 +8535,19 @@ function dismissIOSInstallBanner() {
   try { localStorage.setItem(IOS_INSTALL_DISMISS_KEY, "1"); } catch (e) {}
 }
 
+// Q-62: while a save runs, its button says so and takes no second tap (disabled + aria-busy + "שומרים…").
+async function withSaveBusy(btn, fn) {
+  if (!btn || btn.getAttribute("aria-busy") === "true") return;
+  const label = btn.querySelector("#saveBtnLabel") || btn;
+  const before = label.textContent;
+  btn.setAttribute("aria-busy", "true"); btn.disabled = true; label.textContent = "שומרים…";
+  try { await fn(); }
+  finally {
+    btn.removeAttribute("aria-busy"); btn.disabled = false;
+    if (label.textContent === "שומרים…") label.textContent = before;
+  }
+}
+const tabScroll = {};
 // ---------- Event delegation ----------
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
@@ -8510,7 +8559,15 @@ document.addEventListener("click", (e) => {
   else if (action === "dismiss-install-hint") { dismissInstallBanner(); }
   else if (action === "dismiss-ios-install-hint") { dismissIOSInstallBanner(); }
   else if (action === "ios-install-expand") { iosInstallExpandedFor = iosInstallDockKey(); syncIOSInstallDock(); }
-  else if (action === "switch-tab") { tab = el.dataset.tab; closeNavMenu(); render(); window.scrollTo(0, 0); }
+  // Q-62: each tab comes back where it was left (it always jumped to the top). Tapping the tab you are on still
+  // goes to the top, as a tab bar does.
+  else if (action === "switch-tab") {
+    const next = el.dataset.tab;
+    if (next === tab) { closeNavMenu(); render(); window.scrollTo(0, 0); return; }
+    tabScroll[tab] = window.scrollY;
+    tab = next; closeNavMenu(); render();
+    window.scrollTo(0, tabScroll[next] || 0);
+  }
   // Q-43a: the ☰ menu is gone from the header; an old link to it opens Settings, which holds what it held.
   else if (action === "open-nav-menu") { openSettings(); }
   else if (action === "close-nav-menu") {
@@ -8594,7 +8651,7 @@ document.addEventListener("click", (e) => {
     applyFieldValue(action, field, next);
     announceStepper(el, next);
   }
-  else if (action === "save-set") { saveSet(); }
+  else if (action === "save-set") { withSaveBusy(el, saveSet); }
   else if (action === "set-bar-weight") { setBarWeight(+el.dataset.kg); }
   else if (action === "set-theme") { setThemePref(el.dataset.pref); }
   else if (action === "set-text-scale") { setTextScalePref(el.dataset.pref); }
@@ -8887,7 +8944,7 @@ document.addEventListener("click", (e) => {
     if (last && last.scaledWeight) wodScaledWeight = last.scaledWeight;
     renderWodContent();
   }
-  else if (action === "save-wod") { saveWod(); }
+  else if (action === "save-wod") { withSaveBusy(el, saveWod); }
   else if (action === "delete-wod-entry") { askDeleteWodEntry(el.dataset.id); }
   else if (action === "select-wod-history") { wodHistoryId = wodHistoryId === el.dataset.id ? null : el.dataset.id; renderWodHistoryListArea(); }
   // Every dialog in this app is closed by a click somewhere in this handler,
