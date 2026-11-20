@@ -378,7 +378,7 @@
        iOS Dynamic Type (html's -apple-system-body below) moves it; six steps, 12/14/16/18/22/30 at 16px. */
     --fs-caption:.6875rem; --fs-1:.75rem; --fs-2:.875rem; --fs-3:1rem; --fs-4:1.125rem; --fs-5:1.375rem; --fs-6:1.875rem; --fs-display:2.5rem;
     --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
-    --header-height:64px; --color-accent:var(--club-coral); --color-selected:var(--club-coral); --color-focus-ring:var(--brass); --color-input-border:var(--steel); --hero-title-scrim:radial-gradient(closest-side, var(--p-081523-a72) 0%, var(--p-081523-a72) 60%, transparent 100%); --tap-min:44px; --btn-height:44px; --btn-height-lg:52px; --btn-radius:14px;
+    --header-height:64px; --color-accent:var(--club-coral); --color-selected:var(--club-coral); --color-focus-ring:var(--brass); --color-input-border:var(--steel); --hero-title-scrim:linear-gradient(to top, var(--p-081523-a72) 0%, var(--p-081523-a72) 45%, transparent 100%); --tap-min:44px; --btn-height:44px; --btn-height-lg:52px; --btn-radius:14px;
     /* Q-53b: ONE primary button. .save-btn, .chip-btn.primary, the scene save bar and the רישום pick button all
        read these; solid --energy at full strength (a translucent fill read as disabled). */
     --btn-primary-bg:var(--energy); --btn-primary-fg:var(--on-energy); --btn-primary-border:var(--energy);
@@ -386,6 +386,8 @@
     /* Q-61: the selected option of every segmented control. --p-d92f2b (the strong coral), not --energy:
        white on --energy is 3.3:1, white on this is 4.8:1. */
     --seg-selected-bg:var(--p-d92f2b); --seg-selected-fg:var(--p-fff);
+    /* Q-62: the one secondary button (an outline): what a screen offers next to its single filled primary. */
+    --btn-secondary-bg:transparent; --btn-secondary-fg:var(--chalk); --btn-secondary-border:var(--border);
     --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-pill:999px;
 }
   
@@ -586,10 +588,14 @@
   /* Q-46: four tab names (the tour's) must fit at 200% text, where the bar is about 188 CSS px wide. The label
      size follows the bar's own width (container query): 12px from a 375px bar up, never under 10px. */
   .tabbar{ container-type:inline-size; }
-  .tabbtn > span:last-child{ font-size:clamp(10px, 3.2cqi, 12px); }
-  @container (max-width: 260px){ .tabbtn{ padding-inline:0; } .tabbtn > span:last-child{ font-size:.59375rem; letter-spacing:-.2px; } }
-  /* Q-49: five tabs (מועדון for a guest too) on the same narrow bar: one step smaller (renders 17px at 200%). */
-  @container (max-width: 260px){ .tabbar:has(> .tabbtn:nth-child(5)) .tabbtn > span:last-child{ font-size:.53125rem; letter-spacing:-.3px; } }
+  /* Q-62: a tab label is never smaller than --fs-1 (it was clamp(10px, 3.2cqi, 12px): 10px on a 320px phone, and px,
+     so iOS text size never moved it). Five labels at --fs-1 need about 17rem; when the bar is narrower than that
+     (large text) the labels are hidden visually, read by screen readers as before, and the icons grow. */
+  .tabbtn > span:last-child{ font-size:var(--fs-1); }
+  @container (max-width: 17rem){
+    .tabbtn > span:last-child{ position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; padding:0; }
+    .tabbtn > span:first-child svg{ width:28px; height:28px; }
+  }
   .tabbar:has(> .tabbtn:nth-child(5)){ padding-inline:4px; gap:0; }
   .tabbar{ max-width:480px; margin:0 auto; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px); gap:2px; box-shadow:0 -4px 16px var(--p-000000-a18); }
   /* font-size raised from 10.5px (UX audit, defect 3): this labels the
@@ -692,6 +698,12 @@
   .stat-value{ font-weight:800; font-size:var(--fs-3); }
   .bar-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:20px; margin-bottom:16px; position:relative; overflow:hidden; transition:border-color .3s; box-shadow:var(--shadow-card); }
   .bar-wrap.pr{ border-color:var(--brass); animation:pop .4s ease; }
+  /* Q-62: reward moments, short and calm. The PR badge names the value in display size; a just-saved set's row
+     tints green once. The global prefers-reduced-motion rule switches both animations off. */
+  .pr-flash-value{ font-size:var(--fs-display); line-height:1; margin-inline-start:var(--space-2); }
+  .log-row--saved{ animation:rowSaved 1.4s ease-out 1; }
+  @keyframes rowSaved{ 0%{ background:color-mix(in srgb, var(--green) 28%, transparent); } 100%{ background:transparent; } }
+  #bottomBarBtn[aria-busy="true"]{ opacity:.8; cursor:progress; }
   .pr-flash{ position:absolute; inset:0; background-image:var(--stripe); display:flex; align-items:center; justify-content:center; gap:6px; color:var(--p-fff); font-weight:800; font-size:var(--fs-2); z-index:1; text-shadow:0 1px 3px var(--p-000000-a50); }
   @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.04);} 100%{transform:scale(1);} }
   .barbell{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:14px 0; }
@@ -859,7 +871,8 @@
   /* Q-53: a scrim behind the photo titles, so white text keeps 4.5:1 over any part of the photo (white text on
      the 72% navy core measures above 7:1 even over a white pixel). */
   .scene-page__intro{ isolation:isolate; }
-  .scene-page__intro::before{ content:""; position:absolute; inset:-28px -24px; background:var(--hero-title-scrim); z-index:-1; pointer-events:none; }
+  /* Q-62: a band across the whole photo, rising from the sheet, not a radial blob that read as a grey patch. */
+  .scene-page__intro::before{ content:""; position:absolute; inset-block:-48px -16px; inset-inline:calc(-1 * var(--scene-inline, 16px)); background:var(--hero-title-scrim); z-index:-1; pointer-events:none; }
   /* svh, not dvh - see body's own comment above for why: this is the rule
      that actually caused the reported vibration, since every scene screen
      (Add/History/Progress/Library/Community) hits it on every tab switch. */
@@ -1105,6 +1118,19 @@
   .date-cell{ position:relative; min-height:var(--tap-min); border-radius:var(--radius-md); border:0; background:transparent; color:var(--chalk); font:inherit; font-size:var(--fs-2); font-weight:700; font-variant-numeric:tabular-nums; cursor:pointer; }
   .date-cell:disabled{ color:var(--steel); opacity:.45; cursor:default; }
   .is-today{ box-shadow:inset 0 0 0 2px var(--color-accent); }
+  .chev-fwd{ display:inline-flex; vertical-align:middle; }
+  /* Q-62: the one list row (app.js listRowHtml), on the .exercise-row surface: name + second line at the start,
+     best result + chevron at the end. A benchmark looks the same in התקדמות and in the catalog. */
+  .list-row{ display:flex; align-items:center; gap:var(--space-3); width:100%; text-align:start; }
+  .list-row-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .list-row-title{ font-weight:700; font-size:var(--fs-2); color:var(--chalk); }
+  .list-row-sub{ font-size:var(--fs-1); color:var(--steel); }
+  .list-row-trail{ flex-shrink:0; }
+  .list-row-best{ color:var(--brass); font-weight:700; font-size:var(--fs-2); }
+  .list-row-none{ color:var(--steel); font-size:var(--fs-1); }
+  .list-row-chev{ display:inline-flex; color:var(--steel); flex-shrink:0; transition:transform .2s; }
+  .list-row-tag{ align-self:flex-start; color:var(--brass); border:1px solid var(--brass); border-radius:var(--radius-pill); padding:1px 7px; font-size:var(--fs-caption); font-weight:700; }
+  .list-row--open{ margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; }
   /* Q-63 P0: 80px, not 96px: on a 320px phone three columns fit (3x96 did not), so the weight stepper is not on a
      second row that starts under the save bar. */
   .scene-page--add .steppers.steppers--row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(80px, 1fr)); gap:var(--space-2); }
@@ -1436,6 +1462,12 @@
      rather than dialogs and should not be buried by a confirm. */
   #appConfirmOverlay{ z-index:55; }
   .modal-overlay.open{ display:flex; }
+  /* Q-62: sheets arrive, they do not pop: the backdrop fades in and the sheet slides up, briefly. The global
+     prefers-reduced-motion rule switches both off. */
+  .modal-overlay.open{ animation:backdropIn .18s ease-out 1; }
+  .modal-overlay.open > .modal-sheet{ animation:sheetUp .22s cubic-bezier(.2,.8,.2,1) 1; }
+  @keyframes backdropIn{ from{ background-color:transparent; } }
+  @keyframes sheetUp{ from{ transform:translateY(24px); opacity:.4; } }
   /* Fresh-eyes audit, trainee persona: the first-log arrival card (app.js's
      showCelebration({arrival:true}), fires exactly once per member) used
      to sit on the same 60%-opacity scrim as every routine celebration, so
@@ -2885,7 +2917,9 @@
   .scene-page--history{ --scene-photo-height:calc(33svh + 16px); }
   .scene-page--progress{ --scene-photo-height:calc(31svh + 16px); }
   .scene-page__media{ background-size:cover; background-color:var(--club-navy); }
-  .scene-page__media::after{ content:""; position:absolute; inset:0; background:inherit; background-size:auto max(450px, 54svh); background-position:center top; background-repeat:no-repeat; }
+  /* Q-62: the photo layer is its own box, as tall as before, and covers it: sized by height alone, a portrait photo
+     came out narrower than the phone and left a blurred strip (a vertical seam) on each side. */
+  .scene-page__media::after{ content:""; position:absolute; inset:0 0 auto 0; height:max(450px, 54svh); background:inherit; background-size:cover; background-position:var(--scene-position, center top); background-repeat:no-repeat; }
   .scene-page__intro{ inset-block-start:auto; top:calc(var(--scene-photo-height) - 100px); }
   .scene-page__brand{ display:none; }
   .scene-page__title{ font-size:var(--fs-display); }
@@ -2999,29 +3033,14 @@
 
   .scene-page__media::after{background-color:transparent;}
   .scene-page--achievements .scene-page__media::after{background-size:100% auto;}
-  /* COMMUNITY IS FRAMED BELOW THE WORDMARK ON THE WALL.
-     The club's logo wall is the right photo for this tab and the wrong crop
-     for it: the painted "האימוניה" sits 12-22% down the frame, which the
-     shared crop below put at y=54-100 on a 390x844 phone - directly under
-     the fixed header's own ./assets/logo-full.png at y=20-50. Two wordmarks,
-     60px apart, one of them the club's actual wall (measured in Chromium,
-     not inferred). So Community takes its own framing of the same
-     photograph: the same wall, its baseboard, the wooden floor and the
-     barbell on the mat, starting below the paint.
-     --community-scene-crop is the rendered height of the photo, and the
-     negative offset is that height times the fraction of the source frame
-     skipped - one number in two places, so zooming further cannot silently
-     stop clearing the text. 0.3 is the measured floor: the wordmark's
-     tagline ends at ~0.25 of the source height, and the rest is margin.
-     The photo has to be tall enough that what is left after the offset
-     still fills the visible band (--scene-photo-height, 42svh+16px), which
-     is what the max() floor is for on a short viewport.
-     No colour here, so no duplicate in either dark block - the scrim and
-     the sheet above it keep owning the theme. */
-  .scene-page--community{ --community-scene-crop:max(720px, 86svh); }
+  /* Q-62: the club scene shows the wall's painted "האימוניה" whole. The earlier framing started below it, and
+     at the photo layer's own height it became a crop of bare red wall that cut the wordmark. At 600px tall the
+     wordmark (x 42-74%, y 11-28% of the frame) is about 290px wide; at 58% it sits whole on a 320-480px phone,
+     just under the header (y 66-168). */
+  .scene-page--community{ --community-scene-crop:600px; }
   .scene-page--community .scene-page__media::after{
     background-size:auto var(--community-scene-crop);
-    background-position:50% calc(var(--community-scene-crop) * -0.3);
+    background-position:58% 0;
   }
   #achievementsOverlay{align-items:stretch; padding:0;}
   #achievementsOverlay .modal-sheet{height:100svh; max-height:100svh; border-radius:0;}
@@ -3326,8 +3345,10 @@
   /* 8: backup actions are real buttons, export first. */
   .backup-actions{ display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
   .backup-btn{ width:100%; min-height:48px; border-radius:14px; font-size:var(--fs-3); font-weight:800; display:flex; align-items:center; justify-content:center; }
-  .backup-btn-primary{ background:var(--energy); color:var(--on-energy); border:0; }
-  .backup-btn-secondary{ min-height:44px; background:transparent; color:var(--chalk); border:1px solid var(--border); font-weight:700; }
+  .backup-btn-primary{ background:var(--btn-primary-bg); color:var(--btn-primary-fg); border:1px solid var(--btn-primary-border); }
+  .backup-btn-secondary{ min-height:44px; background:var(--btn-secondary-bg); color:var(--btn-secondary-fg); border:1px solid var(--btn-secondary-border); font-weight:700; }
+  /* Q-62: one secondary button for anywhere a screen already has its primary. */
+  .btn-secondary{ display:inline-flex; align-items:center; justify-content:center; gap:var(--space-2); min-height:var(--tap-min); padding:0 var(--space-4); border-radius:var(--btn-radius); background:var(--btn-secondary-bg); color:var(--btn-secondary-fg); border:1px solid var(--btn-secondary-border); font:inherit; font-size:var(--fs-2); font-weight:800; cursor:pointer; }
   /* 9: the welcome title and subtitle get their own dark scrim, so they
      read on any part of the striped photo, in either theme. White on this
      panel over pure white is about 7:1. */
@@ -3371,7 +3392,7 @@
 <div id="updateBannerRegion" role="status" aria-live="polite">
 <button id="updateBanner" data-action="reload-app" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,0px) + var(--header-height)); left:0; right:0; z-index:60; background:var(--energy); color:var(--p-1a0d08); text-align:center; padding:14px 20px; width:100%; box-shadow:0 4px 16px var(--p-000000-a25);">
   <div style="font-weight:800; font-size:var(--fs-3); margin-bottom:3px;">עדכון חדש זמין</div>
-  <div style="font-weight:600; font-size:var(--fs-2); opacity:.85;">סגרו את האפליקציה ופתחו אותה מחדש כדי לעדכן</div>
+  <div style="font-weight:600; font-size:var(--fs-2); opacity:.85;">הקישו כאן כדי לעדכן עכשיו</div>
 </button>
 </div>
 
@@ -3678,7 +3699,7 @@
 </div>
 
 <!-- Medal glyph/gradient sprite sheet. Shapes are built from the gym's own
-     mark files (assets/mark.png, icon-barbell.png, icon-chevrons.png) rather
+     mark files (assets/mark.png, icon-barbell.png) rather
      than a generic medal icon, so an earned badge reads as "this box's". -->
 <svg style="position:absolute; width:0; height:0; overflow:hidden;" aria-hidden="true">
   <defs>
@@ -3838,7 +3859,7 @@
     <div style="padding:0 20px calc(env(safe-area-inset-bottom,0px) + 24px);">
       <div class="settings-club-edge" aria-hidden="true" style="margin-bottom:18px;"></div>
       <div id="onboardingTitle" style="color:var(--chalk); font-weight:800; font-size:var(--fs-4); margin-bottom:4px; text-align:center;">כמה מילים על האפליקציה</div>
-      <div style="color:var(--steel); font-size:var(--fs-2); margin-bottom:22px; text-align:center;">ארבעה מסכים, כל אחד למטרה שלו</div>
+      <div style="color:var(--steel); font-size:var(--fs-2); margin-bottom:22px; text-align:center;">חמישה מסכים, כל אחד למטרה שלו</div>
       <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px;">
         <div class="flex items-center gap-10">
           <span class="icon-chip icon-chip-brass"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9v6M20 9v6M2 10v4M22 10v4M7 12h10"/></svg></span>
@@ -3855,6 +3876,11 @@
         <div class="flex items-center gap-10">
           <span class="icon-chip icon-chip-brass"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg></span>
           <div><div style="font-weight:700; font-size:var(--fs-2);">אימונים</div><div style="color:var(--steel); font-size:var(--fs-1);">רישום WOD, כולל בנצ׳מארקים מוכרים או אימון מותאם אישית</div></div>
+        </div>
+        <!-- Q-62: a fifth line, in the same style, for the מועדון tab; the four above are the owner's, word for word. -->
+        <div class="flex items-center gap-10">
+          <span class="icon-chip icon-chip-brass"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="7" r="2.4"/><path d="M16.5 12.2c2.7.3 4.5 2.4 4.5 5.3"/></svg></span>
+          <div><div style="font-weight:700; font-size:var(--fs-2);">מועדון</div><div style="color:var(--steel); font-size:var(--fs-1);">הפיד של המועדון והודעות מהמאמן, והצטרפות בקוד</div></div>
         </div>
       </div>
       <button data-action="close-onboarding" class="save-btn" style="max-width:none;">בואו נתחיל</button>

@@ -1148,7 +1148,9 @@
       '<div class="join-card-title">הצטרפות למועדון</div>' +
       '<label class="join-card-label" for="joinCardInput-' + w + '">קוד הצטרפות (8 תווים, מקבוצת המועדון או מה-QR שבמועדון)</label>' +
       '<div class="join-card-row"><input id="joinCardInput-' + w + '" name="code" class="text-input join-card-input" dir="ltr" maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD 2345" />' +
-      '<button type="submit" class="save-btn join-card-btn">הצטרפות</button></div>' +
+      // Q-62: one filled primary per screen. On רישום that is בחירת תרגיל, so here the join button is secondary; on
+      // the guest's מועדון tab it is the screen's only action and stays primary.
+      '<button type="submit" class="' + (w === "add" ? "btn-secondary" : "save-btn") + ' join-card-btn">הצטרפות</button></div>' +
       '<div class="join-card-err" role="alert" hidden></div></form>';
   }
   document.addEventListener("submit", function (e) {
